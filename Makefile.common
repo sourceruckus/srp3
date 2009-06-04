@@ -1,0 +1,195 @@
+# -*- mode: makefile -*-
+#
+# Common makefile rules for SRP.  This file can be included by other makefiles
+# to easily add srp support.  The easiest way to manage distribution of a
+# source tree via SRP is to create a toplevel directory with the following
+# things in it:
+#   - a Makefile (which sets some variables and includes this Makefile)
+#   - a directory containing the SRP package files
+#   - a directory containing the source tree you're controlling
+#
+# This way, the SRP Makefile(s) won't interfere with the build system that
+# comes with the piece of software you're controlling.
+#
+# This file assumes that the calling Makefile defines the following variables:
+#   - PRODUCT
+#   - VERSION
+#   - PACKAGEREV
+#   - DEVTAG
+#
+# This file assumes that the calling Makefile defines the following rules:
+#   - all (default rule)
+#   - dist (default dist rule)
+#   - distclean (should delete DISTNAME and BUILDDIR among others)
+#
+# Most of the variables defined in this file can be overriden by the calling
+# Makefile.
+
+
+MAKEFILE += Makefile.common
+
+.PHONY: dist-bzip2 dist-srp dist-brp dist-iso
+
+
+# format used for date strings in versions
+ifeq (${DEVDATE},)
+  tmp:=$(shell basename ${PWD})
+  tmp2:=$(shell echo ${tmp} | grep ${PRODUCT}-${VERSION}-${DEVTAG})
+  ifeq (${tmp2},)
+    DEVDATE:=$(shell date +"%s")
+  else
+    DEVDATE:=$(shell echo ${tmp2} | sed 's|${PRODUCT}-${VERSION}-${DEVTAG}||')
+  endif
+endif
+
+# format used for the version string
+# ex: foo-1.2.3-cvs20061122.tar.bz2
+#         ^^^^^^^^^^^^^^^^^
+ifeq (${VERSIONSTRING},)
+  ifeq (${DEVTAG},)
+    VERSIONSTRING=${VERSION}
+  else
+    VERSIONSTRING=${VERSION}-${DEVTAG}${DEVDATE}
+  endif
+endif
+
+# format used for distname
+# ex: foo-1.2.3-cvs20061122.tar.bz2
+#     ^^^^^^^^^^^^^^^^^^^^^
+ifeq (${DISTNAME},)
+  DISTNAME=${PRODUCT}-${VERSIONSTRING}
+endif
+
+# volume label of ISO file
+ifeq (${CDROM_LABEL},)
+  CDROM_LABEL=${DISTNAME}
+endif
+
+# name of created ISO file
+ifeq (${ISONAME},)
+  ISONAME=${DISTNAME}.iso
+endif
+
+# contact email embedded in BRPs
+ifeq (${REPLYTO},)
+  REPLYTO:=${USER}@$(shell hostname)
+endif
+
+# name of the official source directory
+ifeq (${OFFICIALDIR},)
+  OFFICIALDIR=official
+endif
+
+# name of the SRP package directory
+ifeq (${PACKAGEDIR},)
+  PACKAGEDIR=SRP_files
+endif
+
+# automatically included in TEMPLATES
+ifeq (${PACKAGE_TEMPLATES},)
+  PACKAGE_TEMPLATES:=$(shell find ${PACKAGEDIR} ! -wholename ${PACKAGEDIR}/CVS\* -a ! -type d)
+endif
+TEMPLATES += ${PACKAGE_TEMPLATES}
+
+# 
+# name of the NOTES file
+ifeq (${NOTES},)
+  NOTES=NOTES-2
+endif
+
+# name of the temporary build directory
+ifeq (${BUILDDIR},)
+  BUILDDIR=.build
+endif
+
+# use this to specify path to srp, if need be
+ifeq (${SRP},)
+  SRP=srp
+endif
+
+
+DIST_BZ2=${DISTNAME}.tar.bz2
+DIST_SRP=${DISTNAME}-${PACKAGEREV}.srp
+DIST_DEPS=$(shell find . ! -wholename ./${DISTNAME}\* -a ! -wholename ./${BUILDDIR}\* -a ! -type d)
+
+SRP_ROOT_PREFIX_for_makefile=${PWD}/${BUILDDIR}/t
+
+TEMPLATE_KEYS += DISTNAME
+TEMPLATE_VALS := $(foreach x,${TEMPLATE_KEYS},$x="'${$x}'")
+
+
+%.gz: % ${MAKEFILE}
+	gzip -c $< > $@
+
+%.info: %.texinfo ${MAKEFILE}
+	makeinfo -o $@ $<
+
+%.pdf: %.texinfo ${MAKEFILE}
+	texi2pdf -q -o $@ $<
+
+# woah, this turned out to be ugly...  in order to get the shell to be able to
+# iterate over a list of variables and then resolve them later, i had to export
+# all the TEMPLATE_KEYS and their values to the shell's environment all in one
+# big continuous shell bogey.
+${BUILDDIR}/%: % ${MAKEFILE}
+	@echo "--- BUILDIR/* ---"
+	@echo "TEMPLATES: ${TEMPLATES}"
+	@echo "$@: ALL DEPS: $+"
+	@echo "$@: FAILED  : $?"
+	@echo "TEMPLATE_VALS: ${TEMPLATE_VALS}"
+	mkdir -p $(shell dirname $@)
+	cp -dpR $< $@
+	for x in ${TEMPLATE_VALS}; do \
+	  eval $$x || exit -1; \
+	done; \
+	for x in ${TEMPLATE_KEYS}; do \
+	  echo "key: __$${x}__" && \
+	  val="\$${$$x}" && \
+	  val=`eval echo $$val` && \
+	  echo "val: $$val" && \
+	  sed "s|__$${x}__|$$val|g" $@ > $@.tmp && \
+	  cp $@.tmp $@ && \
+	  rm $@.tmp || exit -1; \
+	done
+
+
+dist-bzip2: ${DIST_BZ2}
+
+${DIST_BZ2}: ${DIST_DEPS} ${MAKEFILE}
+	@echo "--- dist-bzip2 ---"
+	@echo "$@: ALL DEPS: $+"
+	@echo "$@: FAILED  : $?"
+	${MAKE} distclean
+	@echo "DISTNAME: ${DISTNAME}"
+	mkdir -p ${BUILDDIR}/${DISTNAME}
+	cd ${BUILDDIR}/${DISTNAME} && tar -C ../../${OFFICIALDIR} -psc --exclude CVS --exclude ${BUILDDIR} . | tar -psx
+	tar -C ${BUILDDIR} -jcf $@ ${DISTNAME}
+	rm -rf ${BUILDDIR}
+
+
+dist-srp: ${DIST_SRP}
+
+${DIST_SRP}: ${DIST_BZ2} ${TEMPLATES:%=${BUILDDIR}/%} ${MAKEFILE}
+	@echo "--- dist-srp ---"
+	@echo "$@: ALL DEPS: $+"
+	@echo "$@: FAILED:   $?"
+	mkdir -p ${BUILDDIR}
+	cp -dpR ${DIST_BZ2} ${BUILDDIR}/
+	cp -dpR ${BUILDDIR}/${PACKAGEDIR}/* ${BUILDDIR}
+	tar -C ${BUILDDIR} --exclude ./${PACKAGEDIR} -cf $@ .
+
+
+dist-brp: ${DIST_SRP} ${MAKEFILE}
+	@echo "--- dist-brp ---"
+	@echo "$@: ALL DEPS: $+"
+	@echo "$@: FAILED:   $?"
+	SRP_ROOT_PREFIX=${SRP_ROOT_PREFIX_for_makefile} ${SRP} -F
+	REPLYTO=${REPLYTO} SRP_ROOT_PREFIX=${SRP_ROOT_PREFIX_for_makefile} ${SRP} -b ${DIST_SRP} && rm -rf ${SRP_ROOT_PREFIX_for_makefile}
+
+
+dist-iso: dist
+	if [ -e ${DISTNAME}*.brp ]; then ISOTARGET=${DISTNAME}*.brp; \
+	elif [ -e ${DIST_SRP} ]; then ISOTARGET=${DIST_SRP}; \
+	elif [ -e ${DIST_BZ2} ]; then ISOTARGET=${DIST_BZ2}; \
+	else ISOTARGET=BLARG; \
+	fi && mkisofs -rlDJV "${CDROM_LABEL}" -allow-leading-dots -o ${ISONAME} $$ISOTARGET

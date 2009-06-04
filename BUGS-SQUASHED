@@ -1,0 +1,807 @@
+#004:	2003-05-29
+	potential problem with --upgrade...  how does python treat scopes for
+	nested function declarations? dump(), which is local only to install(),
+	was using a variable declared in install's scope (force)...
+	FIX:	2003-06-02
+		made dump() take force as an extra parameter, just to make sure
+		things work as expected.
+
+
+#007:	2003-06-02
+	srp does not read arguments from stdin...  not sure if this is a big
+	deal.  it would be nice to 'srp -l --raw srp | srp -l' but wanting to
+	do that will go away once i fix up the completion stuff...
+	FIX:	2003-06-04
+		we now allow reading args from stdin when srp is invoked with
+		an argument of "-".
+		ex: 'srp -l --raw zsh | grep upgrade | srp -l -'
+
+
+#006:	2003-05-29
+	if a package is created for a version of srp with some special feature
+	that isn't present in the version of srp used to install the package,
+	the file list in RUCKUS/installed will contain instructions that
+	weren't actually done during the install...  (ex: md5sum)
+	Maybe srp should only put USED options into the log.
+	FIX:	2003-06-05
+		When initialy reading a package's NOTES file, we compare each
+		srp_flag against a list of supported_flags in sr.py and drop
+		any unsupported flags on the floor.
+
+
+#008:	2003-06-05
+	if you pipe a filename into srp and we need user input, utils.yesno()
+	gets an EOFError and we die ungracefully...
+	FIX:	2003-06-05
+		put the raw_input inside a try block...  the exception now
+		causes yesno() to return 0.  (we NEVER want to accidentally
+		return 1 if we can't even read from stdin...)
+
+
+#003:	2003-03-28
+	foolable packages (type 2) still get the ROOT_PREFIX embedded in them.
+	this should probably be fixed...  but you might want this behavior once
+	in a while.
+	FIX:	2003-06-05
+		when we read a NOTES file out of a package, we now properly
+		generate SRP_OPTS without including SRP_ROOT_PREFIX.  i'm
+		pretty sure that we only need that in the FOOL_OPTS, which
+		is for actually installing files...
+
+
+#005:	2003-05-29
+	there currently is no way to update an already existing file...  for
+	example, say we install a package that has an infofile.  we can install
+	the infofile just fine in /usr/share/info, but we can't add a line to
+	/usr/share/info/dir for the new infopage... is there a "regenerate info
+	dir" program or something like that?
+	HACK:	2003-06-05
+		when installing, srp will now check installed files for info
+		files.  if it finds any, it will add them to the info dirfile.
+		uninstalling will remove any detected infofiles from the info
+		dirfile.  THIS IS NOT A FIX!  The *REAL* fix will involve
+		adding preinstall/postinstall/preuninstall/postuninstall fields
+		to the NOTES file...  or...  we could make an SRP_INFO flag...
+	FIX:	2003-06-06
+		unhackified yesterday's stuff and added an SRP_INSTALLINFO
+		flag.  if a package being installed/uninstalled has this flag,
+		we will track movement of infofiles and add/remove them from
+		the infodir as necessary.
+		additionally, i've added pre/post install stuff to the TODO
+		file for version 3.0
+
+
+#009:	2003-06-11
+	cleanup of our temporary directories was leaving behind .* files...
+	looks like sh (or bash) completion for '*' does not include .* files.
+	FIX:	2003-06-11
+		instead of just doing an 'rm -rf *" inside each temporary
+		directory, we now generate a list of files that need to be
+		deleted and then we delete them.  this list DOES include .*
+		files and DOESN'T include the special files '.' and '..'
+
+
+#010:	2003-06-13
+	srp does not maintain directory permisions when moving directories from
+	RUCKUS/tmp to their final installation location
+	FIX:	2003-06-13
+		added a few lines to sr_package2.install.dump() to match
+		permisions with the installed file after we create a new
+		directory.
+
+
+#012:	2003-06-30
+	Similar to #010...  srp does not maintain a directory's UID and GID when
+	moving directories from	RUCKUS/tmp to their final installation location
+	FIX:	2003-06-30
+		added a few lines to sr_package2.install.dump() to match
+		UID and GID with the installed file after we create a new
+		directory.
+
+
+#011:	2003-06-24
+	Similar to #005...  we want to update /etc/ld.so.conf and run ldconfig
+	for some packages.  But we don't want it to be default behavior, for
+	portability and backwards compatibility reasons.  Will probably make a
+	SRP_LDCONFIG flag to enable some special behavior...
+	FIX:	2003-10-07
+		added SRP_LDCONFIG flag which tells srp to keep track of
+		installed shared objects.  if it installs any in directories
+		that are not already listed in sr.LDSOCONF, they are added.
+		likewise, if we remove the last so in a directory, we remove
+		the directory from our ldpath file.
+
+
+#016:	2004-02-17
+	having sr.LDPATH_DEFAULT added to ldpath_orig during installation
+	causes implicit ldpath entries to be written into the new
+	ld.so.conf.  should probably just check if a mismatch ldpath entry
+	is a default before adding to ldpath, instead of adding all the
+	defaults in.
+	FIX:	2004-02-17
+		read_ldpath no longer addes defaults into it's retval.
+		before adding a path to ldpath, we now check to see if it's
+		in sr.LDPATH_DEFAULT.
+
+
+#014:	2004-02-17
+	we need to be able to override SRP_LDCONFIG auto-detection...  look
+	into creating SRP_LDCONFIG=path srp_flag option.
+	FIX:	2004-02-19
+		we can now specify SRP_LDCONFIG=/foo/bar,/boo/bar in the
+		NOTES file to override the autodetection.
+
+
+#015:	2004-02-17
+	srp -c --tally ace before and after tao is installed appear to
+	differ...  does getsize accidently follow symlinks into tao?  or
+	does tao actually install *real* files into ace?
+	NOTES:	 2004-02-17
+		 upon further mental review, this can't possibly be
+		 happening.  brain fart?
+	REJECT:	 2004-02-17
+		 i was comparing a new brp with an old handmade kludge...
+		 this "bug" doesn't really exist.
+
+
+#019:	2004-02-19
+	comments are not handled when dealing with ld.so.conf...  need to
+	add comment detection.  read_ldpath() still needs to get them so
+	that write_ldpath() won't remove comments from the file.  however,
+	the caller of read_ldpath() and write_ldpath() needs to handle #
+	delimited comments.
+	FIX:	2004-02-19
+		reworked the way we read/write ldpath.  now, comments and
+		blank lines are preserverd.
+
+
+#020:	2004-02-20
+	EEK!  here's a bad one...  the way things are now, our cleanup
+	function checks for SRP_INPLACE in a stale NOTES file and will go
+	DELETE the SRP_INPLACE directory!!  this is desired if we were
+	actually installing *only*!  for example, if i install the package
+	foo.srp which uses SRP_INPLACE and it succeeds and then i do srp -x
+	foo.srp and it fails, cleanup will DELETE THE PREVIOUSLY INSTALLED
+	DIRECTORY!  bad bad!  must fix!
+	FIX:	2004-02-20
+		all write-ops now also write RUCKUS/package/.MODE which is a
+		one line file containing the mode name.  force_cleanup() now
+		checks this file and only does the externel directory
+		cleanup if the failed operation was an install or build.
+
+
+#024:	2004-03-01
+	other_opts is no longer getting put into SRP_OPTS...  woops, better
+	fix that.
+	FIX:	2004-03-01
+		it was getting added to the CANT_FOOL opts, but not SRP_OPTS
+		or FOOL_OPTS.  it probably doesn't belong in FOOL_OPTS, but
+		it definately needs to be in FOOL_OPTS.  added it to
+		FOOL_OPTS.
+
+
+#021:	2004-02-27
+	building an INPLACE srp in a non-existant inplace dir creates the
+	directory for building, but doesn't delete it afterwards...
+	FIX:	2004-03-01
+		clean up code at end of srp.build_brp() now attempts to
+		remove inplace dir if it's not in sr.perm_dirs[].
+	FIX:	2004-03-01
+		also had to do this to the force_cleanuo function.
+
+
+#022:	2004-02-27
+	check_deps_lib() is now broken.  by making read_ldpath() not add the
+	default lib locations (/lib, /usr/lib, /usr/local/lib), we can't
+	find any libraries...  woops
+	FIX:	2004-03-01
+		added sr.LDPATH_DEFAULT to the local ldpath variable in
+		check_deps_lib().
+
+
+#026:	2004-03-01
+	probalby rare, but if /usr/src/ruckus/tmp is a symlink dump() will
+	wildly miscalculate the install size.  this results in a complete
+	meltdown (i.e. writing out millions of hashes per file being
+	installed).
+	FIX:	2004-03-01
+		fixed it.  we now recursively check to see if
+		/usr/src/ruckus/tmp is a symlink and adjust our "du" command
+		appropriately.
+
+
+#027:	2004-03-02
+	if preinstall fails, package installation fails.  however, the log
+	file was already written.  srp -F cleans out everything that's out
+	of place, but THE PACKAGE MIGHT STILL BE INSTALLED.  if it was an
+	inplace package, the inplace dir gets removed by srp -F, otherwise
+	the installed files are still installed.
+	FIX:	2004-03-02
+		package.install() and brp.install() both set sr.PERSISTENT
+		to 1 and call self.uninstall() if the postinstall fails.
+
+
+#018:	2004-02-19
+	when building a brp, getlogin() is failing when we try to create
+	contact info.  didn't notice this before because i had REPLYTO set
+	in my environment.
+	NOTES:	2004-02-19
+		not sure why this is happening...  for now, i put the call
+		in a try block and set contact info to the string "(null)"
+		if we get an exception.  absolutely *will* have to fix this
+		later.
+	REJECT:	2004-03-02
+		this is a bug in python, which appears to be fixed in the
+		latest version.  therefore, my "(null)" workaround is good
+		enough.  bug is rejected.
+
+
+#028:	2004-03-02
+	if a makefile being built off in RUCKUS/build explicitly runs
+	install-info, it will create a $prefix/share/info/dir file.  this
+	dir file will then get written over a system dir file, blowing away
+	the system's info index.
+	FIX:	2004-03-02
+		added some logic to dump() to make it not add the
+		dir file to the log.  this required the addition of
+		sr.INFODIRFILES[].  also, redirected stdout/stderr to
+		/dev/null for the system calls to install-info.
+
+
+#029:	2004-03-13
+	SRP_CANT_FOOL is completely broken...  shame on me for not noticing,
+	but i believe it's been broken since 2.1.0.  trying to build a
+	package using said option chokes and spits this out:
+	"UnboundLocalError: local variable 'newlist' referenced before
+	assignment".
+	NOTES:	2004-03-14
+		ok, i'm actually throwing away the RUCKUS/tmp installation
+		without logging it...  then i'm doing the real world
+		install...  and not logging that either...  yikes.  this
+		couldn't be any more broken.
+	FIX:	2004-03-14
+		ok, added in all the appropriate log generation.  we now 
+		make our file list after the RUCKUS/tmp installation and
+		prior to the real install.  however, building brps from
+		non-foolable packages is broken (see bug #032).
+
+
+#030:	2004-03-14
+	assuming that SRP_CANT_FOOL works (which it currently doesn't...),
+	SRP_MD5SUM will fail to make the correct md5sums...  the checksuming
+	is all done when we create the logs using the RUCKUS/tmp
+	installation.  the file list in this installation will be the same
+	as the realworld installation, but the installed files *will* be
+	different.
+	FIX:	2004-03-14
+		ok, we fudge the srp_flags prior to our fake _dump() so that
+		our log only contains filenames, then we unfudge srp_flags.
+		after the real install (but prior to cleanup) we go and
+		generate our md5sums and format the logfile appropriately.
+
+
+#031	2004-03-14
+	when finalizing a SRP_PREPOSTLIB package, the prepostlib is added to
+	our file list along with it's md5sum whether or not we're using
+	SRP_MD5SUM.
+	FIX:	2004-03-14
+		added a check for SRP_MD5SUM before generating the md5sum
+		for the prepostlib.
+
+
+#033	2005-03-09
+	non-root users _SHOULD_ be able to do write-ops if they have
+	filesystem perms...  maybe not in the system-wide RUCKUS dir, but
+	definately in a SRP_ROOT_PREFIX/RUCKUS dir.
+	FIX:	2005-03-10
+		took out calls to is_root().  is_root() function is left
+		behind just in case we want it later...
+
+
+#034	2005-03-09
+	brp deps_lib issues on fedora core 3...  we're getting deps for
+	/lib/ld_linux.so.2 (0xASDFASDF).  should just be /lib/ld_linux.so.2
+	FIX:	2005-03-10
+		we were splitting the output of ldd on '=>', which was kinda
+		silly.  now we split on whitepsace.
+
+
+#037	2005-03-10
+	should add a SRP_PERMS flag that looks for a PERMS file in the
+	package at install time to chmod/chown the installed files.  this
+	would ensure that a non-privileged user can build a brp from an srp
+	that wants to install files owned by root...
+	NOTES:	2005-03-10
+		actually, this might just be silly...  the NOTES file should
+		probably just not explicitly chown the files.  they should
+		get installed owned by the installing user.  if the files
+		need to be owned by root, then the package needs to be
+		installed as root.
+	NOTES:	2005-03-10
+		that being said, we still have to make sure that a brp built
+		by non-root but installed as root actually installs the
+		files with the correct ownership...
+	NOTES:	2005-03-10
+		ok, extracting our srpblob no long preserves owner...  so
+		all files installed will be owned by the installing user.
+		we _SHOULD_ have a way to override this behavior for
+		specific files at install time, though...  so eventually,
+		i'll add a SRP_OWNEROVERRIDE flag.  file permissions will
+		_ALWAYS_ be preserved in the srpblob, though, so setting
+		them up is the responsibility of the NOTES file.
+	FIX:	2005-03-10
+		all files extracted from the brp are owned by the
+		installing user.
+
+
+#035	2005-03-09
+	srp -l column padding is ugly...  fix it.
+	FIX:   2005-03-10
+	       reworked the layout code.  first column is 20 chars, second
+	       is 40, and third is 20.  if any entry is too long, the next
+	       entry just gets pushed off to the right much nicer than
+	       before.
+
+
+#038	2005-03-10
+	upgrading a package with a PREPOSTLIB doesn't remove the PREPOSTLIB
+	file...
+	FIX:	2005-03-10
+		now it does.  ;-)
+
+
+#042	2005-03-11
+	when uninstalling and pruning off empty directories, if one of the
+	perm_dirs is actually a symlink, it just gets deleted.  we need to
+	check dirs and symlinks against perm_dirs.
+	FIX:	2005-03-14
+		both dirs and nondirs are now checked against perm_dirs.
+		also added /etc/init.d, /etc/rc[0-6].d, /etc/rc.d,
+		/etc/rc.d/init.d, and /etc/rc.d/rc[0-6].d to perm_dirs.
+
+
+#041	2005-03-11
+	when installing, if a dir already exists, it's getting chmod'd and
+	chown'd to match our srpblob...  we shouldn't do that.
+	FIX:	2005-03-14
+		this was being done with an os.system() call.  changed it to
+		use os.makedirs(), os.chmod(), and os.chown() inside a
+		try/catch block.  now chmod/chown only happens if
+		makedirs() is successful, and makedirs() is only successful
+		if it creates the directory, so no more chmod/chown for
+		pre-existing directories.
+
+
+#045	2005-06-29
+	srp imports the wrong libraries when running in a SRP_ROOT_PREFIX
+	area.  SRP_ROOT_PREFIX needs to be filled out _PRIOR_ to importing
+	sr.py...
+	FIX:	2005-06-29
+		ok, srp now prepends SRP_ROOT_PREFIX to LIBDIR prior to
+		importing anything.  this causes the correct modules to get
+		imported.
+	FIX:    2005-07-15
+		srp _ONLY_ prepends SRP_ROOT_PREFIX to LIBDIR if the
+		absolute path to srp is within the SRP_ROOT_PREFIX.
+		previous fix was causing /usr/bin/srp to import stuff out of
+		SRP_ROOT_PREFIX/usr/lib/srp, which is still not always right
+
+
+#043	2005-06-29
+	upgrading packages fails...  must have broken something.
+	FIX:	2005-07-13
+		yup, sure did.  brp.upgrade() was doing a couple bad things
+		including splitting a string on SRP_ROOT_PREFIX without
+		checking to see if it was empty and not passing the
+		appropriate arguments into the install() function.  then,
+		since upgrade() now removes PREPOSTLIBs, uninstall was
+		failing to import the PREPOSTLIB and then refusing to do
+		anything else...  this should all be fixed now.
+
+
+#046	2005-06-29
+	make install-dist-srp fails if srp not already installed.  this
+	target should depend on the ruckusdir target.
+	FIX:	2005-07-13
+		fixed.
+
+
+#048	2005-07-15
+	srp --setup-root or srp -F should create RUCKUS directory
+	structure.  this would make it much easier to experiment with
+	packages in a SRP_ROOT_PREFIX.  without it, a package maintainer has
+	to have an intimate knowledge of how srp works...
+	FIX:	2005-07-15
+		srp -F now calls create_ruckus_dirs() which creates all the
+		leaf RUCKUS dirs defined in sr.ruckus_dirs.
+
+
+#049	2005-07-15
+	after an srp -u failure, srp doesn't realize it needs a cleanup.
+	FIX:	2005-08-02
+		package::uninstall now exits with more appropriate return
+		values and srp now does cleanup if the action returns -1.
+
+
+#047	2005-07-13
+	if a package creates symlinks with absolute paths while it's
+	building, broken symlinks with RUCKUS in them will get installed on
+	the system.
+	FIX:	2005-08-05
+		package::_dump() now detects and fixes absolute paths in
+		symlinks.  this fix does _NOT_ require rebuilding of BRPs.
+		if a bad symlink is already in a BRP, it will be fixed at
+		install-time.
+
+
+#050	2005-08-04
+	when uninstalling a package, if the target of an installed symlink
+	is removed first (or the link was just plain broken), the broken
+	symlink is left behind with no notification to the user.
+	FIX:	2005-08-05
+		package::uninstall() was using os.path.exists() to determine
+		if is should delete each file.  however, that function
+		return False for broken symlinks.  we now check with
+		(islink() or exists()).
+
+
+#054	2005-08-05
+	utils.md5sum is horrible.  right now, it makes a system call to the
+	md5sum program and writes the result into a temporary file.  then it
+	reads the temp file and deletes it.  horrible!!  md5sum checksumming
+	is built into python!!!  the correct algorithm is as follows:
+	>>> md5.new(file("filename", "rb").read()).hexdigest()
+	FIX:	2005-08-05
+		rewrote utils.md5sum to use python's builtin md5 stuff.  the
+		result is a hugely dramatic speed up when checking or
+		generating md5sums.  srp -c ACE+TAO used to take 1:45 or
+		so...  now it takes 10 seconds.  :-)
+
+
+#057	2005-08-12
+	srp -F returns 1 on success...  should return 0.
+	FIX:	2005-08-12
+		this bug was twofold.  cleanup() was returning 0 if
+		there were no files to delete and force_cleanup() was
+		intentionally returning -1 to trigger an abnormal exit
+		status.  both have been fixed.
+
+
+#056	2005-08-11
+	source tree reorg.  should move dist/* to SRP_files/* and modify the
+	Makefile appropriately.  this will fix some build problems and will
+	make the srp source tree more consistent with the source trees of
+	3rd party apps.
+	FIX:	2005-08-12
+		removed dist/* and added SRP_files/*.  did a lot of updating
+		in the Makefile.  we now have more standard targets and it's
+		all a bit cleaner.
+
+
+#058	2005-08-12
+	ack! os.path.join() doesn't work quite the way i thought it did!
+	os.path.join("/home/mike/t", "/usr/local/bin/foo") just returns
+	"/usr/local/bin/foo", which is definitely not what i wanted...  this
+	means that files might get into the wrong / if you run with
+	SRP_ROOT_PREFIX!
+	FIX:	2005-08-12
+		this only messed with symlinks...  it's part of the code i
+		added to fix bug #047.  all better now.
+	FIX:	2005-09-03
+		crap, i still didn't have it right.  here's what actually
+		works:
+
+		    os.path.join("/", sr.SRP_ROOT_PREFIX, i[2:])
+
+		this is basically "/" + PREFIX + filename.  you need the "/"
+		at the beginning, because if PREFIX is "" then filename
+		doesn't end up being an absolute path.
+
+
+#051	2005-08-04
+	should add a SRP_SHA1SUM flag now that MD5 checksums have been
+	officially compromised.  should be able to use both SRP_MD5SUM and
+	SRP_SHA1SUM in the NOTES file for a package; srp should attempt to
+	use the first one it sees and ignore the other.  this way, a single
+	package can use SHA1 on one system and fall back to MD5 on systems
+	lacking sha1sum support.  or maybe i should make a SRP_CHECKSUM flag
+	and have srp choose between SHA1 and MD5 internally.
+	NOTES:	2005-09-24
+		Will go with a SRP_CHECKSUM flag in the SRP's NOTES file.
+		SRP will decide which checksum method to use, and will put
+		either SRP_MD5SUM or SRP_SHA1SUM in the FILES file.
+	FIX:	2005-09-24
+		It is now highly recommended to use SRP_CHECKSUM instead of
+		SRP_MD5SUM or SRP_SHA1SUM when making a package.  This way,
+		SRP can decide what checksumming alrorithm to use.
+
+
+#061	2005-09-30
+	srp -F forces mode of ruckusdirs to be 0755.  this should really be
+	inherited from the environment.
+	FIX:	2005-09-30
+		create_ruckus_dirs() no longer specifies a mode.  this way,
+		the default mode (0777) is masked out using the users umask.
+
+
+#052	2005-08-04
+	should keep track of permisions and ownership of installed files.
+	these can be changed without disrupting the checksum, so we should
+	record them in our FILES file.
+	NOTE:	2005-09-30
+		all files are installed with uid/gid of the installing
+		user, unless the package uses SRP_OWNEROVERRIDE (which
+		doesn't exist quite yet...)
+	FIX:	2005-09-30
+		SRP_PERMS now keeps track of file permisions and ownership
+		in the logfile.
+
+
+#053	2005-08-04
+	should keep track of symlink targets.  right now, the FILES file
+	just says "link" for symlinks.  this way srp -c would notice if a
+	symlink has been changed after installation.
+	FIX:	2005-09-30
+		SRP_LINKTARGET now keeps track of symlink targets in the
+		logfile.
+
+
+#059	2005-09-08
+	should use python's internal support for tar and bzip2 instead of
+	making system calls.
+	FIX:	2005-10-24
+		added tarfile functions to utils.  srp and sr_package now
+		use these functions exclusively when creating/extracting
+		archives.  this eliminates quite a few os.system() and
+		commands.getstatusoutput() calls.
+
+
+#067	2005-10-21
+	people really shouldn't have to escape the crap out of everything in
+	NOTES files.  need to come up with a backwards-compatible way of
+	alleviating this mess.
+	FIX:	2005-10-24
+		package._read_notes(), package._build(), and
+		package._build_inplace() have been reworked to eliminate the
+		need to escape out environment variables and carriage
+		returns.  utils.compat_unescaper() is used to attempt
+		backward-compatibility with NOTES files that escape things
+		out.
+
+
+#039	2005-03-10
+	need to add a SRP_OWNEROVERRIDE flag so we can force installed files
+	to be owned by a user other than the installing user.  the actual
+	chowning would have to be done at install time, not at build time,
+	because non-root users should be able to build a package and have
+	root install it.
+	FIX:	2005-10-27
+		added SRP_OWNEROVERRIDE flag.  chowning is attempted at
+		install time.  if the chown for a file fails (installing as
+		non-root), the user is notified because the check() at the
+		end of the install fails.
+
+
+#062	2005-09-30
+	as per the resolution of bug #037, i need to add a SRP_OWNEROVERRIDE
+	flag...  i neglected to do this for quite a while.  my bad.  this
+	flag will cause SRP to go through each file listed in the specified
+	file and chown it to the supplied value.  Attempting to install a
+	package that uses this flag as a non-root user will fail.
+	NOTES:	2005-09-30
+		should let non-root users attempt to install using
+		--persistent.  they just won't be able to chown the files.
+	NOTES:	2005-10-24
+		woops, this was a dup of bug #039
+	FIX:	2005-10-27
+		see resolution for bug #039
+
+
+#066	2005-10-04
+	SRP_LDCONFIG stuff appears to not be working when installing BRPs.
+	i have to look into this...
+	FIX:	2005-11-08
+		brp's constructor wasn't initializing self.ldpath
+		correctly.  this is now fixed.
+
+
+#073	2005-11-08
+	trying to install a BRP built with unsupported srp_flags should fail
+	immediately.
+	FIX:	2005-11-08
+		srp now checks p.unsupported[] after creating a brp.  if
+		there's anything in there, srp exits with an error message
+		informing the user of the missing features.
+
+
+#074	2005-11-08
+	upgrading is making srpbak files for _EVERY_ file that exists,
+	regardless of whether it's been modified.
+	FIX:	2005-11-08
+		sr_package2.lookup_checksum() has been broken for a
+		while...  it wasn't properly handling blank lines in the
+		logfile, which were introduced by SRP_LINKTARGET.
+
+
+#076	2005-11-10
+	PREPOSTLIB functions should reraise exceptions instead of returning
+	1/0.  actually, they should do both to maintain backwards
+	compatability with old PREPOSTLIBS.
+	FIX:	2005-11-13
+		prepostlib functions are now called from within a
+		try/catch block.  we still check return value in case
+		a function returns an error status (anything other
+		than 1).
+
+
+#070	2005-10-25
+	when upgrading a package, if installed files were modified, we bail
+	and uninstall what we were doing.  now that we're so picky about
+	permisions/ownership and the like, this happens all the time.
+	better change this behavior.
+	NOTES:	2005-10-26
+		i think this only happens if installed files were
+		_MISSING_.  if i remember correctly, check() treats missing
+		files as a failure, whereas modified files are just a
+		warning.  looks like i'll have to change that behavior.
+	NOTES:	2005-11-13
+		now that i made some examples to recreate this, it turns out
+		the problem scenario really only happens when you try to
+		uninstall the package.  upgrading works for the most part.
+		it does leave behind an upgrade-leftovers record of the
+		missing file if the missing file is the PREPOSTLIB, though.
+		having a missing PREPOSTLIB would be a pretty rare (and
+		serious) occurance...  except for bug #077
+	REJECT:	2005-11-13
+		this bug is officially rejected.
+
+
+#078	2005-11-16
+	failed check() calls should tell the user why exactly they failed.
+	FIX:	2005-11-16
+		instead of modified[] just containing filenames, it now
+		contains tuples formatted like this:
+		[filename, test_that_failed, expected_val, actual_val]
+	
+
+#071	2005-10-25
+	when installing a BRP, if a directory that was created during
+	package build and had it's mode recorded, but that directory exists
+	on the target system, the directory is unchanged.  srp then
+	complains that the directory has been modified.
+	FIX:	2005-11-17
+		if _dump() fails to crate a directory, it puts perms of the
+		already existing directory into the logfile.
+
+
+#077	2005-11-12
+	upgrading to the same version of a package (using --persistent)
+	causes PREPOSTLIB file to disappear...  upgrading from version x to
+	version y works fine, but if the version is the same, the PREPOSTLIB
+	somehow gets lost.
+	FIX:	2005-11-13
+		upgrade() was doing some funky stuff regarding files
+		installed in RUCKUS...  straightened that out.  it now looks
+		explicitly for PREPOSTLIBs in there and removes them in a
+		more sane manner.
+	NOTES:	2005-11-24
+		this might not be fixed.  i was having problems with this
+		still at work, but now i can't reproduce them.
+
+
+#083	2005-12-15
+	srp -l should return non-zero if specified package is not installed.
+	FIX:	2005-12-15
+		list() now returns -1 if package isn't found.  this causes
+		the main progam to cleanup() and exit with a status of 1.
+
+
+#064	2005-10-01
+	dependency checking/generating should ignore linux-gate.so.1.
+	it's not a file.  it's exposed by the kernel to each running
+	process.
+	NOTES:	2005-10-01
+		actually, i really shouldn't be manually searching the
+		filesystem for libraries.  i should be making some
+		sort of call to the systems linker.  doing things this
+		way would eliminate this (and future) problems.  it
+		would also fix bug #036
+	FIX:	2006-05-03
+		we now attempt to use the 'dl' module to open libraries
+		(making use of the system's configured dynamic linking
+		loader).  if we can't use the 'dl' module, we use the old
+		method of searching the filesystem.
+
+
+#063	2005-09-30
+	we should really install distro docs (AUTHORS, BUGS, BUGS-SQUASHED,
+	COPYING, ChangeLog, INSTALL, NEWS, README, TODO) into
+	/usr/share/docs.
+	FIX:	2006-05-03
+		make install-docs now installs $DOCS into $DOCDIR.
+
+
+#083	2007-02-01
+	pre/post scripts actually still need to return 1 for BRPs.  bug #076
+	made pre/post scripts handle errors via exceptions instead of return
+	values, but the implementation actually only works for source
+	packages...  oops.
+	NOTES:	2007-02-01
+		wow, this happened because i actually did something that
+		usually horifies me... (and that's why we have a 3.x dev
+		tree that's almost entirely rewritten).  i copied and pasted
+		the code around the preinstall() and postinstall() functions
+		into the overloaded brp.install() function and then only did
+		the bug #076 changes in package.install().
+	FIX:	2007-02-01
+		fixed second versions of preinstall() and postinstall()
+
+
+#087	2007-02-01
+	when using DEVTAG, DEVDATE gets expanded multiple times.  if DEVDATE
+	includes seconds, building can fail because the value of DEVDATE
+	might change, resulting in attempted access of files that don't
+	exist.
+	FIX:	2007-02-01
+		changed DEVDATE, REPLYTO, and PYTHON to be simply expanded
+		variables (use :=) using $(shell command) instead of
+		`command`.  we probably already required GNU Make, now we
+		definitely do.
+
+
+#085	2007-02-01
+	backfit new Makefiles from SRP 3.x dev tree.  the newer Makefile and
+	Makefile.common combo is super handy and should be added to the 2.x
+	tree.
+	FIX:	2007-02-01
+		now using new Makefiles.  it should be noted that i cleaned
+		them up considerably when i backfit them (so the 3.x dev
+		tree needs to be updated now!).
+
+
+#086	2007-02-01
+	the dist target for the foo packages should be dist-brp.  if we'd
+	done this originally, bug #083 might not have slipped through the
+	cracks.
+	FIX:	2007-02-01
+		both example packages now build BRPs
+
+
+#017:	2004-02-19
+	sr.exec_path should not be hardcoded in.  it should be detected at
+	runtime via environ["PATH"]
+	FIX:	2007-02-01
+		fixed this while i was messing with sr.py for bug #084
+
+
+#088	2007-02-05
+	dist-bzip2, dist-srp, and dist-brp always rebuild everything.  they
+	should only rebuild what needs to be rebuilt.  some method of
+	dependencies needs to be implemented for these targets.
+	FIX:	2007-02-05
+		dist-bzip2, dist-srp, and dist-brp now have appropriate
+		dependencies.  doing a 'make dist-brp' followed by a 'make
+		dist-srp' or 'make dist-bzip2' is now a no-nop, unless
+		something's changed.
+
+
+#084	2007-02-01
+	implement SRP_CHAIN.  this new flag in SRP 3.x dev tree should be
+	easy to implement in the current source tree and would be hugely
+	beneficial.
+	FIX:	2007-02-06
+		looks to be done.  SRP_CHAIN can now be used as a flag with
+		the next NOTES file's name as an argument.  this allows a
+		single SRP to generate multiple BRPs (or to just show up as
+		multiple packages if you install the SRP directly).
+		ex: foo-1.0-1.srp --> foo-{,dev,docs}1.0-1.linux.i686.brp
+
+
+#089	2007-02-06
+	implement SRP_LEFTOVERS, SRP_NO_LEFTOVERS, and make one of them a
+	default flag (SRP_NO_LEFTOVERS is default in 3.x dev tree, but might
+	be too big a change for a bugfix update).
+	FIX:	2007-02-06
+		done.  default is SRP_LEFTOVERS.  using the SRP_NO_LEFTOVERS
+		flag causes upgrade() to uninstall the leftover package at
+		the very end.

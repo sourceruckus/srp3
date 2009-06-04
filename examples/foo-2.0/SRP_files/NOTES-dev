@@ -1,0 +1,26 @@
+foo-dev
+__DISTNAME__.tar.bz2
+__DISTNAME__
+example package dev files
+SRP_NO_COMPILE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+TARGET_DIR=/usr/include/`basename $PWD` &&
+mkdir -p $SRP_ROOT$TARGET_DIR &&
+cp -vdpR headers/* $SRP_ROOT$TARGET_DIR &&
+ln -fs $SRP_ROOT$TARGET_DIR $SRP_ROOT/usr/include/foo

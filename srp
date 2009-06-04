@@ -1,0 +1,874 @@
+#!__PYTHON_INTERPRETER__
+#-*- mode: python -*-
+
+"""\
+the source ruckus packager
+(c) 2001-2005 Mike Labriola <mdlabriola@yahoo.com>
+
+usage: srp [MODE] ...
+  
+  -i [PACKAGE]              install the provided package.
+  
+    --upgrade                 upgrade an previously installed package.  this
+                              will fail if you try to upgrade to the same
+                              version that's installed.
+    
+  -u [PACKAGE]              uninstall the provided package.
+  
+  -c [PACKAGE]              check if the provided package is properly
+                            installed.
+  
+    --tally                   tally up the size of the installed files.
+    
+  -x [PACKAGE]              examine a package.
+  
+  -b [PACKAGE]              build a brp from an srp.  the resulting brp will be
+                            in the current working directory.
+  
+  -l                        list installed packages.
+  
+    --files [PACKAGE]         list files provided by a specified package.
+    
+    --flags [PACKAGE]         list srp_flags for a specified package.
+    
+    --pretty                  use pretty formatted output.
+    
+    --raw                     use raw unformatted output.
+    
+  -F                        force cleanup of build areas, creating RUCKUS
+                            directory strucure if necessary.
+                            
+  -v                        display the version of srp being used.  also
+                            displays the SRP_ROOT_PREFIX if defined.
+  
+  global options:
+    --verbose                 lots of extra output.
+    --persistent              try to work through minor errors.
+  
+  passing in '-' instead of a package name will cause srp to read missing
+  arguments from stdin.
+"""
+
+import os
+import sys
+import getopt
+import string
+
+LIBDIR = "__LIBDIR__"
+
+# have to do this here to make sure we import the correct modules
+try:
+    SRP_ROOT_PREFIX=os.environ['SRP_ROOT_PREFIX']
+except:
+    SRP_ROOT_PREFIX = ""
+if SRP_ROOT_PREFIX:
+    # where the bloody hell am i being called from...  i have to make sure the
+    # right set of libraries gets imported.
+    fullname = os.path.abspath(sys.argv[0])
+    if fullname.split(SRP_ROOT_PREFIX)[0] == "":
+        LIBDIR = SRP_ROOT_PREFIX + LIBDIR
+
+sys.path.append(LIBDIR)
+
+import sr
+import sr_package2
+import utils
+
+
+def usage(message=None):
+    """usage(message)
+    displays the usage message along with an error (if one is provided).
+    retval: none
+    """
+    if message:
+        print "error: %s" % (message)
+    print __doc__.rstrip()
+
+
+def cleanup():
+    """cleanup() -> 1 or 0
+    cleans up our temp build directories.
+    retval: 1 = success, 0 = failure
+    """
+    p = os.listdir(sr.RUCKUS + "/package/")
+    for x in p[:]:
+        p[p.index(x)] = sr.RUCKUS + "/package/" + x
+    
+    b = os.listdir(sr.RUCKUS + "/build/")
+    for x in b[:]:
+        b[b.index(x)] = sr.RUCKUS + "/build/" + x
+    
+    t = os.listdir(sr.RUCKUS + "/tmp/")
+    for x in t[:]:
+        t[t.index(x)] = sr.RUCKUS + "/tmp/" + x
+    
+    b2 = os.listdir(sr.RUCKUS + "/brp/")
+    for x in b2[:]:
+        b2[b2.index(x)] = sr.RUCKUS + "/brp/" + x
+    
+    files = p + b + t + b2
+    files.sort()
+    utils.vprint(files)
+    
+    if len(files) > 0:
+        go = "rm -rf " + string.join(files)
+        utils.vprint(go)
+        status = os.system(go)
+        if status != 0:
+            print "couldn't clean up..."
+            return 0
+
+    unlock()
+    return 1
+
+
+def lock():
+    """lock() -> 1 or 0
+    locks the srp process by creating a lock file.
+    retval: 1 = success, 0 = failure
+    """
+    status = os.system("touch " + sr.LOCK)
+    if status != 0:
+        print "couldn't lock!"
+        return 0
+    return 1
+
+
+def unlock():
+    """unlock() -> 1 or 0
+    unlocks the srp process by deleting a lock file.
+    retval: 1 = success, 0 = failure
+    """
+    status = os.system("rm -f " + sr.LOCK)
+    if status != 0:
+        print "couldn't unlock!"
+        return 0
+    return 1
+
+
+def is_locked():
+    """is_locked() -> 1 or 0
+    checks for the srp lock file.
+    retval: 1 = locked, 0 = unlocked
+    """
+    return os.access(sr.LOCK, os.F_OK)
+
+
+def is_root():
+    """is_root() -> 1 or 0
+    checks if user is root.
+    retval: 1 = root, 0 = non-root
+    """
+    if os.getuid() == 0:
+        return 1
+    return 0
+
+
+
+def find_match(arg, list):
+    """find_match -> match, matches[], and exact_matches[]
+    finds a matching package.
+    retval: match, matches[], exact_matches[]
+    """
+    match = ""
+    matches = []
+    exact_matches = []
+    
+    if len(arg.split('_-_')) == 3:
+        #print "full raw input"
+        match = arg
+        matches.append(arg)
+        exact_matches.append(arg)
+    else:
+        # let's see if we have a match...
+        #print "partial input"
+        for x in list:
+            if x.split('_-_')[0] == arg:
+                #print "exact match"
+                matches.append(x)
+                exact_matches.append(x)
+            elif string.find(x.split('_-_')[0], arg) != -1:
+                #print "partial match"
+                matches.append(x)
+        if len(matches) == 1:
+            match = matches[0]
+        elif len(exact_matches) == 1:
+            match = exact_matches[0]
+    
+    return match, matches, exact_matches
+
+
+def install():
+    """install() -> 1, 0, or -1
+    our install procedure.
+    retval: 1 = success, 0 = failure, -1 = bad usage
+    """
+    
+    utils.vprint("install")
+    f = open(sr.RUCKUS + "/package/.MODE", "w")
+    f.write("install\n")
+    f.close()
+
+    # this will fail if the user doesn't have write perms in RUCKUS dir
+    if not lock():
+        return -1
+    
+    if len(args) != 1:
+        usage("invalid usage")
+        return -1
+    
+    if sr.TALLY or sr.LISTFILES or sr.LISTFLAGS:
+        usage("invalid usage")
+        return -1
+    
+    filename = os.path.abspath(args[0])
+    
+    if sr.UPGRADE:
+        print "upgrading to " + os.path.basename(filename)
+    else:
+        print "installing " + os.path.basename(filename)
+    
+    os.chdir(sr.RUCKUS + "/package")
+
+    if not utils.tarball_extract(filename, "."):
+        print "couldn't open package '" + filename + "'"
+        return -1
+    
+    utils.vprint(os.listdir("./"))
+    
+    if filename.split('.')[-1].lower() == "srp":
+        if os.access("./" + sr.NOTES2, os.F_OK):
+            utils.vprint("srp2")
+            try:
+                p = sr_package2.srp(filename)
+            except Exception, e:
+                print "error loading package: %s" % e
+                return -1
+            if sr.UPGRADE:
+                status = p.upgrade()
+            else:
+                status = p.install()
+            return status
+        elif os.access("./" + sr.NOTES1, os.F_OK):
+            print "srp1 is no longer supported."
+            return 0
+        else:
+            print "bad srp file!"
+            return 0
+    
+    elif filename.split('.')[-1].lower() == "brp":
+        if os.access("./" + sr.FILES2, os.F_OK):
+            utils.vprint("srp2: brp")
+            try:
+                p = sr_package2.brp(filename)
+            except Exception, e:
+                print "error loading package: %s" % e
+                return -1
+            # make sure we can handle everything this BRP was built with
+            if p.unsupported_flags != []:
+                print "this package requires a version of SRP supporting the following flags:"
+                for i in p.unsupported_flags:
+                    print "  -> %s" % i
+                #print p.unsupported_flags
+                return -1
+            if sr.UPGRADE:
+                status = p.upgrade()
+            else:
+                status = p.install()
+            return status
+        else:
+            print "bad brp file!"
+            return 0
+    
+    else:
+        print "unknown package type"
+        return -1
+
+
+def uninstall():
+    """uninstall() -> 1, 0, or -1
+    our uninstall procedure.
+    retval: 1 = success, 0 = failure, -1 = bad usage
+    """
+    utils.vprint("uninstall")
+    f = open(sr.RUCKUS + "/package/.MODE", "w")
+    f.write("uninstall\n")
+    f.close()
+
+    # this will fail if the user doesn't have write perms in RUCKUS dir
+    if not lock():
+        return -1
+    
+    if len(args) != 1:
+        usage("invalid usage")
+        return -1
+    
+    if sr.TALLY or sr.UPGRADE or sr.LISTFILES or sr.LISTFLAGS:
+        usage("invalid usage")
+        return -1
+    
+    filename = args[0]
+    
+    print "uninstalling " + filename
+    
+    utils.vprint("direct to install file")
+
+    list = os.listdir(sr.RUCKUS + "/installed")
+    list.sort()
+
+    # prune out PREPOSTLIBs
+    for i in list[:]:
+        #if i.split('_-_')[-1] == sr.PREPOSTLIB2:
+        if i.split('_-_')[-1][-3:] == ".py":
+            list.remove(i)
+
+    match = ""
+    matches = []
+    exact_matches = []
+
+    match, matches, exact_matches = find_match(filename, list)
+    utils.vprint(match)
+    utils.vprint(matches)
+    utils.vprint(exact_matches)
+    if match != "" and exact_matches == []:
+        #print "matched: " + match
+        #if not utils.yesno("uninstall even though it's not an exact match? [y] ", 1):
+        #    match = ""
+        match = ""
+        matches = []
+
+    if match != "":
+        #print match
+        try:
+            p = sr_package2.package(match)
+        except Exception, e:
+            print "error loading package info: %s" % e
+            return -1
+        status = p.uninstall()
+    elif matches != []:
+        print "ambiguous package match... be more specific"
+        status = -1
+    else:
+        print "package is not installed."
+        status = -1
+    return status
+
+
+def check():
+    """check() -> 1, 0, or -1
+    our check procedure.
+    retval: 1 = success, 0 = failure, -1 = bad usage
+    """
+    utils.vprint("check")
+    utils.vprint("readonly")
+    sr.READONLY = 1
+    
+    if len(args) != 1:
+        usage("invalid usage")
+        return -1
+    
+    if sr.UPGRADE or sr.LISTFILES or sr.LISTFLAGS:
+        usage("invalid usage")
+        return -1
+    
+    filename = args[0]
+    
+    utils.vprint("tally: %d" % (sr.TALLY))
+    utils.vprint("checking installation of " + filename)
+    
+    utils.vprint("direct to install file:")
+
+    list = os.listdir(sr.RUCKUS + "/installed")
+    list.sort()
+
+    # prune out PREPOSTLIBs
+    for i in list[:]:
+        #if i.split('_-_')[-1] == sr.PREPOSTLIB2:
+        if i.split('_-_')[-1][-3:] == ".py":
+            list.remove(i)
+
+    match = ""
+    matches = []
+    exact_matches = []
+
+    match, matches, exact_matches = find_match(filename, list)
+    utils.vprint(match)
+    utils.vprint(matches)
+    utils.vprint(exact_matches)
+    if match != "":
+        print match
+        try:
+            p = sr_package2.package(match)
+        except Exception, e:
+            print "error loading package info: %s" % e
+            return -1
+        status = p.check()
+    elif matches != []:
+        print "ambiguous package match... be more specific"
+        status = 0
+    else:
+        print "package is not installed."
+        status = 0
+    return status
+
+
+def examine():
+    """examine() -> 1, 0, or -1
+    our examine procedure.
+    retval: 1 = success, 0 = failure, -1 = bad usage
+    """
+    utils.vprint("examine")
+    f = open(sr.RUCKUS + "/package/.MODE", "w")
+    f.write("examine\n")
+    f.close()
+    
+    # this will fail if the user doesn't have write perms in RUCKUS dir
+    if not lock():
+        return -1
+    
+    if len(args) != 1:
+        usage("invalid usage")
+        return -1
+    
+    if sr.TALLY or sr.UPGRADE or sr.LISTFILES or sr.LISTFLAGS:
+        usage("invalid usage")
+        return -1
+    
+    filename = os.path.abspath(args[0])
+    
+    utils.vprint("examining package " + os.path.basename(filename))
+    
+    os.chdir(sr.RUCKUS + "/package")
+
+    if not utils.tarball_extract(filename, "."):
+        print "couldn't open package '" + filename + "'"
+        return -1
+    
+    utils.vprint(os.listdir("./"))
+    
+    if filename.split('.')[-1].lower() == "srp":
+        if os.access("./" + sr.NOTES2, os.F_OK):
+            utils.vprint("srp2: srp")
+            try:
+                p = sr_package2.srp(filename)
+            except Exception, e:
+                print "error loading package: %s" % e
+                return -1
+            status = p.info()
+            return status
+        elif os.access("./" + sr.NOTES1, os.F_OK):
+            print "srp1 is no longer supported."
+            return 0
+        else:
+            print "bad srp file!"
+            return 0
+    
+    elif filename.split('.')[-1].lower() == "brp":
+        if os.access("./" + sr.FILES2, os.F_OK):
+            utils.vprint("srp2: brp")
+            try:
+                p = sr_package2.brp(filename)
+            except Exception, e:
+                print "error loading package: %s" % e
+                return -1
+            status = p.info()
+            return status
+        else:
+            print "bad brp file!"
+            return 0
+    
+    else:
+        print "unknown package type"
+        return -1
+
+
+def build():
+    """build() -> 1, 0, or -1
+    our build procedure.
+    retval: 1 = success, 0 = failure, -1 = bad usage
+    """
+    utils.vprint("build")
+    f = open(sr.RUCKUS + "/package/.MODE", "w")
+    f.write("build\n")
+    f.close()
+
+    location = os.getcwd()
+    
+    # this will fail if the user doesn't have write perms in RUCKUS dir
+    if not lock():
+        return -1
+    
+    if len(args) != 1:
+        usage("invalid usage")
+        return -1
+    
+    filename = os.path.abspath(args[0])
+    
+    utils.vprint("building brp from package " + os.path.basename(filename))
+    
+    os.chdir(sr.RUCKUS + "/package")
+
+    if not utils.tarball_extract(filename, "."):
+        print "couldn't open package '" + filename + "'"
+        return -1
+    
+    utils.vprint(os.listdir("./"))
+    if filename.split('.')[-1].lower() == "srp":
+        if os.access("./" + sr.NOTES2, os.F_OK):
+            utils.vprint("srp2: srp")
+            try:
+                p = sr_package2.srp(filename)
+            except Exception, e:
+                print "error loading package: %s" % e
+                return -1
+            if not p.build_brp(filename, location):
+                return 0
+            return 1
+        elif os.access("./" + sr.NOTES1, os.F_OK):
+            print "srp1 is no longer supported."
+            return 0
+        else:
+            print "bad srp file!"
+            return 0
+        
+    else:
+        print "can only build from an srp"
+        return -1
+
+
+def list():
+    """list -> 1, 0, or -1
+    our list procedure.
+    retval: 1 = success, 0 = failure, -1 = bad usage
+    """
+    utils.vprint("list")
+    utils.vprint("readonly")
+    sr.READONLY = 1
+    
+    if sr.LISTFILES == 1 and len(args) == 0:
+        usage("invalid usage")
+        return -1
+    
+    if sr.LISTFLAGS == 1 and len(args) == 0:
+        usage("invalid usage")
+        return -1
+    
+    if len(args) > 1:
+        usage("invalid usage")
+        return -1
+    
+    if sr.TALLY or sr.UPGRADE:
+        usage("invalid usage")
+        return -1
+    
+    list = os.listdir(sr.RUCKUS + "/installed")
+    list.sort()
+
+    # prune out PREPOSTLIBs
+    for i in list[:]:
+        #if i.split('_-_')[-1].split("_--_")[0] == sr.PREPOSTLIB2:
+        if i.split('_-_')[-1].split("_--_")[0][-3:] == ".py":
+            list.remove(i)
+    utils.vprint(list)
+    
+    match = ""
+    matches = []
+    exact_matches = []
+    
+    if len(args) == 1:
+        match, matches, exact_matches = find_match(args[0], list)
+    utils.vprint(match)
+    utils.vprint(matches)
+    utils.vprint(exact_matches)
+    
+    if sr.LISTFILES or sr.LISTFLAGS:
+        utils.vprint("listing specific package contents:")
+        if not match:
+            print "package '%s' not installed" % args[0]
+            return -1
+        print match
+        
+        try:
+            f = open(sr.RUCKUS + "/installed/" + match, "r")
+            srp_flags = f.readline().rstrip().split()
+            lines = f.readlines()
+            f.close()
+            if sr.LISTFLAGS:
+                print string.join(srp_flags)
+                if not sr.LISTFILES:
+                    return 1
+                
+            print "--- installed files ---"
+            printit = 0
+            offset = 0
+            # add one to offset if we have checksum lines
+            if utils.any_of_in(["SRP_MD5SUM",
+                                "SRP_SHA1SUM",
+                                "SRP_CHECKSUM"],
+                               srp_flags):
+                offset += 1
+            # add one to offset if we have perms lines
+            if "SRP_PERMS" in srp_flags:
+                offset += 1
+            # add one to offset if we have linktarget lines
+            if "SRP_LINKTARGET" in srp_flags:
+                offset += 1
+            utils.vprint("offset: %d" % offset)
+            for i in lines:
+                if printit == 0 or sr.VERBOSE == 1:
+                    print i.rstrip()
+                    printit = 0 - offset
+                else:
+                    printit += 1
+            
+            return 1
+        except KeyboardInterrupt:
+            return 1
+        except:
+            print "package not installed"
+            return -1
+    
+    utils.vprint("listing installed packages")
+    if len(args) != 0 and not match and not matches and not exact_matches:
+        print "no installed packages match '%s'" % args[0]
+        return -1
+        
+    def display(line):
+        if sr.PRETTY:
+            temp = line.split('_-_')
+            c1_size = 20
+            c2_size = 40
+            x = string.ljust(temp[0], c1_size)
+            y = len(x.strip()) - c1_size
+            if y >= 0:
+                x += " "
+                y += 1
+            else:
+                y = 0
+            x += string.ljust("src: %s" % (temp[1]), c2_size - y)
+            y = len(x.strip()) - c1_size - c2_size
+            if y >= 0:
+                x += " "
+                y += 1
+            else:
+                y = 0
+            x += "rev: "
+            x += temp[2].split('_--_')[0]
+            
+            if len(temp[2].split('_--_')) > 1:
+                x = x + ", upgraded"
+            print x
+        else:
+            print line
+    
+    if not sr.PRETTY:
+        utils.vprint("key: packagename_-_softwareversion_-_packageversion")
+    
+    if matches:
+        for i in matches:
+            display(i)
+        return 1
+    
+    for i in list:
+        if args:
+            temp = i.split('_-_')
+            if temp[0] == args[0]:
+                display(i)
+            elif temp[0] + "_-_" + temp[1] == args[0]:
+                display(i)
+        else:
+            display(i)
+    return 1
+
+
+def create_ruckus_dirs():
+    """create_ruckus_dirs() -> 1 or 0
+    retval: 1 = success, 0 = failure
+    """
+    utils.vprint("create_ruckus_dirs")
+    for x in sr.ruckus_dirs:
+        try:
+            os.makedirs("%s/%s" % (sr.RUCKUS, x))
+        except:
+            pass
+    return 1
+
+
+def force_cleanup():
+    """force_cleanup() -> 1 or 0
+    this forces cleanup and exits
+    retval: -1 = success, 0 = failure
+    NOTE: not sure why we used to return -1 here.  i must have originally wanted
+    a bad exit status for srp -F...
+    """
+    utils.vprint("force_cleanup")
+
+    if not create_ruckus_dirs():
+        return 0
+
+    try:
+        f = open(sr.RUCKUS + "/package/.MODE", "r")
+        mode = f.readline().strip()
+        f.close()
+    except:
+        mode=""
+    # look for SRP_INPLACE just in case we have external dirs to clean up
+    if mode == "install" or mode == "build":
+        try:
+            f = open(sr.RUCKUS + "/package/" + sr.NOTES2, "r")
+            lines = f.readlines()
+            f.close()
+            dirname = lines[2].strip()
+            flags = lines[4].strip().split()
+            for flag in flags:
+                if "=" in flag:
+                    x = flag.split("=")[0]
+                    y = sr.SRP_ROOT_PREFIX + flag.split("=")[1]
+                    if x == "SRP_INPLACE":
+                        print "must clean up external dir: " + y + "/" + dirname
+                        go = "rm -rf " + y + "/" + dirname + " " + y + "/srp_go"
+                        print go
+                        status = os.system(go)
+                        if status != 0:
+                            print "couldn't clean up..."
+                            return 0
+
+                        if y + "/" + dirname not in sr.perm_dirs:
+                            try:
+                                utils.vprint("trying to remove " + y + "/" + dirname)
+                                os.rmdir(y + "/" + dirname)
+                            except:
+                                pass
+
+        except:
+            utils.vprint("opening NOTES file failed, but we don't care")
+        
+    return 1
+
+
+def version():
+    """version()
+    our version procedure.
+    retval: none
+    """
+    utils.vprint("version")
+    utils.vprint("readonly")
+    sr.READONLY = 1
+    
+    print "srp version: " + sr.VERSION
+    if sr.SRP_ROOT_PREFIX != "":
+        print "SRP_ROOT_PREFIX: " + sr.SRP_ROOT_PREFIX
+
+
+def process(arg):
+    """process(arg) -> 1, 0, or -1
+    processes the command line opts and calls the appropriate procedure.
+    retval: retval of called procedure, -1 = bad usage
+    """
+    if function_table.has_key(arg):
+        return function_table[arg]()
+    else:
+        usage("invalid usage")
+        return -1
+
+
+#---------------------- main --------------------------#
+
+#check for lock
+if is_locked():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'F', ['verbose'])
+    except:
+        print "either srp is already running, or it died on a previous attempt."
+        print "lockfile: " + sr.LOCK
+        sys.exit(1)
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'iucxblFv', ['upgrade', 'verbose', 'files', 'flags', 'tally', 'pretty', 'raw', 'persistent'])
+    while ('--verbose', '') in opts:
+        sr.VERBOSE = 1
+        opts.remove(('--verbose', ''))
+    while ('--upgrade', '') in opts:
+        sr.UPGRADE = 1
+        opts.remove(('--upgrade', ''))
+    while ('--files', '') in opts:
+        sr.LISTFILES = 1
+        opts.remove(('--files', ''))
+    while ('--flags', '') in opts:
+        sr.LISTFLAGS = 1
+        opts.remove(('--flags', ''))
+    while ('--tally', '') in opts:
+        sr.TALLY = 1
+        opts.remove(('--tally', ''))
+    while ('--pretty', '') in opts:
+        sr.PRETTY = 1
+        opts.remove(('--pretty', ''))
+    while ('--raw', '') in opts:
+        sr.PRETTY = 0
+        opts.remove(('--raw', ''))
+    while ('--persistent', '') in opts:
+        sr.PERSISTENT = 1
+        opts.remove(('--persistent', ''))
+    
+    utils.vprint("VERBOSE: %d" % (sr.VERBOSE))
+    utils.vprint("UPGRADE: %d" % (sr.UPGRADE))
+    utils.vprint("LISTFILES: %d" % (sr.LISTFILES))
+    utils.vprint("LISTFLAGS: %d" % (sr.LISTFLAGS))
+    utils.vprint("TALLY: %d" % (sr.TALLY))
+    utils.vprint("PRETTY: %d" % (sr.PRETTY))
+    utils.vprint(opts)
+    utils.vprint(args)
+    utils.vprint(sys.path)
+    
+    if not opts:
+	usage("invalid usage")
+        sys.exit(1)
+
+    if args == ["-"]:
+        utils.vprint("reading from stdin")
+        x = sys.stdin.readlines()
+        args.remove('-')
+        for y in x:
+            args.append(y.rstrip())
+            
+except getopt.GetoptError:
+    t, v = sys.exc_info()[:2]
+    usage(v)
+    sys.exit(1)
+
+#let's parse some stuff from the environment
+try:
+    temp = os.environ['SRP_EXEC_PATH']
+except:
+    temp = ""
+
+if temp:
+    for i in temp.split(':'):
+        sr.exec_path.append(sr.SRP_ROOT_PREFIX + i)
+
+utils.vprint(sr.exec_path)
+
+#create an associative array of the command line switches and their corresponding procedures
+function_table = { \
+    '-i': install, \
+    '-u': uninstall, \
+    '-c': check, \
+    '-x': examine, \
+    '-b': build, \
+    '-l': list, \
+    '-F': force_cleanup, \
+    '-v': version, \
+    }
+
+status = process(opts[0][0])
+if status == 0:
+    sys.exit(1)
+elif status == -1:
+    cleanup()
+    sys.exit(1)
+
+if not sr.READONLY:
+    cleanup()
+
+#and we exit successfully
+sys.exit(0)

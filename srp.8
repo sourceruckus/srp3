@@ -1,0 +1,97 @@
+.TH "srp" "8" "February 2004" "srp 2.2.1" "Source Ruckus Linux"
+.SH NAME
+srp \- the source ruckus packager
+.SH SYNOPSIS
+.B srp
+\fIMODE \fR[\fIPACKAGE\fR] [\fIFLAGS\fR]
+.SH DESCRIPTION
+.PP
+.I srp\fR is a lightweight source based package manager.
+It is most commonly used to maintain software packages that are compiled and installed from source.
+srp will allow you to install, upgrade, check, and uninstall a source package.
+.SH MODES
+.TP
+\fB\-i\fR \fIPACKAGE\fR
+Install the provided package.
+.TP
+\fB\-u\fR \fIPACKAGE\fR
+Uninstall the provided package.
+.TP
+\fB\-c\fR \fIPACKAGE\fR
+Check if the provided package is properly installed.
+.TP
+\fB\-x\fR \fIPACKAGE\fR
+Examine the provided package.
+.TP
+\fB\-b\fR \fIPACKAGE\fR
+Build a brp from an srp.
+.TP
+\fB\-l\fR \ \ \ \ \ \ \ \ \ \ \ \ 
+List installed packages.
+.TP
+\fB\-F\fR \ \ \ \ \ \ \ \ \ \ \ \ 
+Force cleanup of build areas.  When srp encounters problems, it usually exits without cleaning up
+it's build areas.  This is so you can try and fix the problem by hand if you want.  Running srp
+with this mode will clean up this mess.
+.TP
+\fB\-v\fR \ \ \ \ \ \ \ \ \ \ \ \ 
+Display the version of srp being used
+.SH OPTIONS
+.TP
+\fB\--upgrade\fR
+Used with -i. Upgrade a previously installed package.
+.TP
+\fB\--tally\fR
+Used with -c. Tally up the size of the files installed by a package.
+.TP
+\fB\--files\fR \fIPACKAGE\fR
+Used with -l. List files provided by a specified package.
+.TP
+\fB\--flags\fR \fIPACKAGE\fR
+Used with -l. List srp_flags for a specified package.
+.TP
+\fB\--pretty\fR
+Used with -l. List with pretty formatted output. The default is set in __LIBDIR__/sr.py.
+.TP
+\fB\--raw\fR \ \ 
+Used with -l. List with raw unformatted output. The default is set in __LIBDIR__/sr.py.
+.TP
+\fB\--verbose\fR
+Used with all modes. Display verbose debugging messages. NOTE: This generally creates a ton of output when used with -i, -u, or -c
+.TP
+\fB\--persistent\fR
+Used with all modes. Try to work through minor errors.
+.SH FILES
+.TP
+\fB__BINDIR__/srp\fR
+the executable
+.TP
+\fB__LIBDIR__/sr.py\fR
+configuration information is stored in this python library
+.TP
+\fB__LIBDIR__/sr_package2.py\fR
+this python library contains the implementation of a package for srp >= 2.0
+.TP
+\fB__LIBDIR__/utils.py\fR
+this python library contains helpful routines used by srp
+.SH AUTHOR
+Written by Mike Labriola.
+.SH "REPORTING BUGS"
+Report bugs to <mdlabriola@yahoo.com>
+.SH COPYRIGHT
+Copyright \(co 2001-2004 Mike Labriola
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.SH "SEE ALSO"
+The full documentation for
+.B srp
+is maintained as a Texinfo manual.  If the
+.B info
+and
+.B srp
+programs are properly installed at your site, the command
+.IP
+.B info srp
+.PP
+should give you access to the complete manual.

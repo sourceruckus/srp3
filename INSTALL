@@ -1,0 +1,7 @@
+edit the values in Makefile accordingly and then:
+
+make && make install
+
+then, if you want to install the info files:
+
+make info && make install-info

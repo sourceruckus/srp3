@@ -1,0 +1,184 @@
+next bug will be #090
+---------------------
+
+
+#013:	2003-10-01
+	If output is redirected, some lines don't show up at all...
+	NOTES:	2003-10-06
+		actually, the lines were just out of order.  this turned out
+		to be because a few lines were in fact being printed by
+		programs called by srp, not srp itself.  apparently, output
+		redirection doesn't like that...  so, i fixed the fixable
+		occurrences of this.  not sure if we really can fix all of
+		them, though.  for example, srp -i will fire off an
+		installation script whose output will always get listed
+		seperately from the main programs' output if we redirect at
+		all...  odd and annoying, but possibly not fixable.
+	NOTES:	2003-10-07
+		well, i should be able to redirect output/error from scripts
+		to a logfile and then (maybe) display that.  this would give
+		us a cleaner looking install and would solve the out of
+		place output on redirection issue...
+	NOTES:	2003-10-23
+		when i figure out how to rewind stdout to display some kind
+		of spinng progress notification i will start redirecting all
+		build output to a file.  the file will be removed if the
+		build is successful, but will remain for debugging if
+		building fails.
+	NOTES:	2005-10-24
+		this will be accomplished with worker.py and status.py.
+		we'll have ugly work in a seperate thread with a spinner or
+		progress bar in the main thread for install, build, check,
+		and uninstall.
+
+
+#023:	2004-02-27
+	installing a brp, which knows how big the installation will be,
+	should check for available diskspace...  don't forget to check
+	/usr/src/ruckus/* for enough room...
+	NOTES:	2004-03-01
+		actually, srp *doesn't* know the size of a brp
+		installation...  it only knows the size of the srpblob,
+		which is compressed.  might possibly add something into the
+		build code to track size, but not now.
+	NOTES:	2005-10-24
+		actuall, srp _CAN_ determine how much disk space is needed
+		by examining the srpblob with python's tarfile module.
+
+
+#025:	2004-03-01
+	dumping: ############ sometimes gets out of wack and wraps over a
+	few lines...  i probably won't bother fixing this untill i change
+	the ouput methods to fix bug #013.
+
+
+#032	2004-03-14
+	so, now that SRP_CANT_FOOL is fixed...  we can't build brps.  *sigh*
+	i'll have to do the RUCKUS/tmp build to get the file list, but i'm
+	not 100% sure what to do after that.  here are the possibilities i'm
+	considering:
+	#1:
+	  - RUCKUS/tmp build for file list
+	  - cleanup
+	  - real build
+	  - go grab all the files that got installed and tar them up
+	  - remove installed files
+	#2:
+	  - RUCKUS/tmp build for file list
+	  - cleanup
+	  - real build BUT DON'T INSTALL
+	  - using the list of files, force the install to happen in
+	    RUCKUS/tmp by hand.
+	  - tar up RUCKUS/tmp for the brp
+	i like #2 because it doesn't write anything in the real world...
+	but...  how can i do the build without the install?  that's all
+	taken care of by the install script in the NOTES file...  for now, i
+	will just not let the user build a brp from a non-foolable srp.
+	NOTES:	2005-03-09
+		how about this:
+		  - SRP_ROOT_PREFIX build
+	NOTES:	2005-03-10
+		no, that doesn't work... because the package isn't
+		foolable.  the binaries would have SRP_ROOT_PREFIX/PATH
+		hardcoded in them if we did this, which is just as bad as
+		RUCKUS/PATH being in there...
+
+
+#036	2005-03-09
+	read_ldpath() just looks at /etc/ld.so.conf...  that file can have
+	extra include statements in it.  on fedora core 3, there's a
+	'include ld.so.conf.d/*.conf' line that we parse incorrectly.  this
+	will lead to incorrectly failed deps.
+	NOTES:	2006-05-03
+		fixing bug #064 means this bug only shows its face when we
+		can't use the dl module (SRP_ROOT_PREFIX, unsupported
+		platforms).
+
+
+#040	2005-03-10
+	this one's more of a feature request than a bug...  how about taking
+	some of the commonly used PREPOSTLIBs and making some srp_flags for
+	them?  like SRP_SERVICE=atm or SRP_SYMLINKDIR=/opt/ACE+TAO or
+	SRP_PERLMODULE=GD?
+	NOTES:	2005-03-11
+		actually, this would have to be a python module that gets
+		imported by the user's PREPOSTLIB because some of these are
+		going to take a few arguments...  the list so far is:
+		- common_prepost.service
+		- common_prepost.user
+		- common_prepost.symlinkdir
+		- common_prepost.perlmod
+
+
+#044	2005-06-29
+	should be able to build a brp from an installed package.  we can't
+	do this right now because we don't keep all the extra peices of the
+	srp.  We would need any DEPS files, NOTES, PREPOSTLIB, FILES
+	NOTES:	2005-07-13
+		planning on replacing sr_package2 with a couple different
+		libraries.  one of these is sr_db, which implements a plain
+		text filesystem-based database for storing installed package
+		information.  as soon as this is in place, this bug will be
+		a simple fix.
+
+
+#060	2005-09-24
+	make a default set of srp_flags (SRP_CHECKSUM, SRP_PERMS,
+	SRP_LINKTARGET, SRP_UPGRADABLE).  will need to also add a
+	SRP_NOT_UPGRADABLE flag.
+	FIX:	
+
+
+#065	2005-10-01
+	we're checksumming info's special "dir" file...  which
+	changes during installation.  we probably shouldn't be logging
+	this file at all...
+
+
+#068	2005-10-22
+	forced cleanup after a failure while building/installing SRPs with
+	SRP_INPLACE results in leaving the actual SRP_INPLACE dir.  this
+	direcotry should be removed (unless it's in sr.perm_dirs), which is
+	how cleanup works if the build/install had been successful.
+	NOTES:	2005-10-22
+		actually, cleanup after a successful build only removes
+		basename(inplace).
+
+
+#069	2005-10-24
+	might be using chown instead of lchown on symlinks...  look into it!
+
+
+#072	2005-11-08
+	srp -c --tally is reporting a different installed size than what's
+	returned by du -hsc.
+
+
+#075	2005-11-10
+	srp -i --upgrade should be atomic.  right now, behavior is quite
+	undefined if upgrading fails...  should try to make dump() atomic as
+	well... not sure how we'll do that, though.
+
+
+#079	2005-11-21
+	upgrading a package with a prepostlib ends up with upgrade leftovers
+	containing the prepostlib of the old package.
+	NOTES:	2005-11-24
+		was definately seeing this at work...  but i can't reproduce
+		it.
+
+
+#080	2005-11-21
+	pre/post-uninstall scripts are not getting executed.  this is
+	definately true for SRPs, need to find out if BRPs are working.
+	NOTES:	2005-11-24
+		as with bug #079, this mysterious bug from work is
+		unreproducible using the example foo packages.
+
+
+#081	2005-11-21
+	java oddness.  if installed as SRP, end up with the following
+	missing files:
+	  - /opt/jdk1.5.0_04/demo/applets/Blink/Blink$1.class
+	  - /opt/jdk1.5.0_04/demo/plugin/applets/Blink/Blink$1.class
+	and if installed as BRP, you get strage dependency problems as well.

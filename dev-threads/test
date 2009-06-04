@@ -1,0 +1,29 @@
+#!/usr/bin/python
+
+import os, sys
+import commands
+import string
+import pawns
+
+
+#----------
+
+go = string.join(sys.argv[1:])
+if not go:
+    print "usage: test command"
+    sys.exit(1)
+
+logfile = file("/tmp/foobar", "w")
+
+for x in range(5):
+    #t = pawns.worker(go, output=logfile)
+    t = pawns.worker_thread(go, label="working on task %s:" % (x), output=logfile, hz=2)
+    #t.info()
+    if not t.go():
+        print "exit status: %s" % (t.status[0])
+        print "--- output ---"
+        print t.status[1]
+
+logfile.close()
+
+sys.exit(0)

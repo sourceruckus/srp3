@@ -1,0 +1,91 @@
+#!/bin/sh
+#
+# python-test - determines which python interpreter meets our requirements.
+#               a python version is passed in as $1.
+
+
+# finds all available python interpreters on the system, ranked via PATH and
+# filename (python comes before python2 comes before python2.4, etc).  prints
+# a sorted list of absolute pathnames to stdout.
+# ex: find_it /usr/local/bin:/usr/bin:/bin
+find_it() {
+    retval=""
+    #echo "PATH: $1"
+    path=`echo $1 | sed 's|:| |g'`
+    #echo "path: $path"
+    for x in $path; do
+        #echo "checking in: $x"
+        old_dir=$PWD
+        cd $x 2>/dev/null || continue
+        glob="`ls python* 2>/dev/null`"
+        if [ -n "$glob" ]; then
+            #echo "glob: $glob"
+            for y in $glob; do
+                #echo "y: $y"
+                retval="$retval $x/$y"
+            done
+        fi
+        cd $old_dir
+    done
+    echo $retval
+}
+
+
+# checks the version of the provided python binary against the provided
+# required version.  exits successfully (0) if the version is acceptable.
+# ex: check_it /usr/bin/python 2.3.1
+check_it() {
+    version=`$1 -c "import sys; print '%d.%d.%d' % sys.version_info[:3]" 2> /dev/null`
+    #echo "version: $version"
+    if [ -z "$version" ]; then
+	return 1
+    fi
+    # the following awk script splits both version strings into arrays
+    # (split on '.') and then traverses both simultaneously, checking
+    # versions.
+    retval=`echo $2 $version | awk \
+        '{ \
+           n1=split($1, temp1, "."); \
+           n2=split($2, temp2, "."); \
+           i=1; \
+           retval=1; \
+           while (i <= n1) {
+             if (temp2[i] > temp1[i]) { \
+               break; \
+             }
+             else if (temp2[i] < temp1[i]) { \
+               retval=0; \
+               break; \
+             }
+             i++; \
+           } \
+           printf "%s", retval; \
+         }'`
+    #echo "retval: $retval"
+    if [ "$retval" != "1" ]; then
+	return 1
+    fi
+    return 0
+}
+
+
+#-------------------- main --------------------
+MIN_VERSION=$1
+
+if [ -z "$1" ]; then
+    echo "usage: `basename $0` MIN_VERSION"
+    echo "ex: `basename $0` 2.4.2"
+    exit 1
+fi
+
+found=`find_it $PATH`
+#echo "found: $found"
+for x in $found; do
+    #echo "checking: $x"
+    if (check_it $x $MIN_VERSION); then
+        echo $x
+        exit 0
+    fi
+done
+
+exit 1

@@ -1,0 +1,68 @@
+planned features
+
+
+## 2.4.*
+- bug #023 (diskspace check)
+- bug #068 (inplace cleanup)
+- bug #036 (ldpath)
+- bug #065 (checksuming special files)
+- bug #069 (lchown symlinks)
+- bug #072 (tally vs du)
+- bug #075 (atomic fs operations)
+- update docs to reflect changes
+
+
+## 2.5.0
+- bug #044 (brp from installed srp)
+- bug #032 (no BRP from SRP_CANT_FOOL SRPs)
+- bug #040 (standard PREPOSTLIBs)
+- bug #013 (prettier output formatting)
+- bug #025 (dumping output wraps)
+- update docs to reflect changes
+
+
+## 2.6.0
+- add automatic shell deps to installed scripts
+- examine portability issues...
+    * get rid of ALL os.system() calls.  try replacing them with os.popen()
+      or commands.getstatusoutput()
+    * external deps (md5sum, tar, bzip2, gzip, info, sh, mkdir, cp)
+    * export portability commands to packages (sr.ACOPY, sr.RMKDIR, etc)
+    * make new portability commands (sr.BUNTAR, sr.GUNTAR, sr.INSTALL, etc)
+
+
+## 2.7.0
+- new package type: rrp (recursive ruckus package)
+    these guys will contain multiple srp's and an order file (similar to the
+    'vodka' file that was used by the 'drink' script in early versions of the
+    source ruckus linux install disk.  just imagine, gnome-2.2-1.rrp...  how
+    simple...  how beautiful...  :-)
+    ooh, and don't forget...  source_ruckus_linux-3.0-1.rrp
+    *drool*
+    ex: foobar-2.0-1.hp-ux.9000-785.rrp
+    ex: foobar-2.0-1.linux.i686.rrp
+    ex: foobar-2.0-1.src.rrp
+    ex: simstim-lsp-1.2-1.src.rrp
+- command line option to convert a bunch of srp's and/or brp's into an rrp
+- misc cleanup
+- update man/info pages
+
+
+...
+
+
+## 3.0.0
+- nice configure script.  generated Makefile should build srp, build
+  srp-x.y.z-1.srp, and install itself accordingly  (maybe)
+- enforce the use of exported portability commands in NOTES files by setting
+  PATH="" (maybe...  this is probalby a bad idea...)
+- pre-install, post-install, pre-uninstall, post-uninstall (see bug #005)
+- maybe use cpickle for logfiles?  hmm... could be interesting (probably not)
+- package dependencies for srp
+- package dependencies for brp
+- having srp create an rrp no longer requires a LIST...  should automatically
+  generate one according to package dependencies
+- allow more than one package on command line.  (essentially convert the
+  packages into an rrp on the fly...)
+- revamp man/info pages with all the new features
+

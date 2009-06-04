@@ -1,0 +1,27 @@
+srp
+srp-2.2.4.tar.bz2
+srp-2.2.4
+the source ruckus packager
+SRP_INSTALLINFO SRP_MD5SUM SRP_UPGRADABLE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+SRP_NONE
+make PREFIX=/usr && \
+make PREFIX=\$SRP_ROOT/usr install && \
+make PREFIX=/usr info && \
+mkdir \$SRP_ROOT/usr/share/info && \
+cp srp.info.gz \$SRP_ROOT/usr/share/info

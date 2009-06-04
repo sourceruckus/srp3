@@ -1,0 +1,26 @@
+goals:
+
+- non-write ops (creating package instances) shouldn't write in RUCKUS.
+  either write in a /tmp dir or parse through the tarball without extracting
+  anywhere.
+
+- clean, modular, object oriented design.  use new-style classes possibly
+  also using metaclasses and function decorators.
+
+- support for multiple (in the future) versions of packages (built from
+  different versions of srp, that is).
+
+- new, chainable NOTES file (ex: foo.srp builds into foo.brp, foo-doc.brp,
+  and foo-dev.brp)
+
+- cleaner output handling, especially when debugging
+
+- tkinter front-end (maybe)
+
+- implement BRPs as pickled SRPs
+
+- change BRP's hosttype to be a little more useful (fc5.i686, rh7.i686,
+  hpux10.risc, sol8.sparc, win98.i686, unix.i386, etc)
+
+- add lots more SRP flags (SRP_PERLMOD, SRP_USER, SRP_SERVICE,
+  SRP_REVERT, SRP_REPAIRABLE, etc)

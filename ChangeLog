@@ -1,0 +1,298 @@
+2007-02-14: summary of changes from 2.3.0 to 2.4.0
+--------------------------------------------------
+	- squashed bug #083 (brp prepost exceptions)
+	- squashed bug #087 (DEVDATE multiple expansion)
+	- squashed bug #085 (Makefile.common)
+	- squashed bug #086 (foo dist target should be dist-brp)
+	- squashed bug #017 (sr.exec_path)
+	- squashed bug #088 (dist-* target deps)
+	- squashed bug #084 (SRP_CHAIN)
+	- squashed bug #089 (SRP_{,NO_}LEFTOVERS)
+	
+	Fixing bug #085 introduces SRP's Makefile.common.  This makefile can
+	be used by package maintainers to consistently create
+	foo-x.y.z.tar.bz2, foo-x.y.z-r.srp, and foo-x.y.z-r.platform.id.brp
+	targets.  See Info files and example packages for instructions.
+	
+	Fixing bug #084 introduces a new srp_flag: SRP_CHAIN.  This flag can
+	be used to generate multiple BRPs (or installed packages) from a
+	single SRP.  For example, building the foo-1.0-1.srp package would
+	result in three stand-alone BRPs: foo-1.0-1.linux.i686.brp,
+	foo-dev-1.0-1.linux.i686.brp, and foo-docs-1.0-1.linux.i686.brp.
+	The flag should have the next package's NOTES file's name attached
+	as an argument.
+	
+	Fixing bug #089 introduces two new flags: SRP_LEFTOVERS and
+	SRP_NO_LEFTOVERS.  SRP_LEFTOVERS is now a member of default_flags
+	and is the traditional behavior when upgrading (left-over files
+	remain behind as a special package).  To turn off this behavior, a
+	package can use the SRP_NO_LEFTOVERS flag to force SRP to remove all
+	traces of the old package when upgrading.
+
+
+2006-07-22: summary of changes from 2.2.6 to 2.3.0
+--------------------------------------------------
+	- squashed bug #057 (srp -F exit status)
+	- squashed bug #056 (source tree reorg)
+	- squashed bug #058 (bad os.path.join() usage)
+	- squashed bug #051 (SHA1 checksums)
+	- squashed bug #061 (srp -F umask)
+	- squashed bug #052 (tracking installed file's permisions)
+	- squashed bug #053 (tracking installed symlink's target)
+	- squashed bug #059 (use tarfile module)
+	- squashed bug #067 (escape-out hell)
+	- squashed bug #039 (SRP_OWNEROVERRIDE)
+	- squashed bug #062 (SRP_OWNEROVERRIDE)
+	- squashed bug #066 (BRP ldconfig)
+	- squashed bug #073 (installing BRP with unsupported srp_flags)
+	- squashed bug #074 (abundant srpbak files)
+	- squashed bug #076 (PREPOSTLIB exceptions)
+	- squashed bug #077 (missing PREPOSTLIB after upgrade)
+	- squashed bug #078 (better check() feedback)
+	- squashed bug #071 (intermediate dir mode)
+	- squashed bug #083 (srp -l exit status)
+	- squashed bug #064 (improved deps checking)
+	- squashed bug #063 (install distro docs)
+
+	Fixing bug #067 is more major than a simple bugfix in that it
+	effects compatibility with pre-existing packages' NOTES files.  It
+	is no longer necesary to escape out shell variables or carriage
+	returns in the i_script portion of the file.
+
+	Fixing bugs #051, #052, #053, and #039 introduces some new srp_flags.
+	- SRP_SHA1SUM
+		Forces use of SHA1 checksums
+	- SRP_CHECKSUM
+		Lets srp decide on a checksum algorithm depending on
+		system availability. SRP_MD5SUM or SRP_SHA1SUM is written
+		into BRPs.
+	- SRP_PERMS
+		Causes srp to track installed files' permissions and
+		ownership.
+	- SRP_LINKTARGET
+		Causes srp to track installed symlinks' targets.
+	- SRP_OWNEROVERRIDE
+		Causes srp to override file ownership at install time by
+		looking at a supplied file.  This allows the building of
+		BRPs from SRPs that need to chown files as non-root users.
+		Using chown inside the NOTES file is now highly frowned
+		upon.  Using chmod inside the NOTES file is still
+		desirable, though.
+
+	Fixing bug #060 introduces a set of default srp_flags for SRPs.
+	Unless specified otherwise in the NOTES file, all SRPs will build
+	with the following flags enabled:
+	- SRP_UPGRADABLE
+	- SRP_CHECKSUM
+	- SRP_PERMS
+	- SRP_LINKTARGET
+	This also causes the addition of the following self explanitory
+	(and probably rarely used) srp_flags:
+	- SRP_NO_UPGRADE
+	- SRP_NO_CHECKSUM
+	- SRP_NO_PERMS
+	- SRP_NO_LINKTARGET
+
+	Fixing bug #076 means that the new prefered method of failure
+	notification in PREPOSTLIB functions is via exceptions.  Integer
+	return values will still be checked (for now!) for backwards
+	compatibility, but package maintainers should start using
+	exceptions sooner rather than later.
+
+
+2005-08-08: summary of changes from 2.2.5 to 2.2.6
+--------------------------------------------------
+	- squashed bug #045 (running srp with SRP_ROOT_PREFIX)
+	- squashed bug #043 (upgrade fails)
+	- squashed bug #046 (make install-dist-srp fix)
+	- squashed bug #048 (srp should create RUCKUS dirs)
+	- squashed bug #049 (srp -u failure cleanup)
+	- squashed bug #047 (absolute path symlinks to RUCKUS)
+	- squashed bug #050 (uninstalling broken symlinks)
+	- squashed bug #054 (rework md5suming)
+
+
+2005-03-26: summary of changes from 2.2.4 to 2.2.5
+--------------------------------------------------
+	- ack, python-test didn't actually work!  on redhat 7.3,
+	  srp-2.2.4-1.srp generated by the makefile would install but the
+	  python interpreter was never set up!  it's fixed now.  :-/
+
+
+2005-03-14: summary of changes from 2.2.3 to 2.2.4
+--------------------------------------------------
+	- squashed bug #033 (non-root users)
+	- squashed bug #034 (deps_lib issue)
+	- squashed bug #037 (installed file ownership)
+	- squashed bug #035 (srp -l formatting)
+	- squashed bug #038 (upgrade PREPOSTLIB issue)
+	- squashed bug #042 (uninstalling symlinked perm_dirs)
+	- squashed bug #041 (chmod/chown pre-existing dirs)
+
+
+2004-03-14: summary of changes from 2.2.2 to 2.2.3
+--------------------------------------------------
+	- switched from calling /usr/bin/env to calling python directly.
+	  this way, srp will show up in 'ps' output as 'srp' instead of
+	  'python2'.  also, Makefile now autodetects the correct python
+	  interpreter (version >= 2.0) to use.
+	- squashed bug #029 (SRP_CANT_FOOL)
+	- squashed bug #030 (SRP_MD5SUM w/ SRP_CANT_FOOL)
+	- squashed bug #031 (SRP_PREPOSTLIB w/o md5sum)
+	- made targets to Makefile so we can build and install an srp of
+	  srp
+
+
+2004-03-02: summary of changes from 2.2.1 to 2.2.2
+--------------------------------------------------
+	- added some feedback to -b (while it's taring, logging, etc)
+	- squashed bug #021 (-b INPLACE in a *new* directory)
+	- squashed bug #022 (check_deps_lib())
+	- squashed bug #024 (other_opts)
+	- squashed bug #026 (RUCKUS/tmp symlink)
+	- squashed bug #027 (postinstall failure)
+	- squashed bug #028 (sr.INFODIRFILES)
+
+
+2004-02-25: summary of changes from 2.2.0 to 2.2.1
+--------------------------------------------------
+	- added SRP_INPLACE srp_flag for packages that don't install
+	  outside the source tree (i.e. mozilla)
+	- found and squashed bug #14 (SRP_LDCONFIG=path)
+	- found and squashed bug #16 (LDPATH_DEFAULT)
+	- found bug #17 (sr.exec_path)
+	- found bug #18 (getlogin)
+	- found and squashed bug #19 (ldpath comments)
+	- fixed broken -l behavior.  we now display matches[] properly
+	  again
+	- added SRP_PREPOSTLIB srp_flag to add pre/post tasks per
+	  package.  check out the infopage for more info
+	- updated documentation accordingly
+
+
+2003-10-23: summary of changes from 2.1.0 to 2.2.0
+--------------------------------------------------
+	- we now check for SRP_ROOT_PREFIX in the environment, overriding
+	  whatever is set as the default in sr.py
+	- -v now also displays SRP_ROOT_PREFIX (if it's not empty)
+	- found bug #013
+	- -l now just lists packages and -l --files lists a specified
+	  package's files
+	- -l notifies if the user if a package is not installed...  this
+	  used to just print nothing at all
+	- -c --tally now also reports the number of files in a package
+	- added --persistent flag to tell srp to work through minor errors
+	- install will now verify a package before declaring success
+	- semi-fixed bug #013 (redirected output issues)
+	- added utils.is_so() to test if a file is a shared object file
+	- fix bug #011 (SRP_LDCONFIG)
+	- removed utils.is_symlink() and changed calls to os.path.islink()
+	- removed utils.is_dir() and changed calls to os.path.isdir()
+	- removed utils.join() and changed calls to string.join()
+	- removed utils.pad() and changed calls to string.ljust()
+	- replaced occurrences of x.split('\n')[0] with string.rstrip()
+	- replaced occurrences of x.split('/')[-1] with
+	  os.path.basename(x)
+	- replaced occurrences of x.split('/')[:-1] with
+	  os.path.dirname(x)
+	- added --flags option to make -l list the srp_flags
+	- made -c --tally "human readable"
+	- -c no longer lists md5sums as missing files.
+	- -c will now display how many files were missing/modified
+	- new package type: brp (binary ruckus package)
+	  NOTE: see info page for details
+	- added -b command line option to create a brp from an srp
+	- lots of rearranging of function names, scopes, etc to fix up
+	  inheritance of package types.
+	- dump stage of install now has a progress bar
+	- updated man/info pages accordingly
+
+
+2003-06-13: summary of changes from 2.1-pre3 to 2.1.0
+--------------------------------------------------------
+	- squashed bug #005 (SRP_INSTALLINFO)
+	- made the install-info stuff respect the SRP_ROOT_PREFIX
+	- cleaned up code a bit (comments, debug output, etc)
+	- updated README
+	- updated INSTALL
+	- found bug #009
+	- squashed bug #009 (leftover .* files)
+	- found bug #010
+	- squashed bug #10 (directory permissions not preserved)
+	- found bug #011 (kinda already knew about this, though...  we'll
+	  fix it in 2.1.1)
+	- updated TODO
+	- found and squashed bug #012 (directory UID/GID not preserved)
+	- fixed typo in template-sr.py (SRP_CANTFOOL --> SRP_CANT_FOOL)
+	- finished up the infofile (for now...)
+
+
+2003-06-05: summary of changes from 2.1-pre2 to 2.1-pre3
+--------------------------------------------------------
+	- made --pretty list formatting much nicer
+	- found bug #007
+	- squashed bug #007 (stdin args)
+	- added some completion to list mode
+	- infofile now gets gziped as a part of the 'info' Makefile target
+	- made Makefile more system independant (but possibly less secure)
+	  by not using absolute paths to programs like 'cp', 'mkdir' and
+	  'install-info' 
+	- make clean now removes sr.info.gz (woops)
+	- added some completion to check mode
+	- add some completion to uninstall mode (prompt if it's not exact!)
+	- added 'uninstall' target to Makefile
+	- make uninstall also attempt to remove RUCKUS dirs
+	- added 'ruckusdirs' target to Makefile (used to be done in
+	  'install')
+	- info file now gets properly installed and uninstalled (even gets
+	  put into and removed from an info dirfile)
+	- hacked out a workaround for the install-info problem (bug #005)
+	- squashed bug #006: (unsupported srp_flags)
+	- found bug #008
+	- squashed bug #008 (piped input yesno() EOFError)
+	- squashed bug #003 (SRP_ROOT_PREFIX embedded in fooled
+	  executables)
+	- Makefile will now stick a timestamp in sr.py
+
+
+2003-05-29: summary of changes from 2.1-pre1 to 2.1-pre2
+--------------------------------------------------------
+	- found bug #004
+	- squashed bug #004 (bad variable in dump())
+	- added file BUGS-SQUASHED (which i should have already had...)
+	- updated manpage for new features
+	- in Makefile, seperated info into it's own target for portability
+	  reasons
+	- added 'install-info' target to Makefile
+	- fleshed out some more of the infofile
+	- found bug #005
+	- found bug #006
+
+
+2003-05-08: summary of changes from 2.0.2 to 2.1-pre1
+--------------------------------------------------------
+	- added -F option to force a cleanup
+	- cleaned up all the extra output
+	- added --verbose flag to enable lots of debugging output
+	- added more proper documentation (README, INSTALL, ChangeLog, etc)
+	- disabled use of sr_packge1 (will remove files later)
+	- only write operations require user to be root
+	- added --tally flag for the "check" command
+	- added utils.md5sum() which returns the md5sum of a file
+	- fixed problem with srp accidently overwriting files that were
+	  linked from files being installed by srp
+	- srp's with SRP_MD5SUM in their flags will now get an md5sum for
+	  each file (non-directory, non-symlink) that gets installed.  the
+	  md5sum is written into the list of installed files.
+	- gave srp a more conventional CLI
+	- the list command now formats it's output
+	- added --pretty flag to make -l use the pretty print function
+	- added --raw flag to make -l use the old raw output
+	- switched default list mode to pretty (in template-sr.py)
+	- Makefile now contains system config stuff and sticks it into srp,
+	  sr.py, and srp.8 when making
+	- --tally now also includes the size of the log file
+	- updated man page
+	- removed sr_package1.py
+	- made info page
+	- --upgrade now checks against md5sums nicely

@@ -1,0 +1,928 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename srp.info
+@settitle SRP - The Source Ruckus Packager
+@dircategory Utilities
+@direntry
+* SRP: (srp).                   The Source Ruckus Packager.
+@end direntry
+@c %**end of header
+
+@ifinfo
+This is the texinfo file for srp.
+
+Copyright @copyright{} 2001-2007 Mike Labriola <mdlabriola@@yahoo.com>
+@end ifinfo
+
+@titlepage
+@sp 10
+@comment The title is printed in a large font.
+@title SRP - The Source Ruckus Packager
+@subtitle Version __VERSIONSTRING__
+
+@c The following two commands start the copyright page.
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 2001-2007 Mike Labriola <mdlabriola@@yahoo.com>
+@end titlepage
+
+@contents
+
+@c here we go
+@ifnottex
+@node Top, Introduction, , (dir)
+@top
+@chapter The Source Ruckus Packager
+Version __VERSIONSTRING__
+
+The Source Ruckus Packager (SRP) is a lightweight source based package
+manager.  Implemented in Python and aimed at being cross-platform, SRP
+specializes in compiling packages at install time and tracking all the
+installed files.  With some help working out the kinks of different
+platforms, SRP will allow system administrators to make one package
+and install it on many entirely different systems.
+@end ifnottex
+
+@menu
+* Introduction::     Explanation of how SRP works.
+* Usage::            How to use the @code{srp} command line interface.
+* Modes::            In depth descussion of how the different modes work.
+* Packages::         Descriptions of the different types of packages.
+* Makefile.common::  How can I add SRP support to my software?
+* Concept Index::    Index of concepts.
+@end menu
+
+
+@c -----------------------------------
+@node Introduction
+@chapter Introduction
+@cindex Introduction
+@iftex
+The Source Ruckus Packager (SRP) is a lightweight source based package
+manager.  Implemented in Python and aimed at being cross-platform, SRP
+specializes in compiling packages at install time and tracking all the
+installed files.  With some help working out the kinks of different
+platforms, SRP will allow system administrators to make one package
+and install it on many entirely different systems.
+@end iftex
+
+So, how does SRP work?
+
+@menu
+* Logging::              How are files logged?
+* Directories::          How are SRP's directories structured?
+* Package Creation::     How do you make a package for SRP?
+@end menu
+
+
+@c -----------------------------------
+@node Logging, Directories, Introduction, Introduction
+@section Logging
+@cindex Logging
+How does SRP manage to log all the files it installs?
+
+Simply put, SRP logs installed files by actually installing everything
+in a temporary working area, logging it's contents, and then moving all the files to their
+proper location.
+
+
+@c -----------------------------------
+@node Directories, Package Creation, Logging, Introduction
+@section SRP's Internal Directory Structure
+@cindex Directories
+First off, @code{RUCKUS} is defined in sr.py as the root of SRP's
+working area.
+
+@vtable @code
+@item $RUCKUS/build
+Compilation is done inside this directory.  If something fails to
+compile, you can go in here and investigate the problem.
+
+@item $RUCKUS/installed
+This is the directory used to hold all of the logfiles.  Each package
+that SRP has installed has a file in here.
+
+@item $RUCKUS/package
+This is where SRP actually unpacks the package prior to installation.
+
+@item $RUCKUS/tmp
+This directory is where SRP will actually install files.  Once all the
+files in a package have been built and installed in here, SRP will log
+this directory's contents and then move the installed files to their
+proper location.
+
+@item $RUCKUS/brp
+When building a brp from an srp, intermediate files get stored in
+here.  When everything is ready, these files get bundled up into the
+brp and shipped off to the working directory from which srp was
+called.
+@end vtable
+
+
+@c -----------------------------------
+@node Package Creation, , Directories, Introduction
+@section Package Creation
+@cindex Package Creation
+Each type of package used by SRP is really just a disguised tarball.
+The tarball contains a NOTES file and, Depending on the type of
+package, an arangement of other files.  @xref{Packages}, for details.
+
+
+@c -----------------------------------
+@node Usage
+@chapter Usage
+@cindex Usage
+@cindex Command line interface
+@code{srp} is invoked like this:
+
+@example
+srp [MODE] [OPTIONS] PACKAGE
+@end example
+
+MODES:
+
+@vtable @code
+@item -i PACKAGE
+Install the provided package.
+
+@item -u PACKAGE
+Uninstall the provided package.
+
+@item -c PACKAGE
+Check if the provided package is properly installed.
+
+@item -x PACKAGE
+Examine the provided package.
+
+@item -b PACKAGE
+Build a brp from an srp.
+
+@item -l
+List installed packages.
+
+@item -F
+Force cleanup of build areas.  When @code{srp} encounters problems, it
+usually exits without cleaning up it's build areas.  This is so you
+can try and fix the problem by hand if you want.  Running @code{srp} with
+this mode will clean up this mess.
+
+@item -v
+Display the version of @code{srp} being used.
+
+@end vtable
+
+OPTIONS:
+
+@vtable @code
+@item --upgrade
+Used with -i. Upgrade a previously installed package.
+
+@item --tally
+Used with -c. Tally up the size of the files installed by a package.
+
+@item --files PACKAGE
+Used with -l. List files provided by a specified package.
+
+@item --flags PACKAGE
+Used with -l. List srp_flags for a specified package.
+
+@item --pretty
+Used with -l. List with pretty formatted output. The default is set in
+__LIBDIR__/sr.py.
+
+@item --raw
+Used with -l. List with raw unformatted output. The default is set in
+__LIBDIR__/sr.py.
+
+@item --verbose
+Used with all modes. Display verbose debugging messages.  NOTE: This
+generally creates a ton of output when used with -i, -u, or -c.
+
+@item --persistent
+Used with all modes. Try to work through minor errors.
+
+@end vtable
+
+
+@c -----------------------------------
+@node Modes
+@chapter Modes
+@menu
+* Install::          How exactly does Install Mode work?
+* Uninstall::        How exactly does Uninstall Mode work?
+* Check::            How exactly does Check Mode work?
+* Examine::          How exactly does Examine Mode work?
+* Build::            How exactly does Build Mode work?
+* List::             How exactly does List Mode work?
+* Force Cleanup::    How exactly does Force Cleanup Mode work?
+* Version::          How exactly does Version Mode work?
+@end menu
+
+
+@c -----------------------------------
+@node Install, Uninstall, Modes, Modes
+@section Install Mode (-i)
+@cindex Install Mode (-i)
+When SRP goes to install a package, it first checks a few things
+
+1.  Is SRP already running?  This first check is to make sure we don't
+try modifying two things at once... which would present us with some
+difficulties.  If it's already running, we display an error message
+and exit.
+
+2.  Are you root?  To install a package, you MUST be root.  SRP does a
+lot of things that require root permissions when it's installing, so
+it will exit if you are not root.
+
+3.  Are you upgrading a package?  If you passed in the
+@code{--upgrade} option, SRP will attempt to upgrade a currently
+installed package.
+
+4.  Is the package already installed?  If it is, and you're upgrading,
+all is well.  However, if you aren't upgrading and the package is
+already installed, SRP will display an error message and exit.
+
+Once these checks are completed, SRP launches into the install.  If
+part of the install fails, you will see error messages (obviously) and
+some instructions.
+
+NOTE: If SRP runs into a pre-existing file during the install, it will
+save the existing file as whatever-it-was.srpbak
+
+NOTE: If we're upgrading with md5sums, SRP will make backups of
+modified files.  Unmodifed files get written over.
+
+NOTE: If we go to install/upgrade a package using SRP_INPLACE and the
+specified inplace directory already exists, we exit immediately.
+
+
+@c -----------------------------------
+@node Uninstall, Check, Install, Modes
+@section Uninstall Mode (-u)
+@cindex Uninstall Mode (-u)
+When SRP goes to uninstall a package, it first checks a few things
+
+1.  Is SRP already running?  This first check is to make sure we don't
+try modifying two packages at once... which would present us with some
+difficulties.  If it's already running, we display an error message
+and exit.
+
+2.  Are you root?  To uninstall a package, you MUST be root.  SRP does
+a lot of things that require root permissions when it's uninstalling,
+so it will exit if you are not root.
+
+3.  Is the package already installed?  If the package isn't already
+installed, SRP will display an error message and exit.
+
+Once these checks are completed, SRP launches into the uninstall.  An
+uninstall generally shouldn't fail unless something is seriously
+wrong.  You will be notified if any files were missing or left behind
+for some reason when it's all done.
+
+NOTE: If you modify an installed file and then uninstall the package,
+your modified file will be removed... so make sure you really want to
+uninstall a package before you do it. SRP will do what it's told and
+will not prompt you!
+
+
+@c -----------------------------------
+@node Check, Examine, Uninstall, Modes
+@section Check Mode (-c)
+@cindex Check Mode (-c)
+When SRP goes to check a package, it first checks a few things
+
+1.  Is SRP already running?  This first check is to make sure we don't
+try modifying two packages at once... which would present us with some
+difficulties.  If it's already running, we display an error message
+and exit.
+
+2.  Are you root?  If you gave SRP an actual package as a parameter
+(ie: foobar-1.0-1.srp) you need to be root.  This is because SRP needs
+to open up the package in it's build area which requires root
+permisions.  However, if you gave SRP an installed package's logfile
+name (ie: foobar_-_foobar-1.0_-_1), the operation is purely read-only
+and you don't need to be root.
+
+Once these checks are completed, SRP launches into the check.  First,
+SRP will find out if the package is installed.  If it is, SRP will
+verify that every file listed in the package's logfile is installed
+correctly.  When it's all done, SRP will print out a message
+indicating whether or not the packge is correctly installed.
+
+Check mode can also be given the @code{--tally} flag, in which case it
+will calculate the total size of an installed package (including the
+log file).
+
+NOTE: SRP now supports checking installed files against a stored md5
+checksum.  To enable this behavior, package maintainers should put
+@code{SRP_MD5SUM} in the srp_flags line of the NOTES-2 file.
+
+
+@c -----------------------------------
+@node Examine, Build, Check, Modes
+@section Examine Mode (-x)
+@cindex Examine Mode (-x)
+When SRP goes to examine a package, it first checks a few things
+
+1.  Is SRP already running?  This first check is to make sure we don't
+try modifying two packages at once... which would present us with some
+difficulties.  If it's already running, we display an error message
+and exit.
+
+2.  Are you root?  To examine a package, you need to be root.  This is
+because SRP needs to open up the package in it's build area which
+requires root permisions.
+
+Once these checks are completed, SRP opens up the package and prints
+out a description of it's contents. @xref{Packages}, for details.
+
+
+@c -----------------------------------
+@node Build, List, Examine, Modes
+@section Build Mode (-b)
+@cindex Build Mode (-b)
+When SRP goes to build a package, it first checks a few things
+
+1.  Is SRP already running?  This first check is to make sure we don't
+try modifying two packages at once... which would present us with some
+difficulties.  If it's already running, we display an error message
+and exit.
+
+2.  Are you root?  To build a package, you need to be root.
+
+Once these checks are completed, SRP opens up the package and attempts
+to build BUT NOT INSTALL a binary package.  If it is successful, there 
+will now be a @code{packagename-version-rev.osname.arch.brp} file in 
+the current working directory. @xref{Packages}, for details.
+
+
+@c -----------------------------------
+@node List, Force Cleanup, Build, Modes
+@section List Mode (-l)
+@cindex List Mode (-l)
+When SRP goes to list packages, it first checks a few things
+
+1.  Is SRP already running?  This first check is to make sure we don't
+try modifying two packages at once... which would present us with some
+difficulties.  If it's already running, we display an error message
+and exit.
+
+Once these checks are completed, SRP will display a list of installed
+packages.  If you called SRP with the @code{--pretty} option you get
+pretty output and if you called it with the @code{--raw} option you
+get raw output.
+
+List mode can also be given the @code{--files} flag, in which case it
+will list all the files installed by a specified package.
+
+The @code{--flags} flag is also available.  This option will cause SRP
+to display the @code{srp_flags} associated with a specified package.
+
+The list mode can be given a package name as an argument, in which
+case it will print out all the packages that match that package name.
+
+
+@c -----------------------------------
+@node Force Cleanup, Version, List, Modes
+@section Force Cleanup Mode (-F)
+@cindex Force Cleanup Mode (-F)
+When SRP goes into Force Cleanup Mode, it first checks a few things
+
+1.  Are you root?  Since this mode is going to cleanup SRP's build
+directories, you need to be root.
+
+Once these checks are completed, SRP will go clean out it's temporary
+build directories.  This is usually necessary after a package
+installation fails (and leaves behind a mess...)
+
+
+@c -----------------------------------
+@node Version, , Force Cleanup, Modes
+@section Version Mode (-v)
+@cindex Version Mode (-v)
+This mode simply prints out the version of SRP being used.  It also
+displays @code{SRP_ROOT_PREFIX} (if it's not empty).
+
+
+@c -----------------------------------
+@node Packages
+@chapter Packages
+@cindex package types
+At the highest level, each package type is composed of a tarball.  The
+following sections will describe what exactly is in the tarball for
+each package type.
+
+@menu
+Currently Available Package Types:
+* srp::    Source Ruckus Package
+* brp::    Binary Ruckus Package
+
+Planned Package Types:
+* rrp::    Recursive Ruckus Package
+@end menu
+
+
+@c -----------------------------------
+@node srp, brp, Packages, Packages
+@section srp
+@cindex package type, srp
+@cindex srp, package type
+A Source Ruckus Package contains the following:
+@itemize @minus
+@item a NOTES file        @xref{fields_notes}, for details.@*
+@item a bzball            @xref{bzball}, for details.@*
+@item extra helper files (if necessary)@*
+@end itemize
+
+The actual name of the NOTES file for a package should be
+@code{NOTES-$SRP_MAJOR_VERSION}.  So, a NOTES file for srp-2.1.0 would
+be @code{NOTES-2}.
+
+@menu
+* srp_flags::                 Explanation of srp_flags
+* prepostlib::                How to specify pre/post procedures
+* Install Script::            Instructions for making an install script
+* Troubles::                  What's hard about making a good NOTES file?
+* Example::                   Example NOTES file
+@end menu
+
+
+@c -----------------------------------
+@node fields_notes, , , srp
+@subsection Fields of a NOTES file
+@cindex srp, NOTES file, fields
+A NOTES file for srp2 (NOTES-2) contains the following fields:
+@itemize @bullet
+@item package name@*
+@item bzball name@*
+@item name of root directory extracted from bzball@*
+@item short description of package contents@*
+@item list of srp_flags@*
+@item value to be exported to CFLAGS and CXXFLAGS prior to compiling@*
+@item @code{--prefix} for configure@*
+@item @code{--exec-prefix} for configure@*
+@item @code{--bindir} for configure@*
+@item @code{--sbindir} for configure@*
+@item @code{--libexecdir} for configure@*
+@item @code{--datadir} for configure@*
+@item @code{--sysconfdir} for configure@*
+@item @code{--sharedstatedir} for configure@*
+@item @code{--localstatedir} for configure@*
+@item @code{--libdir} for configure@*
+@item @code{--includedir} for configure@*
+@item @code{--oldincludedir} for configure (probably always @code{/usr/include})@*
+@item @code{--infodir} for configure@*
+@item @code{--mandir} for configure@*
+@item @code{--srcdir} for configure (usually @code{.})@*
+@item other flags for configure@*
+@item installation script
+@end itemize
+
+
+@c -----------------------------------
+@node bzball, , , srp
+@subsection description of bzball
+@cindex srp, bzball
+This file is a bzipped tarball, usually the distributed source code.
+It is referenced in the NOTES file.  @xref{fields_notes}, for details.
+
+
+@c -----------------------------------
+@node srp_flags, prepostlib, , srp
+@subsection Explanation of @code{srp_flags}
+@cindex srp, NOTES file, srp_flags
+The srp_flags field is used to toggle different feature of SRP on and
+off.  This allows us to add new features without breaking old packages.
+
+Unless specified otherwise in the NOTES file, all SRPs will build with
+the following flags enabled:
+
+@vtable @code
+@item SRP_UPGRADABLE
+Indicates that a package may be upgraded to a newer version.
+
+@item SRP_CHECKSUM
+When SRP installs this package, it will store a checksum of each
+installed file in the logfile.  These checksums can be used to track
+the modification of installed files.  The checksumming algorithm is
+determined at install time based on how SRP is configured.
+
+@item SRP_PERMS
+Causes SRP to track installed files' permissions and ownership.
+
+@item SRP_LINKTARGET
+Causes SRP to track installed symlinks' targets.
+
+@item SRP_LEFTOVERS
+Causes SRP to leave behind files in an upgraded package that don't
+exist in the new package.
+@end vtable
+
+Other supported flags:
+
+@vtable @code
+@item SRP_NO_COMPILE
+Indicates that no compiling is actually done.
+
+@item SRP_CANT_FOOL
+Indicates that package author couldn't manage to fool the software's
+build instructions into building for one location but installing into
+another. This will result in the package being built twice (once to
+generate the logfile, once to actually install).
+
+@item SRP_MD5SUM
+Implies SRP_CHECKSUM and forces the checksumming algorithm to be MD5.
+
+@item SRP_SHA1SUM
+Implies SRP_CHECKSUM and forces the checksumming algorithm to be SHA1.
+
+@item SRP_OWNEROVERRIDE
+Causes SRP to override file ownership at install time by looking at a
+supplied file.  This allows the building of BRPs from SRPs that need
+to chown files as non-root users.  Using chown inside the NOTES file
+is highly frowned upon.  Using chmod inside the NOTES file is
+desirable, though.
+
+@item SRP_INSTALLINFO
+After SRP installs this package, it will attempt to install any info
+files it finds in the logfile.
+
+@item SRP_LDCONFIG[=/foo/bar]
+SRP will update @code{/etc/ld.so.conf} with directories where the package has
+installed shared objects.  If you specify SRP_LDCONFIG=/foo/bar in the
+NOTES file, you can override the default auto-detection and manually
+specify a directory to add to the ld config file.
+
+@item SRP_ARCH_IND
+Derived binaries are architecture independent.
+
+@item SRP_OS_IND
+Derived binaries are operating system independent.
+
+@item SRP_DEPS_PROG
+When building a brp from this srp, a DEPS_PROG file is expected.  If
+this flag isn't specified, an empty DEPS_PROG file will be included in
+the finished brp.
+
+@item SRP_DEPS_SRP
+When building a brp from this srp, a DEPS_SRP file is expected.  If
+this flag isn't specified, an empty DEPS_SRP file will be included in
+the finished brp.
+
+@item SRP_INPLACE=/foo
+This flag is for packages that don't install any files outside of the
+source tree (i.e. mozilla).  This essentially tells SRP to
+build/install the package in it's destination directory.
+
+@item SRP_PREPOSTLIB[=something.py]
+This flag tells SRP that the package contains a PREPOSTLIB python
+library.  @xref{prepostlib}, for details.  The optional argument
+specifies the filename of the provided PREPOSTLIB python module (used
+most often in conjunction with the SRP_CHAIN flag so that each derived
+BRP can have its own PREPOSTLIB module).
+
+@item SRP_CHAIN=next_notes_file
+This flag tells SRP that a package actually installs/builds as more
+than one package.  The required argument supplies the filename of the
+next NOTES file in the list.  For example, using the SRP_CHAIN flag,
+building the foo-1.0-1.srp package could result in three stand-alone
+BRPs: foo-1.0-1.linux.i686.brp, foo-dev-1.0-1.linux.i686.brp, and
+foo-docs-1.0-1.linux.i686.brp.
+
+@item SRP_NO_UPGRADE
+Disables the SRP_UPGRADABLE flag.
+
+@item SRP_NO_CHECKSUM
+Disables the SRP_CHECKSUM flag.
+
+@item SRP_NO_PERMS
+Disables the SRP_PERMS flag.
+
+@item SRP_NO_LINKTARGET
+Disables the SRP_LINKTARGET flag.
+
+@item SRP_NO_LEFTOVERS
+Disables the SRP_LEFTOVERS flag.
+
+@item SRP_DUMMYFLAG
+This is a placeholder and does nothing.
+@end vtable
+
+
+@c -----------------------------------
+@node prepostlib, Install Script, srp_flags, srp
+@subsection How to specify pre/post installation procedures
+@cindex srp, prepostlib
+The prepostlib is a python module that can be included in a package.
+The actual name of the file to include in a package is
+``PREPOSTLIB_$SRP_MAJOR_VERSION.py''.  This module will get inserted
+into the package instance being used by SRP in order to implement the
+following functions:
+
+@itemize @minus
+@item preinstall(p)
+@item postinstall(p)
+@item preuninstall(p)
+@item postuninstall(p)
+@end itemize
+
+Note that all four of these functions must be defined, even if some of
+them are no-ops.  Each function takes a package instances p as an
+argument so that it can access all the tidbits of info stored in the
+package that SRP is working on.
+
+NOTE: As of version 2.3.0, the new prefered method of failure
+notification in PREPOSTLIB functions is via exceptions.  Integer
+return values will still be checked (1 == success) for backwards
+compatibility, but this is deprecated and will be removed.
+
+The following is an example prepostlib file that creates/deletes a
+symlink to an inplace install area:
+
+@example
+import os, os.path, sys, string
+import sr, sr_package2, utils
+
+
+def preinstall(p):
+    utils.vprint("--preinstall--")
+
+
+def postinstall(p):
+    utils.vprint("--postinstall--")
+    try:
+        utils.vprint("inplace: %s" % (p.inplace))
+        utils.vprint("dirname: %s" % (p.dirname))
+        utils.vprint("name: %s" % (p.name))
+        os.chdir(p.inplace)
+        if os.path.islink(p.name):
+            os.unlink(p.name)
+        os.symlink(p.dirname, p.name)
+    except Exception, e:
+        raise Exception("failed to create symlink: %s" % e)
+
+
+def preuninstall(p):
+    utils.vprint("--preuninstall--")
+    return 1
+
+
+def postuninstall(p):
+    utils.vprint("--postuninstall--")
+    try:
+        utils.vprint("inplace: %s" % (p.inplace))
+        utils.vprint("name: %s" % (p.name))
+        os.chdir(p.inplace)
+        if os.path.islink(p.name):
+            if os.readlink(p.name) == p.dirname:
+                os.unlink(p.name)
+    except Exception, e:
+        raise Exception("failed to remove symlink: %s" % e)    
+@end example
+
+
+
+@c -----------------------------------
+@node Install Script, Troubles, prepostlib, srp
+@subsection How to Create the Install Script
+@cindex srp, NOTES file, install script
+The install script is basically a condensed shell script for the
+interpreter defined in @code{sr.py} (default: /bin/bash).  Each
+command (except the last!) should (but isn't required to) end in a
+@code{&&} so that the entire script will fail if any one part fails.
+
+NOTE: Versions prior to 2.3.0 required multi-line scripts to end with
+a @code{\} to escape out the carriage returns.  This is no longer
+necesary, but shouldn't break a package if it's there.  However, this
+practice is officially deprecated and compatibility will be removed in
+a later version.
+
+Prior to execution of the install script, SRP will export a few
+variables to help make the script flexible/portable.  Here is a
+description of the variables:
+
+@vtable @code
+@item SRP_ROOT
+This variable is the absolute path to SRP's temporary build directory
+(usually /usr/src/ruckus/tmp).
+
+@item SRP_OPTS
+This is a space delimited list of the configure options as they are
+described in the NOTES file.
+
+@item FOOL_OPTS
+This is a space delimited list generated from the configure options in
+the NOTES file.  Each option has the leading @code{--} removed and has
+$SRP_ROOT prepended to it.  This variable is used to override the
+variables set in the makefile when we go to install.
+
+@item INPLACE
+This variable is the absolute path to SRP's inplace build directory
+when we're running in SRP_INPLACE mode (i.e. /mnt/baby/foo).
+
+@end vtable
+
+
+@c -----------------------------------
+@node Troubles, Example, Install Script, srp
+@subsection Troubles: What's hard about making a good NOTES file?
+@cindex srp, NOTES file, troubles
+The hardest part of making a good NOTES file is getting the build
+procedure to embed the proper paths into the executables while still
+installing all the files (originally) in $SRP_ROOT.  Many pieces of
+software have slightly broken Makefiles that hardcode destination
+variables, sometimes even by accident.
+
+For example, the configure.in that came with ethereal-0.9.11 had a bug
+in it that defined the variable @code{plugindir} as
+@code{$libdir/ethereal/plugins}.  This caused the variable to be
+fleshed out by @code{autogen.sh}, so in the resulting Makefile
+@code{plugindir} was hardcoded as
+@code{/usr/local/lib/ethereal/plugins}.  With things set up like this,
+if we override the @code{libdir} variable, @code{plugindir} still has
+the original @code{libdir} embedded in it...  This kind of problem is
+definately the hardest thing to notice right away and usually results
+in stray files that don't get properly logged by SRP.
+
+This entire situation can be remedied by using the SRP_CANT_FOOL flag,
+but that requires building the whole package twice.  So as a general
+rule of thumb, compare the logfile from your supposedly good package
+with a logfile generated with SRP_CANT_FOOL before you assure yourself
+that the NOTES file is good.
+
+
+@c -----------------------------------
+@node Example, , Troubles, srp
+@subsection Example NOTES file
+@cindex srp, NOTES file, example
+Here is an example of a NOTES file for srp2
+@example
+
+ethereal
+ethereal-0.9.11.tar.bz2
+ethereal-0.9.11
+nice network traffic monitor
+SRP_MD5SUM SRP_UPGRADABLE
+'-O3'
+/usr/local
+/usr/local
+/usr/local/bin
+/usr/local/sbin
+/usr/local/libexec
+/usr/local/share
+/usr/local/etc
+/usr/local/com
+/usr/local/var
+/usr/local/lib
+/usr/local/include
+/usr/include
+/usr/local/share/info
+/usr/local/share/man
+SRP_NONE
+SRP_NONE
+patch -Np1 < ../../package/patch-ethereal-0.9.11-configure.in.diff &&
+./autogen.sh &&
+./configure $SRP_OPTS &&
+make -j3 &&
+make $FOOL_OPTS install
+
+@end example
+
+
+@c -----------------------------------
+@node brp, , srp, Packages
+@section brp
+@cindex package type, brp
+@cindex brp, package type
+A Binary Ruckus Package contains the following:
+@itemize @minus
+@item a NOTES file       @xref{fields_notes}, for details.@*
+@item a DEPS_LIB file    @xref{fields_deps_lib}, for details.@*
+@item a DEPS_PROG file   @xref{fields_deps_prog}, for details.@*
+@item a DEPS_SRP file    @xref{fields_deps_srp}, for details.@*
+@item a FILES file       @xref{fields_files}, for details.@*
+@item a BLOB file
+@end itemize
+
+The BLOB file is a bzipped tarball of the files to be installed.
+
+
+@c -----------------------------------
+@node fields_deps_lib, , , brp
+@subsection Fields of a DEPS_LIB file
+@cindex brp, DEPS_LIB file, fields
+This file is created at build time by SRP and contains a list of
+shared libraries that our package requires.
+
+A DEPS_LIB file for srp2 (DEPS_LIB-2) contains the following fields:
+@itemize @bullet
+@item list of deps@*
+@end itemize
+
+Libraries are listed one per line.
+
+
+@c -----------------------------------
+@node fields_deps_prog, , , brp
+@subsection Fields of a DEPS_PROG file
+@cindex brp, DEPS_PROG file, fields
+This file lists any executables our package requires.
+
+A DEPS_PROG file for srp2 (DEPS_PROG-2) contains the following fields:
+@itemize @bullet
+@item list of deps@*
+@end itemize
+
+Executables are listed one per line.
+
+
+@c -----------------------------------
+@node fields_deps_srp, , , brp
+@subsection Fields of a DEPS_SRP file
+@cindex brp, DEPS_SRP file, fields
+This file lists any packages required by our package.
+
+A DEPS_SRP file for srp2 (DEPS_SRP-2) contains the following fields:
+@itemize @bullet
+@item list of deps@*
+@end itemize
+
+Raw package names are listed one per line.
+
+NOTE: using this form of dependency is *highly* frowned upon.
+DEPS_PROG and DEPS_LIB should be enough for almost all packages.
+
+
+@c -----------------------------------
+@node fields_files, , , brp
+@subsection Fields of a FILES file
+@cindex brp, FILES file, fields
+A FILES file for srp2 (FILES-2) contains the following fields:
+@itemize @bullet
+@item build host@*
+@item build date@*
+@item build time in seconds@*
+@item package builder contact info@*
+@item list of files...@*
+@end itemize
+
+Files are listed one per line.
+
+If md5sums are enabled, every other line will be a description of the
+file listed above it.  Valid entries are @code{dir}, @code{link}, or
+an md5sum.
+
+
+@c -----------------------------------
+@node rrp, , , Packages
+@section rrp (planned for version 2.7.0 or 3.0.0, whichever comes first)
+@cindex package type, rrp
+@cindex rrp, package type
+description of rrp internals goes here
+
+
+@c -----------------------------------
+@node Makefile.common
+@chapter Makefile.common
+@cindex Makefile.common
+To make adding SRP support to your software or CM repository as easy
+as possible, SRP provides a makefile in it's library directory called
+@code{Makefile.common}.  This makefile can be included by a product's
+main makefile to provide the following convenient build targets:
+@itemize @bullet
+@item dist-bzip2@*
+@item dist-srp@*
+@item dist-brp@*
+@item dist-iso@*
+@item .build/%       @xref{makefile_build}, for details.@*
+@item %.gz@*
+@item %.info@*
+@item %.pdf@*
+@end itemize
+
+
+@c -----------------------------------
+@node makefile_build, , , Makefile.common
+@section Makefile.common target: .build/*
+@cindex Makefile.common, targets, .build/*
+This build target is used to populate the @code{.build} directory with
+copies of files with certain variables filled in.  For example, to use
+the @code{.build/*} implicit target to generate the file
+@code{.build/FOO} from the file @code{FOO} with the string
+@code{__VERSION__} set to the value of the @code{$VERSIONSTRING}
+variable, you would add the following to your Makefile:
+
+@example
+TEMPLATE_KEYS = VERSIONSTRING
+all: $(BUILDDIR)/FOO
+@end example
+
+
+
+@c -----------------------------------
+@node Concept Index
+@unnumbered Concept Index
+
+@printindex cp
+
+@bye
