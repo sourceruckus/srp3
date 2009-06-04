@@ -17,10 +17,50 @@ goals:
 
 - tkinter front-end (maybe)
 
-- implement BRPs as pickled SRPs
-
 - change BRP's hosttype to be a little more useful (fc5.i686, rh7.i686,
   hpux10.risc, sol8.sparc, win98.i686, unix.i386, etc)
 
 - add lots more SRP flags (SRP_PERLMOD, SRP_USER, SRP_SERVICE,
   SRP_REVERT, SRP_REPAIRABLE, etc)
+
+- handle source package creation.  dep tracking.  know when a rebuild
+  is needed.  Makfile-ish.
+
+- add changelog entries to source packages?  maybe even generate diffs?
+
+- implement (most/all?) SRPFLAGS as modules.  mod_user.  mod_ldconfig.
+  mod_service.  accomplish work via pre/post hooks?
+
+- fully backwards compatible with srp2 packages (source and binary)
+
+- use a decorator to flag write-ops
+
+
+
+
+objects:
+
+source_package
+  init(dirname)
+  commit()
+
+binary_package
+  init(source_package)
+  commit()
+  install()
+  upgrade()
+  
+installed_package
+  init(name, id=Nnoe)
+  uninstall()
+  check()
+  repair()
+  inspect()
+
+blob
+  init(dir)
+  commit()
+
+index or files or toc
+  init(blob)
+  commit()
