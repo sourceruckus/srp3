@@ -12,6 +12,27 @@ import utils
 import deprecated.sr
 
 
+@utils.tracedmethod("srp.prepostlib")
+def init(file_p):
+    """create prepostlib instance(s). we will attempt to use the latest
+    and greatest, but fall back to the older deprecated class as a
+    last resort
+    """
+    retval_p = None
+    tried = []
+    to_try = [v3, v2]
+    for x in to_try:
+        try:
+            retval_p = x(file_p)
+            break
+        except Exception, e:
+            tried.append("%s (%s)" % (x, e))
+    if not retval_p:
+        err = "Failed to create PREPOSTLIB instace(s): %s" % ", ".join(tried)
+        raise Exception(err)
+    return retval_p
+
+
 class v3(utils.base_obj):
 
     standard_funcs = ["prebuild",
@@ -21,17 +42,14 @@ class v3(utils.base_obj):
                       "preuninstall",
                       "postuninstall"]
 
-    def __init__(self, package_p, filename=None):
+    def __init__(self, file_p=None):
         try:
             # create a new module
             #self.__prepost__ = new.module("prepost")
 
-            if filename:
-                # extract the file
-                f = package_p.extractfile(filename)
-
+            if file_p:
                 # execute the provided code in the new module's __dict__
-                exec f.read() in self.__dict__
+                exec file_p.read() in self.__dict__
             
             # add missing standard functions
             print "adding undefined methods to prepostlib:"
@@ -59,13 +77,13 @@ class v3(utils.base_obj):
 
 class v2(v3):
     
-    def __init__(self, package_p):
+    def __init__(self, file_p=None):
         path_deprecated = [os.path.join(config.LIBDIR, "deprecated"),
                            os.path.join(config.LIBDIR_REL, "deprecated")]
         sys.path.extend(path_deprecated)
         try:
             # do v3 initialization
-            v3.__init__(self, package_p, deprecated.sr.PREPOSTLIB2)
+            v3.__init__(self, file_p)
 
             # wrap up v2 prepostlib methods so they can be called with no args
             # NOTE: this will break any v2 package with a prepostlib function

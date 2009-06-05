@@ -38,6 +38,7 @@ import tarfile
 
 import config
 import notes
+import prepostlib
 import utils
 
 
@@ -52,7 +53,7 @@ class srp(utils.base_obj):
     def __init__(self, filename):
         """Create a Version 3 package instance
         """
-        self.filename = filename
+        self.__filename = filename
         
         # create TarFile instance of filename
         try:
@@ -61,13 +62,47 @@ class srp(utils.base_obj):
             err = "Failed to create TarFile instance: %s" % e
             raise Exception(err)
 
-        self.__notes_p = notes.init(self)
+        # create initial notes instance.  we do this by haveing
+        # notes_p be empty with its chain set to the toplevel NOTES
+        # file.  then we just loops until notes_p.chain is empty.
+        self.__notes_p = notes.empty()
+        self.__notes_p.chain = config.NOTES
+
+        n = self.__notes_p
+        while n.chain:
+            try:
+                n.next_p = notes.init(self.extractfile(n.chain))
+                
+                # no need to bother with extra object instantiation if
+                # chain is our default toplevel NOTES file...
+                if n.chain == config.NOTES:
+                    n = n.next_p
+                    continue
+
+                # prepostlib
+                if n.prepostlib:
+                    n.prepostlib_p = self.extractfile(n.prepostlib)
+                    n.prepostlib_p = prepostlib.init(n.prepostlib_p)
+                else:
+                    # create a prepostlib instance full of empty (or
+                    # default) functions if a library wasn't provided
+                    # by the package.
+                    n.prepostlib_p = prepostlib.init(None)
+                    
+                # owneroverride
+
+                n = n.next_p
+
+            except Exception, e:
+                msg = "Failed to instantiate notes object: %s" % e
+                raise Exception("ERROR: %s" % msg)
+                
         
         # DEBUG: display all notes objects in chain
-        n = self.__notes_p
-        while n:
-            n.info()
-            n = n.next_p
+        #n = self.__notes_p
+        #while n:
+        #    n.info()
+        #    n = n.next_p
     
 
     # ---------- API stuff ----------
@@ -76,8 +111,13 @@ class srp(utils.base_obj):
         try:
             retval = self.__tar_p.extractfile(member)
         except:
-            # try ./ version
-            retval = self.__tar_p.extractfile(os.path.join('.', member))
+            try:
+                # try ./ version
+                retval = self.__tar_p.extractfile(os.path.join('.', member))
+            except:
+                msg = "Failed to extract file '%s'" % member
+                msg += " from %s" % self.filename
+                raise Exception(msg)
         return retval
 
 

@@ -42,6 +42,7 @@ objects:
 
 source_package
   init(dirname)
+  init(filename)
   commit()
 
 binary_package
@@ -64,3 +65,9 @@ blob
 index or files or toc
   init(blob)
   commit()
+
+notes
+  init(fobj)
+
+
+
