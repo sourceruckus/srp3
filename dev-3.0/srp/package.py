@@ -38,6 +38,7 @@ import tarfile
 
 import config
 import notes
+import owneroverride
 import prepostlib
 import utils
 
@@ -62,16 +63,20 @@ class srp(utils.base_obj):
             err = "Failed to create TarFile instance: %s" % e
             raise Exception(err)
 
-        # create initial notes instance.  we do this by haveing
+        # create initial notes instance.  we do this by having
         # notes_p be empty with its chain set to the toplevel NOTES
-        # file.  then we just loops until notes_p.chain is empty.
+        # file.  then we just loop until notes_p.chain is empty.
         self.__notes_p = notes.empty()
         self.__notes_p.chain = config.NOTES
 
         n = self.__notes_p
-        while n.chain:
+        not_done = True
+        while not_done:
             try:
-                n.next_p = notes.init(self.extractfile(n.chain))
+                if n.chain:
+                    n.next_p = notes.init(self.extractfile(n.chain))
+                else:
+                    not_done = False
                 
                 # no need to bother with extra object instantiation if
                 # chain is our default toplevel NOTES file...
@@ -90,6 +95,13 @@ class srp(utils.base_obj):
                     n.prepostlib_p = prepostlib.init(None)
                     
                 # owneroverride
+                if n.owneroverride:
+                    n.owneroverride_p = self.extractfile(n.owneroverride)
+                    n.owneroverride_p = owneroverride.init(n.owneroverride_p)
+                else:
+                    # create an empty owneroverride so we can assume
+                    # one is available later on
+                    n.owneroverride_p = owneroverride.init(None)
 
                 n = n.next_p
 
@@ -98,6 +110,9 @@ class srp(utils.base_obj):
                 raise Exception("ERROR: %s" % msg)
                 
         
+        # for convenience, let's remove the empty head node
+        self.__notes_p = self.__notes_p.next_p
+
         # DEBUG: display all notes objects in chain
         #n = self.__notes_p
         #while n:

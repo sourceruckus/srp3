@@ -27,7 +27,7 @@ def init(file_p):
             break
         except Exception, e:
             tried.append("%s (%s)" % (x, e))
-    if not retval_p:
+    if retval_p == None:
         err = "Failed to create PREPOSTLIB instace(s): %s" % ", ".join(tried)
         raise Exception(err)
     return retval_p

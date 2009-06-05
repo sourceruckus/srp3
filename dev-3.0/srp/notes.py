@@ -28,19 +28,19 @@ def init(file_p):
     """create notes instance(s). we will attempt to use the latest and
     greatest, but fall back to the older deprecated class as a last resort
     """
-    notes_p = None
+    retval_p = None
     tried = []
     to_try = [v3, v2]
     for x in to_try:
         try:
-            notes_p = x(file_p)
+            retval_p = x(file_p)
             break
         except Exception, e:
             tried.append("%s (%s)" % (x, e))
-    if not notes_p:
+    if retval_p == None:
         err = "Failed to create NOTES instace(s): %s" % ", ".join(tried)
         raise Exception(err)
-    return notes_p
+    return retval_p
 
 
 @utils.tracedmethod("srp.notes")
@@ -257,14 +257,10 @@ class v3(empty):
                 if x == "SRP_PREPOSTLIB":
                     utils.vprint("initializing self.prepostlib")
                     self.prepostlib = y
-                    # instantiate prepostlib_p now
-                    #self.__prepostlib_p = prepostlib.v3(package_p, y)
 
                 elif x == "SRP_OWNEROVERRIDE":
                     utils.vprint("initializing self.owneroverride")
                     self.owneroverride = y
-                    # instantiate owneroverride_p now
-                    #self.__owneroverride_p = owneroverride.v3(package_p, y)
                     
                 elif x == "SRP_INPLACE":
                     utils.vprint("initializing self.inplace")
