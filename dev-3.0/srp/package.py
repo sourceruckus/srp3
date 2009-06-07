@@ -131,7 +131,7 @@ class srp(utils.base_obj):
         # for convenience, let's remove the empty head node
         self.__notes_p = self.__notes_p.next_p
 
-
+        os.chdir(self.__olddir)
 
 
 
