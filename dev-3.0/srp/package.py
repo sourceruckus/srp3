@@ -70,7 +70,6 @@ class srp(utils.base_obj):
         if self.__dirname:
             # we're populating using directory of files
             extract = open
-            os.chdir(dirname)
         else:
             # we're populating using committed package
             extract = self.extractfile
@@ -92,6 +91,9 @@ class srp(utils.base_obj):
         not_done = True
         while not_done:
             try:
+                if dirname:
+                    os.chdir(dirname)
+                
                 if n.chain:
                     n.next_p = notes.init(extract(n.chain))
                 else:
@@ -121,19 +123,35 @@ class srp(utils.base_obj):
                     # one is available later on
                     n.owneroverride_p = owneroverride.init(None)
 
+                # before we move on, let's verify that the sourcefile
+                # is available.  the search path for sourcefile is .:..
+                f = None
+                searchpath=[".", ".."]
+                for d in searchpath:
+                    try:
+                        f = extract(os.path.join(d, n.sourcefilename))
+                        break
+                    except:
+                        pass
+                if f:
+                    f.close()
+                else:
+                    msg = "Failed to locate sourcefile '%s'" % n.sourcefilename
+                    raise Exception(msg)
+
                 n = n.next_p
 
             except Exception, e:
                 msg = "Failed to instantiate notes object: %s" % e
                 raise Exception("ERROR: %s" % msg)
                 
-        
+            finally:
+                os.chdir(self.__olddir)
+
         # for convenience, let's remove the empty head node
         self.__notes_p = self.__notes_p.next_p
 
-        os.chdir(self.__olddir)
-
-
+        
 
     # ---------- API stuff ----------
     def extractfile(self, member):
