@@ -51,10 +51,22 @@ class srp(utils.base_obj):
     """Version 3 package object
     """
     
-    def __init__(self, filename):
-        """Create a Version 3 package instance
+    def __init__(self, filename, dirname=None):
+        """Create a Version 3 package instance.  The filename argument refers
+        to the name of a source package.  If dirname is not provided,
+        it's assumed that filename refers to a previously committed
+        source package.  If dirname is provided, it's assumed that the
+        directory contains all the files necessary to create a source
+        package (the source tarball search path is actually .:..).  A
+        created source package is not written to disk until commit()
+        is called.
         """
         self.__filename = filename
+        
+        if not dirname:
+            self.__load_package_from_disc()
+        else:
+            self.__create_package(dirname)
         
         # create TarFile instance of filename
         try:
