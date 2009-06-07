@@ -1,40 +1,13 @@
 """\
 This module defines classes for representing the different types of
-packages.  Each supported major version of srp (v1, v2, v3, etc) should have
-an class defined here to wrap the old classes into the API needed by the
-current implementation of builder/installer/etc.  Said API is as follows:
-
---- API stuff ---
-extractfile()
-notes_p (prepostlib_p, owneroverride_p, etc, are in here)
-filename
-
-
-
-
-builder needs:
-  notes.description
-  notes.flags
-  notes.name
-  notes.next_p
-  notes.notes_version
-  notes.owneroverride_p
-  notes.prepostlib_p.__prepost__
-  notes.script
-  notes.sourcefilename
-
-installer needs:
-  blob_p
-  files_p
-  notes_p (w/ chain stripped)
-  
+packages.
 """
 
 
 import cPickle
-import new
 import os.path
 import tarfile
+import tempfile
 
 import config
 import notes
@@ -51,7 +24,7 @@ class srp(utils.base_obj):
     """Version 3 package object
     """
     
-    def __init__(self, filename, dirname=None):
+    def __init__(self, filename=None, dirname=None):
         """Create a Version 3 package instance.  The filename argument refers
         to the name of a source package.  If dirname is not provided,
         it's assumed that filename refers to a previously committed
@@ -64,8 +37,9 @@ class srp(utils.base_obj):
         self.__filename = filename
         self.__dirname = dirname
         self.__tar_p = None
+        self.__sourcefilename = None
 
-        self.__olddir = os.getcwd()
+        olddir = os.getcwd()
         
         if self.__dirname:
             # we're populating using directory of files
@@ -129,7 +103,10 @@ class srp(utils.base_obj):
                 searchpath=[".", ".."]
                 for d in searchpath:
                     try:
-                        f = extract(os.path.join(d, n.sourcefilename))
+                        fname = os.path.join(d, n.sourcefilename)
+                        f = extract(fname)
+                        if not self.__sourcefilename:
+                            self.__sourcefilename = fname
                         break
                     except:
                         pass
@@ -146,12 +123,91 @@ class srp(utils.base_obj):
                 raise Exception("ERROR: %s" % msg)
                 
             finally:
-                os.chdir(self.__olddir)
+                os.chdir(olddir)
 
         # for convenience, let's remove the empty head node
         self.__notes_p = self.__notes_p.next_p
 
         
+    def commit(self):
+        """writes package to disk.  if package already exists, it is only
+        replaced if the new package would be different.
+        """
+        # make sure this isn't silly
+        if not self.__dirname:
+            raise Exception("can't commit package that wasn't created by us")
+
+        needs_update = False
+
+        # let's try to open existing file so we can check for content
+        # differences as we go along.  to be clear, we care about the
+        # actual data, not the order it appears in the archive.
+        # (files, perms, timestamps, etc)
+        try:
+            old_one = tarfile.open(self.__filename, "w")
+        except:
+            print "needs_update: no old one"
+            needs_update = True
+
+        # now let's create a temporary file to store our new archive
+        # in.  if differences are noticed while creating it, it will
+        # be renamed to replace the old package file.  this also means
+        # that source package creation/update is fully atomic.
+        tmpfile = tempfile.NamedTemporaryFile(mode="w")
+        print tmpfile.name
+        new_one = tarfile.open(name=tmpfile.name, fileobj=tmpfile, mode="w")
+        
+        # populate new_one, checking to see if any of the files we're
+        # adding are different or missing from old_one
+        print "adding files to new_one..."
+        to_add = os.listdir(self.__dirname)
+        to_add.append(self.__sourcefilename)
+        for fname in to_add:
+            # add the file
+            print "adding:", fname
+            new_one.add(name=os.path.join(self.__dirname, fname),
+                        arcname=os.path.basename(fname))
+
+            # now check for presence/differences in old_one (no need
+            # to do the check if we already know we need to update the
+            # file...)
+            if needs_update:
+                continue
+
+            try:
+                x = old_one.getmember(fname).tobuf()
+                y = new_one.getmember(fname).tobuf()
+                if x != y:
+                    print "needs_update: updated file: %s" % fname
+                    needs_update = True
+            except:
+                print "needs_update: new file: %s" % fname
+                needs_update = True
+
+        # we're still not sure if the archives are the same.  iterate
+        # over old_one to see if it contains any files that new_one
+        # doesn't.
+        if not needs_update:
+            for x in old_one.getmembers():
+                try:
+                    new_one.getmember(x.name)
+                except:
+                    print "needs_update: removed file: %s" % fname
+                    needs_update = True
+                    break
+        
+        print "package needs update: %s" % needs_update
+        if needs_update:
+            # what should my name be?
+            os.rename(tmpfile.name, "FOO")
+
+        try:
+            new_one.close()
+            tmpfile.close()
+            old_one.close()
+        except:
+            pass
+
 
     # ---------- API stuff ----------
     def extractfile(self, member):
