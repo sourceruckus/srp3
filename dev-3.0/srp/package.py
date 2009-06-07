@@ -65,84 +65,12 @@ class srp(utils.base_obj):
         self.__dirname = dirname
         self.__tar_p = None
 
-        if not dirname:
-            self.__load_package_from_disc()
-        else:
-            self.__create_package(dirname)
+        self.__olddir = os.getcwd()
         
-
-    def __load_package_from_disc(self):
-        """loads a previously committed package from disc
-        """
-
-        # create TarFile instance of filename
-        try:
-            self.__tar_p = tarfile.open(filename, 'r')
-        except Exception, e:
-            err = "Failed to create TarFile instance: %s" % e
-            raise Exception(err)
-
-        # create initial notes instance.  we do this by having
-        # notes_p be empty with its chain set to the toplevel NOTES
-        # file.  then we just loop until notes_p.chain is empty.
-        self.__notes_p = notes.empty()
-        self.__notes_p.chain = config.NOTES
-
-        n = self.__notes_p
-        not_done = True
-        while not_done:
-            try:
-                if n.chain:
-                    n.next_p = notes.init(self.extractfile(n.chain))
-                else:
-                    not_done = False
-                
-                # no need to bother with extra object instantiation if
-                # chain is our default toplevel NOTES file...
-                if n.chain == config.NOTES:
-                    n = n.next_p
-                    continue
-
-                # prepostlib
-                if n.prepostlib:
-                    n.prepostlib_p = self.extractfile(n.prepostlib)
-                    n.prepostlib_p = prepostlib.init(n.prepostlib_p)
-                else:
-                    # create a prepostlib instance full of empty (or
-                    # default) functions if a library wasn't provided
-                    # by the package.
-                    n.prepostlib_p = prepostlib.init(None)
-                    
-                # owneroverride
-                if n.owneroverride:
-                    n.owneroverride_p = self.extractfile(n.owneroverride)
-                    n.owneroverride_p = owneroverride.init(n.owneroverride_p)
-                else:
-                    # create an empty owneroverride so we can assume
-                    # one is available later on
-                    n.owneroverride_p = owneroverride.init(None)
-
-                n = n.next_p
-
-            except Exception, e:
-                msg = "Failed to instantiate notes object: %s" % e
-                raise Exception("ERROR: %s" % msg)
-                
-        
-        # for convenience, let's remove the empty head node
-        self.__notes_p = self.__notes_p.next_p
-
-
-
-    def __create_package(self, dirname):
-        """populates our package's data structures using individual files
-        stored in dirname, as apposed to extracting them from a
-        committed package file
-        """
-
-        if self.dirname:
+        if self.__dirname:
             # we're populating using directory of files
             extract = open
+            os.chdir(dirname)
         else:
             # we're populating using committed package
             extract = self.extractfile
