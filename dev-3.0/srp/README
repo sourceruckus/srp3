@@ -35,6 +35,7 @@ goals:
 
 - use a decorator to flag write-ops
 
+- make installed hard links work propperly
 
 
 

@@ -137,6 +137,10 @@ class srp(utils.base_obj):
         if not self.__dirname:
             raise Exception("can't commit package that wasn't created by us")
 
+        # what should my name be?
+        self.__filename = "%s-%s-%s.srp" % (self.__notes_p.name,
+                                            self.__notes_p.version,
+                                            self.__notes_p.revision)
         needs_update = False
 
         # let's try to open existing file so we can check for content
@@ -144,7 +148,7 @@ class srp(utils.base_obj):
         # actual data, not the order it appears in the archive.
         # (files, perms, timestamps, etc)
         try:
-            old_one = tarfile.open(self.__filename, "w")
+            old_one = tarfile.open(self.__filename, "r")
         except:
             print "needs_update: no old one"
             needs_update = True
@@ -154,7 +158,6 @@ class srp(utils.base_obj):
         # be renamed to replace the old package file.  this also means
         # that source package creation/update is fully atomic.
         tmpfile = tempfile.NamedTemporaryFile(mode="w")
-        print tmpfile.name
         new_one = tarfile.open(name=tmpfile.name, fileobj=tmpfile, mode="w")
         
         # populate new_one, checking to see if any of the files we're
@@ -175,14 +178,25 @@ class srp(utils.base_obj):
                 continue
 
             try:
-                x = old_one.getmember(fname).tobuf()
-                y = new_one.getmember(fname).tobuf()
+                #print old_one
+                #print old_one.list(verbose=True)
+                #x = os.path.basename(fname)
+                #print x
+                #x = old_one.getmember(x)
+                #print x
+                x = old_one.getmember(os.path.basename(fname)).tobuf()
+                #print x
+                y = new_one.getmember(os.path.basename(fname)).tobuf()
+                #print y
                 if x != y:
                     print "needs_update: updated file: %s" % fname
+                    print x
+                    print y
                     needs_update = True
             except:
                 print "needs_update: new file: %s" % fname
                 needs_update = True
+                old_one.close()
 
         # we're still not sure if the archives are the same.  iterate
         # over old_one to see if it contains any files that new_one
@@ -194,19 +208,19 @@ class srp(utils.base_obj):
                 except:
                     print "needs_update: removed file: %s" % fname
                     needs_update = True
+                    old_one.close()
                     break
         
+        new_one.close()
+
         print "package needs update: %s" % needs_update
         if needs_update:
-            # what should my name be?
-            os.rename(tmpfile.name, "FOO")
+            f = open(self.__filename, "w")
+            tmpfile.seek(0)
+            f.write(tmpfile.read())
+            f.close()
 
-        try:
-            new_one.close()
-            tmpfile.close()
-            old_one.close()
-        except:
-            pass
+        tmpfile.close()
 
 
     # ---------- API stuff ----------
