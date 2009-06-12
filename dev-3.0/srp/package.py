@@ -10,6 +10,7 @@ import tarfile
 import tempfile
 
 import config
+import deprecated
 import notes
 import owneroverride
 import prepostlib
@@ -59,7 +60,38 @@ class srp(utils.base_obj):
         # notes_p be empty with its chain set to the toplevel NOTES
         # file.  then we just loop until notes_p.chain is empty.
         self.__notes_p = notes.empty()
+        print self.__notes_p
         self.__notes_p.chain = config.NOTES
+        # NOTE: in order for this to be backwards compatible with srp2
+        #       pacakges, we'll have to check for both config.NOTES
+        #       and deprecated.sr.NOTES2
+        try:
+            os.chdir(dirname)
+            extract(config.NOTES)
+            
+        except:
+            # just checking to see if config.NOTES can be extracted
+            # without throwing an exception...
+            self.__notes_p.chain = deprecated.sr.NOTES2
+            # translation of v2 NOTES files is going to require a few
+            # extra args... unfortunately
+            extra_notes_args = {}
+            # package revision?
+            try:
+                if filename
+                    rev = filename.split('-')[-1].rstrip(".srp")
+                elif os.path.exists(os.path.join(dirname, "REV")):
+                    # REV file?
+                    f = open(os.path.join(dirname, "REV"))
+                    rev = f.read().split('\n')[0].strip()
+                else:
+                    rev = "1"
+            except:
+                rev = "999"
+            extra_notes_args["rev"] = rev
+
+        finally:
+            os.chdir(olddir)
 
         n = self.__notes_p
         not_done = True
@@ -69,7 +101,7 @@ class srp(utils.base_obj):
                     os.chdir(dirname)
                 
                 if n.chain:
-                    n.next_p = notes.init(extract(n.chain))
+                    n.next_p = notes.init(extract(n.chain), *extra_notes_args)
                 else:
                     not_done = False
                 
@@ -234,7 +266,7 @@ class srp(utils.base_obj):
                 retval = self.__tar_p.extractfile(os.path.join('.', member))
             except:
                 msg = "Failed to extract file '%s'" % member
-                msg += " from %s" % self.filename
+                msg += " from %s" % self.__filename
                 raise Exception(msg)
         return retval
 
@@ -277,13 +309,17 @@ class srp(utils.base_obj):
 
 
 class brp(utils.base_obj):
-    def __init__(self, notes_p, files_p, tar_p=None):
-        self.__notes_p = notes_p
-        self.__files_p = files_p
-        if tar_p:
-            self.__tar_p = tar_p
-        else:
-            self.openblob()
+    def __init__(self, filename=None, srp=None):
+        self.__filename = filename
+        self.__srp = srp
+
+#    def __init__(self, notes_p, files_p, tar_p=None):
+#        self.__notes_p = notes_p
+#        self.__files_p = files_p
+#        if tar_p:
+#            self.__tar_p = tar_p
+#        else:
+#            self.openblob()
 
     def openblob(self):
         self.__tar_p = tarfile.open(config.BLOB, config.BLOB_COMPRESSION)

@@ -24,10 +24,24 @@ class VersionMismatchError(Exception):
 
 
 @utils.tracedmethod("srp.notes")
-def init(file_p):
+def init(file_p, rev=None):
     """create notes instance(s). we will attempt to use the latest and
     greatest, but fall back to the older deprecated class as a last resort
     """
+    # try v3
+    try:
+        retval_p = v3(file_p)
+        return retval_p
+    except Exception, e:
+        tried.append("v3 (%s)" % e)
+
+    # try v2 translated to v3
+    try:
+        x = v2_wrapper(file_p, rev)
+        retval_p = v3(x.translate())
+        # get translated notes file and install script added to archive?
+
+
     retval_p = None
     tried = []
     to_try = [v3, v2]
@@ -43,43 +57,140 @@ def init(file_p):
     return retval_p
 
 
-@utils.tracedmethod("srp.notes")
-def __init_common_private_data__(notes_p):
+class v2_wrapper(utils.base_obj):
+    def __init__(self, file_p):
+        """this wrapper class shouldn't be used, except to initalize a basic
+        v2 notes file to translate into a v3 instance
+        """
+        self.name = ""
+        self.dirname = ""
+        self.package_rev = ""
+        self.logfile = ""
+        self.srp_flags = []
+
+        self.filename = ""
+        self.description = ""
+        self.flags = ""
+        self.prefix = ""
+        self.eprefix = ""
+        self.bindir = ""
+        self.sbindir = ""
+        self.libexecdir = ""
+        self.datadir = ""
+        self.sysconfdir = ""
+        self.sharedstatedir = ""
+        self.localstatedir = ""
+        self.libdir = ""
+        self.includedir = ""
+        self.oldincludedir = ""
+        self.infodir = ""
+        self.mandir = ""
+        self.srcdir = ""
+        self.otheropts = ""
+        self.i_script = ""
+        self.inplace = ""
+        self.ldpath = []
+        self.ownerinfo = {}
     
-    common = {"''": ['__notes_version',
-                     '__name',
-                     '__version',
-                     '__revision',
-                     '__sourcefilename',
-                     '__description',
-                     '__script',
-                     '__prepostlib',
-                     '__owneroverride',
-                     '__ldpath',
-                     '__chain'],
-              
-              "None": ['__prepostlib_p',
-                       '__next_p'],
-              
-              "[]": ['__flags'],
-
-              "{}": ['__owneroverride_p']}
-
-
-    mangle = "_%s" % notes_p.__class__.__name__
-    
-    for value, names in common.items():
-        for x in names:
-            print "set self.%s%s to: '%s'" % (mangle, x, eval(value))
-            setattr(notes_p, '%s%s' % (mangle, x), eval(value))
-
-
-
-class v2(utils.base_obj):
-    def __init__(self, package_p, filename=config.NOTES):
-        #base.__init__(self)
-        __init_common_private_data__(self)
+        self.name = file_p.readline().rstrip()
+        self.filename = file_p.readline().rstrip()
+        self.dirname = file_p.readline().rstrip()
+        self.description = file_p.readline().rstrip()
         
+        self.srp_flags = file_p.readline().rstrip().split('srp_flags = ')[-1].split()
+        self.flags = file_p.readline().rstrip()
+        self.prefix = file_p.readline().rstrip()
+        self.eprefix = file_p.readline().rstrip()
+        self.bindir = file_p.readline().rstrip()
+        self.sbindir = file_p.readline().rstrip()
+        self.libexecdir = file_p.readline().rstrip()
+        self.datadir = file_p.readline().rstrip()
+        self.sysconfdir = file_p.readline().rstrip()
+        self.sharedstatedir = file_p.readline().rstrip()
+        self.localstatedir = file_p.readline().rstrip()
+        self.libdir = file_p.readline().rstrip()
+        self.includedir = file_p.readline().rstrip()
+        self.oldincludedir = file_p.readline().rstrip()
+        self.infodir = file_p.readline().rstrip()
+        self.mandir = file_p.readline().rstrip()
+        self.srcdir = file_p.readline().rstrip()
+        self.otheropts = file_p.readline().rstrip()
+        
+        self.i_script = "export SRP_ROOT='" + config.RUCKUS + "/tmp' && \n"
+
+        if self.flags != "SRP_NONE":
+            self.i_script += "export CFLAGS=" + self.flags + " && \nexport CXXFLAGS=" + self.flags + " && \n"
+
+        # the rest of the file is i_script
+        buf = "".join(file_p.readlines()).rstrip()
+        self.i_script += utils.compat_unescaper(buf)
+        
+
+    def create_v3_file():
+        c = ConfigParser.RawConfigParser()
+
+        #c.readfp(file_p)
+        c.set("header", "version", "3")
+        c.set("info", "name", self.name)
+        c.set("info", "version", self.dirname.split("%s-" % self.name)[-1])
+        c.set("info", "revision", "99")
+        c.set("info", "sourcefilename", self.filename)
+        c.set("info", "description", self.description)
+        c.set("options", "flags", " ".join(self.srp_flags))
+        c.set("options", "script", "go")
+
+        # we have to create the 'go' script and get it added to the archive...
+        
+
+        
+
+
+
+
+class empty(utils.base_obj):
+    def __init__(self):
+        # initialize strings
+        self.notes_version = ''
+        self.name = ''
+        self.version = ''
+        self.revision = ''
+        self.sourcefilename = ''
+        self.description = ''
+        self.script = ''
+        self.prepostlib = ''
+        self.owneroverride = ''
+        self.ldpath = ''
+        self.chain = ''
+
+        # initialize objects
+        self.prepostlib_p = None
+        self.next_p = None
+        self.owneroverride_p = None
+
+        # initialize lists
+        self.flags = []
+
+
+class v2(empty):
+    def __init__(self, file_p):
+        super(self.__class__, self).__init__()
+        
+        # maybe we should say we're backwards compatible with the
+        # following caveats:
+        #  1. NOTES-2 file must have not been using all the prefix munging
+        #     options.
+        #  2. PREPOSTLIB methods must not have been using their arguments
+        #  3. version is dirname.split(name-)[-1].
+        #  4. revision is going to be set to 99
+        
+        
+        # use old v2 method(s) to create a v2-ish notes instance
+
+        # translate it into a v3 notes instance
+
+
+    def __icky(self):
+
         # unfortunately, to do this with the smallest headache (which is what
         # we want, since this is all backwards compatibility stuff), we have to
         # extract a few files to the disk...  to maintain the illusion of not
@@ -182,8 +293,6 @@ class empty(utils.base_obj):
 
 class v3(empty):
     def __init__(self, file_p):
-        #self.__class__.__base__.__init__(self)
-        #super(v3, self).__init__()
         super(self.__class__, self).__init__()
         
         c = ConfigParser.RawConfigParser()

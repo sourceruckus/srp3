@@ -48,12 +48,13 @@ source_package
 
 binary_package
   init(source_package)
+  init(filename)
   commit()
   install()
   upgrade()
   
 installed_package
-  init(name, id=Nnoe)
+  init(name, id=None)
   uninstall()
   check()
   repair()
