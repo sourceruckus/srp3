@@ -103,7 +103,7 @@ class srp(utils.base_obj):
                     os.chdir(dirname)
                 
                 if n.chain:
-                    n.next_p = notes.init(extract(n.chain), *extra_notes_args)
+                    n.next_p = notes.init(extract(n.chain), **extra_notes_args)
                 else:
                     not_done = False
                 

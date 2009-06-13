@@ -30,6 +30,9 @@ def init(file_p, rev=None, tar_p=None):
     """create notes instance(s). we will attempt to use the latest and
     greatest, but fall back to the older deprecated class as a last resort
     """
+    print "rev:", rev
+    print "tar_p:", tar_p
+
     tried = []
     # try v3
     try:
@@ -126,6 +129,22 @@ class v2_wrapper(utils.base_obj):
 
         if self.flags != "SRP_NONE":
             self.i_script += "export CFLAGS=" + self.flags + " && \nexport CXXFLAGS=" + self.flags + " && \n"
+
+        # have to tweak srp_flags a bit in here.  any v2 flags that
+        # had default arguments should have the old default value
+        # explicitly added.  can't assume the defaults are the same in
+        # v3...
+        for f in self.srp_flags[:]:
+            print f
+            # PREPOSTLIB
+            if f.startswith("SRP_PREPOSTLIB") and "=" not in f:
+                self.srp_flags.remove(f)
+                self.srp_flags.append("%s=%s" % (f, deprecated.sr.PREPOSTLIB2))
+            # OWNEROVERRIDE
+            if f.startswith("SRP_OWNEROVERRIDE") and "=" not in f:
+                self.srp_flags.remove(f)
+                self.srp_flags.append("%s=%s" %
+                                      (f, deprecated.sr.OWNEROVERRIDE2))
 
         # the rest of the file is i_script
         buf = "".join(file_p.readlines()).rstrip()
