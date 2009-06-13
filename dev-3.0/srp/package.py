@@ -37,7 +37,6 @@ class srp(utils.base_obj):
         """
         self.__filename = filename
         self.__dirname = dirname
-        self.__tar_p = None
         self.__sourcefilename = None
 
         olddir = os.getcwd()
@@ -49,18 +48,11 @@ class srp(utils.base_obj):
             # we're populating using committed package
             extract = self.extractfile
 
-            # create TarFile instance of filename
-            try:
-                self.__tar_p = tarfile.open(filename, 'r')
-            except Exception, e:
-                err = "Failed to create TarFile instance: %s" % e
-                raise Exception(err)
 
         # create initial notes instance.  we do this by having
         # notes_p be empty with its chain set to the toplevel NOTES
         # file.  then we just loop until notes_p.chain is empty.
         self.__notes_p = notes.empty()
-        print self.__notes_p
         self.__notes_p.chain = config.NOTES
         # NOTE: in order for this to be backwards compatible with srp2
         #       pacakges, we'll have to check for both config.NOTES
@@ -76,7 +68,7 @@ class srp(utils.base_obj):
             # translation of v2 NOTES files is going to require a few
             # extra args... unfortunately
             extra_notes_args = {}
-            extra_notes_args["tar_p"] = self.__tar_p
+            extra_notes_args["pkg"] = self
             # package revision?
             try:
                 if filename:
@@ -97,7 +89,7 @@ class srp(utils.base_obj):
         n = self.__notes_p
         not_done = True
         while not_done:
-            n.info()
+            #n.info()
             try:
                 if dirname:
                     os.chdir(dirname)
@@ -184,7 +176,7 @@ class srp(utils.base_obj):
         try:
             old_one = tarfile.open(self.__filename, "r")
         except:
-            print "needs_update: no old one"
+            #print "needs_update: no old one"
             needs_update = True
 
         # now let's create a temporary file to store our new archive
@@ -196,12 +188,12 @@ class srp(utils.base_obj):
         
         # populate new_one, checking to see if any of the files we're
         # adding are different or missing from old_one
-        print "adding files to new_one..."
+        #print "adding files to new_one..."
         to_add = os.listdir(self.__dirname)
         to_add.append(self.__sourcefilename)
         for fname in to_add:
             # add the file
-            print "adding:", fname
+            #print "adding:", fname
             new_one.add(name=os.path.join(self.__dirname, fname),
                         arcname=os.path.basename(fname))
 
@@ -223,12 +215,12 @@ class srp(utils.base_obj):
                 y = new_one.getmember(os.path.basename(fname)).tobuf()
                 #print y
                 if x != y:
-                    print "needs_update: updated file: %s" % fname
-                    print x
-                    print y
+                    #print "needs_update: updated file: %s" % fname
+                    #print x
+                    #print y
                     needs_update = True
             except:
-                print "needs_update: new file: %s" % fname
+                #print "needs_update: new file: %s" % fname
                 needs_update = True
                 old_one.close()
 
@@ -240,7 +232,7 @@ class srp(utils.base_obj):
                 try:
                     new_one.getmember(x.name)
                 except:
-                    print "needs_update: removed file: %s" % fname
+                    #print "needs_update: removed file: %s" % fname
                     needs_update = True
                     old_one.close()
                     break
@@ -260,17 +252,56 @@ class srp(utils.base_obj):
     # ---------- API stuff ----------
     def extractfile(self, member):
         retval = None
+        
+        # create TarFile instance of filename
         try:
-            retval = self.__tar_p.extractfile(member)
+            tar_p = tarfile.open(self.__filename, 'r')
+        except Exception, e:
+            err = "Failed to create TarFile instance: %s" % e
+            raise Exception(err)
+        
+        # try to extract "member"
+        try:
+            retval = tar_p.extractfile(member)
         except:
+            # try to extract "./member"
             try:
-                # try ./ version
-                retval = self.__tar_p.extractfile(os.path.join('.', member))
+                retval = tar_p.extractfile(os.path.join('.', member))
             except:
                 msg = "Failed to extract file '%s'" % member
                 msg += " from %s" % self.__filename
                 raise Exception(msg)
+
+        # NOTE: hmm... if i extract a file, then close the tar
+        # instance, the file obj gets closed... which isn't what i
+        # want.  but if i leave the tar instance open indefinately, is
+        # that a bad thing?
+        #finally:
+        #    tar_p.close()
+        
         return retval
+
+
+    def addfile(self, name=None, fobj=None):
+        # create TarFile instance of filename
+        try:
+            tar_p = tarfile.open(self.__filename, 'a')
+        except Exception, e:
+            err = "Failed to create TarFile instance: %s" % e
+            raise Exception(err)
+        
+        # try to get tarinfo of file
+        try:
+            tinfo = tar_p.gettarinfo(name=name, fileobj=fobj)
+            #print tinfo
+            tinfo.name = name
+            #print tinfo.name
+            tar_p.addfile(tinfo, fobj)
+        except Exception, e:
+            err = "Failed to add file: %s" % e
+            raise Exception(e)
+        finally:
+            tar_p.close()
 
 
     @utils.ruckuswritemethod

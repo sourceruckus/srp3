@@ -26,14 +26,13 @@ class VersionMismatchError(Exception):
 
 
 @utils.tracedmethod("srp.notes")
-def init(file_p, rev=None, tar_p=None):
+def init(file_p, rev=None, pkg=None):
     """create notes instance(s). we will attempt to use the latest and
     greatest, but fall back to the older deprecated class as a last resort
     """
-    print "rev:", rev
-    print "tar_p:", tar_p
-
     tried = []
+    retval_p = None
+
     # try v3
     try:
         retval_p = v3(file_p)
@@ -45,16 +44,15 @@ def init(file_p, rev=None, tar_p=None):
     # try v2 translated to v3
     try:
         x = v2_wrapper(file_p, rev)
-        x.info()
         to_add = x.create_v3_files()
-        print to_add[0][1].read()
-        to_add[0][1].seek(0)
-        retval_p = v3(to_add[0][1])
+        
         # get translated notes file and install script added to archive?
         for name, f in to_add:
-            tinfo = tar_p.gettarinfo(fileobj=f)
-            tinfo.name = name
-            tar_p.addfile(tinfo(f), f)
+            print "adding '%s' to archive..." % name
+            pkg.addfile(name=name, fobj=f)
+            print "added"
+
+        retval_p = v3(pkg.extractfile(to_add[0][0]))
 
     except Exception, e:
         tried.append("v2 (%s)" % e)
@@ -135,7 +133,6 @@ class v2_wrapper(utils.base_obj):
         # explicitly added.  can't assume the defaults are the same in
         # v3...
         for f in self.srp_flags[:]:
-            print f
             # PREPOSTLIB
             if f.startswith("SRP_PREPOSTLIB") and "=" not in f:
                 self.srp_flags.remove(f)
