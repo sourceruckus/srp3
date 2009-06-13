@@ -26,24 +26,29 @@ class VersionMismatchError(Exception):
 
 
 @utils.tracedmethod("srp.notes")
-def init(file_p, rev=None):
+def init(file_p, rev=None, tar_p=None):
     """create notes instance(s). we will attempt to use the latest and
     greatest, but fall back to the older deprecated class as a last resort
     """
+    tried = []
     # try v3
     try:
         retval_p = v3(file_p)
         return retval_p
     except Exception, e:
+        file_p.seek(0)
         tried.append("v3 (%s)" % e)
 
     # try v2 translated to v3
     try:
         x = v2_wrapper(file_p, rev)
+        x.info()
         to_add = x.create_v3_files()
-        retval_p = v3(to_add[config.NOTES])
+        print to_add[0][1].read()
+        to_add[0][1].seek(0)
+        retval_p = v3(to_add[0][1])
         # get translated notes file and install script added to archive?
-        for name, f in to_add.items():
+        for name, f in to_add:
             tinfo = tar_p.gettarinfo(fileobj=f)
             tinfo.name = name
             tar_p.addfile(tinfo(f), f)
@@ -57,27 +62,12 @@ def init(file_p, rev=None):
     return retval_p
 
 
-def foo():
-    retval_p = None
-    tried = []
-    to_try = [v3, v2]
-    for x in to_try:
-        try:
-            retval_p = x(file_p)
-            break
-        except Exception, e:
-            tried.append("%s (%s)" % (x, e))
-    if retval_p == None:
-        err = "Failed to create NOTES instace(s): %s" % ", ".join(tried)
-        raise Exception(err)
-    return retval_p
-
-
 class v2_wrapper(utils.base_obj):
     def __init__(self, file_p, rev="99"):
         """this wrapper class shouldn't be used, except to initalize a basic
         v2 notes file to translate into a v3 instance
         """
+        self.file_p = file_p
         self.name = ""
         self.dirname = ""
         self.package_rev = rev
@@ -143,9 +133,9 @@ class v2_wrapper(utils.base_obj):
         
 
     def create_v3_files(self):
-        """returns a map of fobjs? (notes_p, script_p, etc)
+        """returns a list of name, fobj pairs
         """
-        retval = {}
+        retval = []
         c = ConfigParser.RawConfigParser()
 
         #c.readfp(file_p)
@@ -166,13 +156,16 @@ class v2_wrapper(utils.base_obj):
         x = tempfile.NamedTemporaryFile(mode="w+")
         c.write(x)
         x.seek(0)
-        retval[config.NOTES] = x
+        name = os.path.basename(self.file_p.name)
+        if name == deprecated.sr.NOTES2:
+            name = config.NOTES
+        retval.append([name, x])
 
         # we have to create the 'go' script and get it added to the archive...
         x = tempfile.NamedTemporaryFile(mode="w+")
         x.write("%s\n" % self.i_script)
         x.seek(0)
-        retval[script] = x
+        retval.append([script, x])
 
         return retval
 

@@ -76,9 +76,10 @@ class srp(utils.base_obj):
             # translation of v2 NOTES files is going to require a few
             # extra args... unfortunately
             extra_notes_args = {}
+            extra_notes_args["tar_p"] = self.__tar_p
             # package revision?
             try:
-                if filename
+                if filename:
                     rev = filename.split('-')[-1].rstrip(".srp")
                 elif os.path.exists(os.path.join(dirname, "REV")):
                     # REV file?
@@ -96,6 +97,7 @@ class srp(utils.base_obj):
         n = self.__notes_p
         not_done = True
         while not_done:
+            n.info()
             try:
                 if dirname:
                     os.chdir(dirname)
@@ -107,7 +109,7 @@ class srp(utils.base_obj):
                 
                 # no need to bother with extra object instantiation if
                 # chain is our default toplevel NOTES file...
-                if n.chain == config.NOTES:
+                if n.chain in [config.NOTES, deprecated.sr.NOTES2]:
                     n = n.next_p
                     continue
 
