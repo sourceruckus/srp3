@@ -5,7 +5,9 @@ This module defines classes representing the NOTES file in a package.
 import ConfigParser
 import os
 import os.path
+import random
 import shutil
+import string
 import sys
 import tempfile
 
@@ -38,10 +40,24 @@ def init(file_p, rev=None):
     # try v2 translated to v3
     try:
         x = v2_wrapper(file_p, rev)
-        retval_p = v3(x.translate())
+        to_add = x.create_v3_files()
+        retval_p = v3(to_add[config.NOTES])
         # get translated notes file and install script added to archive?
+        for name, f in to_add.items():
+            tinfo = tar_p.gettarinfo(fileobj=f)
+            tinfo.name = name
+            tar_p.addfile(tinfo(f), f)
+
+    except Exception, e:
+        tried.append("v2 (%s)" % e)
+
+    if retval_p == None:
+        err = "Failed to create NOTES instace(s): %s" % ", ".join(tried)
+        raise Exception(err)
+    return retval_p
 
 
+def foo():
     retval_p = None
     tried = []
     to_try = [v3, v2]
@@ -58,13 +74,13 @@ def init(file_p, rev=None):
 
 
 class v2_wrapper(utils.base_obj):
-    def __init__(self, file_p):
+    def __init__(self, file_p, rev="99"):
         """this wrapper class shouldn't be used, except to initalize a basic
         v2 notes file to translate into a v3 instance
         """
         self.name = ""
         self.dirname = ""
-        self.package_rev = ""
+        self.package_rev = rev
         self.logfile = ""
         self.srp_flags = []
 
@@ -126,21 +142,39 @@ class v2_wrapper(utils.base_obj):
         self.i_script += utils.compat_unescaper(buf)
         
 
-    def create_v3_file():
+    def create_v3_files(self):
+        """returns a map of fobjs? (notes_p, script_p, etc)
+        """
+        retval = {}
         c = ConfigParser.RawConfigParser()
 
         #c.readfp(file_p)
+        c.add_section("header")
         c.set("header", "version", "3")
+        c.add_section("info")
         c.set("info", "name", self.name)
         c.set("info", "version", self.dirname.split("%s-" % self.name)[-1])
-        c.set("info", "revision", "99")
+        c.set("info", "revision", self.package_rev)
         c.set("info", "sourcefilename", self.filename)
         c.set("info", "description", self.description)
+        c.add_section("options")
         c.set("options", "flags", " ".join(self.srp_flags))
-        c.set("options", "script", "go")
+        chars = "%s%s" % (string.letters, string.digits)
+        script = "go-%s" % "".join(random.sample(chars, 5))
+        c.set("options", "script", script)
+
+        x = tempfile.NamedTemporaryFile(mode="w+")
+        c.write(x)
+        x.seek(0)
+        retval[config.NOTES] = x
 
         # we have to create the 'go' script and get it added to the archive...
-        
+        x = tempfile.NamedTemporaryFile(mode="w+")
+        x.write("%s\n" % self.i_script)
+        x.seek(0)
+        retval[script] = x
+
+        return retval
 
         
 
