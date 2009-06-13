@@ -6,6 +6,7 @@ packages.
 
 import cPickle
 import os.path
+import shutil
 import tarfile
 import tempfile
 
@@ -38,12 +39,18 @@ class srp(utils.base_obj):
         self.__filename = filename
         self.__dirname = dirname
         self.__sourcefilename = None
+        self.__old_filename = None
 
-        olddir = os.getcwd()
-        
         if self.__dirname:
             # we're populating using directory of files
-            extract = open
+            def extract(filename):
+                olddir = os.getcwd()
+                try:
+                    os.chdir(self.__dirname)
+                    retval = open(filename)
+                finally:
+                    os.chdir(olddir)
+                return retval
         else:
             # we're populating using committed package
             extract = self.extractfile
@@ -54,11 +61,11 @@ class srp(utils.base_obj):
         # file.  then we just loop until notes_p.chain is empty.
         self.__notes_p = notes.empty()
         self.__notes_p.chain = config.NOTES
+        extra_notes_args = {}
         # NOTE: in order for this to be backwards compatible with srp2
         #       pacakges, we'll have to check for both config.NOTES
         #       and deprecated.sr.NOTES2
         try:
-            os.chdir(dirname)
             extract(config.NOTES)
             
         except:
@@ -67,7 +74,6 @@ class srp(utils.base_obj):
             self.__notes_p.chain = deprecated.sr.NOTES2
             # translation of v2 NOTES files is going to require a few
             # extra args... unfortunately
-            extra_notes_args = {}
             extra_notes_args["pkg"] = self
             # package revision?
             try:
@@ -83,17 +89,11 @@ class srp(utils.base_obj):
                 rev = "999"
             extra_notes_args["rev"] = rev
 
-        finally:
-            os.chdir(olddir)
-
         n = self.__notes_p
         not_done = True
         while not_done:
             #n.info()
             try:
-                if dirname:
-                    os.chdir(dirname)
-                
                 if n.chain:
                     n.next_p = notes.init(extract(n.chain), **extra_notes_args)
                 else:
@@ -148,9 +148,6 @@ class srp(utils.base_obj):
                 msg = "Failed to instantiate notes object: %s" % e
                 raise Exception("ERROR: %s" % msg)
                 
-            finally:
-                os.chdir(olddir)
-
         # for convenience, let's remove the empty head node
         self.__notes_p = self.__notes_p.next_p
 
@@ -204,16 +201,8 @@ class srp(utils.base_obj):
                 continue
 
             try:
-                #print old_one
-                #print old_one.list(verbose=True)
-                #x = os.path.basename(fname)
-                #print x
-                #x = old_one.getmember(x)
-                #print x
                 x = old_one.getmember(os.path.basename(fname)).tobuf()
-                #print x
                 y = new_one.getmember(os.path.basename(fname)).tobuf()
-                #print y
                 if x != y:
                     #print "needs_update: updated file: %s" % fname
                     #print x
@@ -283,6 +272,24 @@ class srp(utils.base_obj):
 
 
     def addfile(self, name=None, fobj=None):
+        """
+        adds a file to the archive.  actually, this creates a new
+        archive in /tmp and changes our __filename reference to point
+        there.  parsing a package file shouldn't cause the package on
+        disk to change (unless we very explicitly tell it to)
+        """
+        if not self.__old_filename:
+            # create a temporary file
+            fd, tmpfile = tempfile.mkstemp()
+            os.close(fd)
+
+            # make it a copy of __filename
+            shutil.copy(self.__filename, tmpfile)
+
+            # repoint __filename at the new temporary archive
+            self.__old_filename = self.__filename
+            self.__filename = tmpfile
+
         # create TarFile instance of filename
         try:
             tar_p = tarfile.open(self.__filename, 'a')
@@ -293,9 +300,7 @@ class srp(utils.base_obj):
         # try to get tarinfo of file
         try:
             tinfo = tar_p.gettarinfo(name=name, fileobj=fobj)
-            #print tinfo
             tinfo.name = name
-            #print tinfo.name
             tar_p.addfile(tinfo, fobj)
         except Exception, e:
             err = "Failed to add file: %s" % e

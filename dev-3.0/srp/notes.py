@@ -46,7 +46,9 @@ def init(file_p, rev=None, pkg=None):
         x = v2_wrapper(file_p, rev)
         to_add = x.create_v3_files()
         
-        # get translated notes file and install script added to archive?
+        # get translated notes file and install script added to
+        # archive.  pkg.addfile does NOT modify the original package
+        # archive on disk
         for name, f in to_add:
             print "adding '%s' to archive..." % name
             pkg.addfile(name=name, fobj=f)
