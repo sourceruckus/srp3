@@ -151,7 +151,13 @@ class srp(utils.base_obj):
         # for convenience, let's remove the empty head node
         self.__notes_p = self.__notes_p.next_p
 
-        
+
+    def __del__(self):
+        # delete our temporary archive
+        if self.__old_filename:
+            os.remove(self.__filename)
+
+
     def commit(self):
         """writes package to disk.  if package already exists, it is only
         replaced if the new package would be different.
