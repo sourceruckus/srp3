@@ -54,7 +54,7 @@ def init(file_p, rev=None, pkg=None):
             pkg.addfile(name=name, fobj=f)
             print "added"
 
-        retval_p = v3(pkg.extractfile(to_add[0][0]))
+        retval_p = v3(to_add[0][1])
 
     except Exception, e:
         tried.append("v2 (%s)" % e)

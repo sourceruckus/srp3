@@ -284,6 +284,15 @@ class srp(utils.base_obj):
         there.  parsing a package file shouldn't cause the package on
         disk to change (unless we very explicitly tell it to)
         """
+        # first off, if we're running with self.__dirname, we don't
+        # have an archive...
+        if self.__dirname:
+            f = open(os.path.join(self.__dirname, name), "w")
+            f.write(fobj.read())
+            f.close()
+            fobj.seek(0)
+            return
+
         if not self.__old_filename:
             # create a temporary file
             fd, tmpfile = tempfile.mkstemp()
