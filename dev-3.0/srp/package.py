@@ -43,51 +43,55 @@ class srp(utils.base_obj):
 
         if self.__dirname:
             # we're populating using directory of files
-            def extract(filename):
-                olddir = os.getcwd()
-                try:
-                    os.chdir(self.__dirname)
-                    retval = open(filename)
-                finally:
-                    os.chdir(olddir)
-                return retval
+            self.extractfile = self.extractfile_dir
+            self.addfile = self.addfile_dir
         else:
             # we're populating using committed package
-            extract = self.extractfile
-
+            self.extractfile = self.extractfile_file
+            self.addfile = self.addfile
 
         # create initial notes instance.  we do this by having
         # notes_p be empty with its chain set to the toplevel NOTES
         # file.  then we just loop until notes_p.chain is empty.
         self.__notes_p = notes.empty()
         self.__notes_p.chain = config.NOTES
-        extra_notes_args = {}
+
         # NOTE: in order for this to be backwards compatible with srp2
         #       pacakges, we'll have to check for both config.NOTES
         #       and deprecated.sr.NOTES2
         try:
-            extract(config.NOTES)
+            self.extractfile(config.NOTES)
             
         except:
-            # just checking to see if config.NOTES can be extracted
-            # without throwing an exception...
-            self.__notes_p.chain = deprecated.sr.NOTES2
-            # translation of v2 NOTES files is going to require a few
-            # extra args... unfortunately
-            extra_notes_args["pkg"] = self
+            # if config.NOTES isn't in the archive, then this must be
+            # a v2 package.  time to do some translation...
             # package revision?
             try:
                 if filename:
                     rev = filename.split('-')[-1].rstrip(".srp")
                 elif os.path.exists(os.path.join(dirname, "REV")):
                     # REV file?
-                    f = open(os.path.join(dirname, "REV"))
+                    f = self.extractfile("REV")
                     rev = f.read().split('\n')[0].strip()
+                    f.close()
                 else:
                     rev = "1"
             except:
                 rev = "999"
-            extra_notes_args["rev"] = rev
+
+            # initialize the v2 notes file
+            f = self.extractfile(deprecated.sr.NOTES2)
+            x = notes.v2_wrapper(f, rev)
+            f.close()
+            to_add = x.create_v3_files()
+
+            # get translated notes file and install script added to
+            # archive.  pkg.addfile does NOT modify the original package
+            # archive on disk
+            for name, f in to_add:
+                print "adding '%s' to archive..." % name
+                self.addfile(name=name, fobj=f)
+                print "added"
 
         n = self.__notes_p
         not_done = True
@@ -95,7 +99,7 @@ class srp(utils.base_obj):
             #n.info()
             try:
                 if n.chain:
-                    n.next_p = notes.init(extract(n.chain), **extra_notes_args)
+                    n.next_p = notes.v3(self.extractfile(n.chain))
                 else:
                     not_done = False
                 
@@ -107,7 +111,8 @@ class srp(utils.base_obj):
 
                 # prepostlib
                 if n.prepostlib:
-                    n.prepostlib_p = prepostlib.init(extract(n.prepostlib))
+                    n.prepostlib_p = prepostlib.init(
+                        self.extractfile(n.prepostlib))
                 else:
                     # create a prepostlib instance full of empty (or
                     # default) functions if a library wasn't provided
@@ -116,7 +121,7 @@ class srp(utils.base_obj):
                     
                 # owneroverride
                 if n.owneroverride:
-                    n.owneroverride_p = extract(n.owneroverride)
+                    n.owneroverride_p = self.extractfile(n.owneroverride)
                     n.owneroverride_p = owneroverride.init(n.owneroverride_p)
                 else:
                     # create an empty owneroverride so we can assume
@@ -130,7 +135,7 @@ class srp(utils.base_obj):
                 for d in searchpath:
                     try:
                         fname = os.path.join(d, n.sourcefilename)
-                        f = extract(fname)
+                        f = self.extractfile(fname)
                         if not self.__sourcefilename:
                             self.__sourcefilename = fname
                         break
@@ -245,7 +250,20 @@ class srp(utils.base_obj):
 
 
     # ---------- API stuff ----------
-    def extractfile(self, member):
+    def extractfile_dir(filename):
+        olddir = os.getcwd()
+        try:
+            os.chdir(self.__dirname)
+            retval = open(filename)
+        finally:
+            os.chdir(olddir)
+        return retval
+
+
+    def extractfile_file(self, member):
+        """
+        extract a file from a previously created archive
+        """
         retval = None
         
         # create TarFile instance of filename
