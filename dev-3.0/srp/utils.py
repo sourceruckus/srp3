@@ -42,12 +42,20 @@ def list_files(node):
     return retval
 
 
-def vprint(list):
-    """vprint(list)
+def vprint(*args):
+    """vprint(*args)
     takes a list of args to be printed if VERBOSE == 1
     """
     if config.VERBOSE:
-        print list
+        print "%s" % args
+
+
+def dprint(*args):
+    """dprint(*args)
+    takes a list of args to be printed if DEBUG == 1
+    """
+    if config.DEBUG:
+        print "%s" % args
 
 
 def yesno(string, default):
@@ -787,8 +795,7 @@ def readonlyattributes(func, *__args, **__kw):
                 except:
                     pass
 
-                if config.DEBUG:
-                    print "adding read-only access method for __%s" % prop
+                dprint("adding read-only access method for __%s" % prop)
 
                 # dynamically create fget function
                 f_code = "fget = lambda a: getattr(a, '%s')" % x
@@ -812,8 +819,7 @@ class autodec_class(type):
 
     def __init__(cls, name, bases, dict):
         fullclassname = "%s.%s" % (cls.__module__, name)
-        if config.DEBUG:
-            print "auto-decorating class: %s" % fullclassname
+        dprint( "auto-decorating class: %s" % fullclassname)
         
         # create list of standard decorators
         decs = []
@@ -824,20 +830,17 @@ class autodec_class(type):
             if type(f_obj) == types.FunctionType:
                 # decorate with @tracedmethod, which takes an argument
                 #header = "%s.%s" % (fullclassname, f_name)
-                if config.DEBUG:
-                    print "  tracedmethod('%s')(%s)" % (fullclassname, f_name)
+                dprint("  tracedmethod('%s')(%s)" % (fullclassname, f_name))
                 f_obj = tracedmethod(fullclassname)(f_obj)
                 
                 # decorate with standard decorators
                 for dec in decs:
-                    if config.DEBUG:
-                        print "  %s(%s)" % (dec.__name__, f_name)
+                    dprint("  %s(%s)" % (dec.__name__, f_name))
                     f_obj = dec(f_obj)
 
                 # decorate __init__ with readonlyattributes
                 if f_name == "__init__":
-                    if config.DEBUG:
-                        print "  readonlyattributes(%s)" % f_name
+                    dprint("  readonlyattributes(%s)" % f_name)
                     f_obj = readonlyattributes(f_obj)
 
                 # replace the original class' method with the decorated one

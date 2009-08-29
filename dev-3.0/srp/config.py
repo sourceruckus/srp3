@@ -269,12 +269,19 @@ if SRP_ROOT_PREFIX:
 # remove temporary variables from namespace
 del x
 
-# run-time variables
-TIMER = 0
-READONLY = False
 
+#-- run-time variables --------------------------------------------------------
+
+# for deugging SRP itself
 DEBUG = True
+
+# for debugging a particular package
 VERBOSE = False
+
+# used by utils.timer_{start,stop}
+TIMER = 0
+
+READONLY = False
 UPGRADE = False
 LISTFILES = False
 LISTFLAGS = False
