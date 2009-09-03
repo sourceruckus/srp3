@@ -828,10 +828,10 @@ class autodec_class(type):
         for x in dict.items():
             f_name, f_obj = x
             if type(f_obj) == types.FunctionType:
-                # decorate with @tracedmethod, which takes an argument
-                #header = "%s.%s" % (fullclassname, f_name)
-                dprint("  tracedmethod('%s')(%s)" % (fullclassname, f_name))
-                f_obj = tracedmethod(fullclassname)(f_obj)
+                if config.DEBUG:
+                    # decorate with @tracedmethod, which takes an argument
+                    dprint("  tracedmethod('%s')(%s)" % (fullclassname, f_name))
+                    f_obj = tracedmethod(fullclassname)(f_obj)
                 
                 # decorate with standard decorators
                 for dec in decs:
