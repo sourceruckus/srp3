@@ -48,7 +48,7 @@ class srp(utils.base_obj):
         else:
             # we're populating using committed package
             self.extractfile = self.extractfile_file
-            self.addfile = self.addfile
+            self.addfile = self.addfile_file
 
         # create initial notes instance.  we do this by having
         # notes_p be empty with its chain set to the toplevel NOTES
@@ -250,17 +250,21 @@ class srp(utils.base_obj):
 
 
     # ---------- API stuff ----------
-    def extractfile_dir(filename):
+    def extractfile_dir(self, name):
+        """
+        extact a file from an "archive" when we're creating an archive
+        from a directory of files.
+        """
         olddir = os.getcwd()
         try:
             os.chdir(self.__dirname)
-            retval = open(filename)
+            retval = open(name)
         finally:
             os.chdir(olddir)
         return retval
 
 
-    def extractfile_file(self, member):
+    def extractfile_file(self, name):
         """
         extract a file from a previously created archive
         """
@@ -273,15 +277,15 @@ class srp(utils.base_obj):
             err = "Failed to create TarFile instance: %s" % e
             raise Exception(err)
         
-        # try to extract "member"
+        # try to extract "name"
         try:
-            retval = tar_p.extractfile(member)
+            retval = tar_p.extractfile(name)
         except:
-            # try to extract "./member"
+            # try to extract "./name"
             try:
-                retval = tar_p.extractfile(os.path.join('.', member))
+                retval = tar_p.extractfile(os.path.join('.', name))
             except:
-                msg = "Failed to extract file '%s'" % member
+                msg = "Failed to extract file '%s'" % name
                 msg += " from %s" % self.__filename
                 raise Exception(msg)
 
@@ -295,7 +299,18 @@ class srp(utils.base_obj):
         return retval
 
 
-    def addfile(self, name=None, fobj=None):
+    def addfile_dir(self, name=None, fobj=None):
+        """
+        adds a file to the archive, when the archive is actually a
+        directory of files.
+        """
+        # NOTE: do we really want this?  when would a file ever added
+        # to the "archive" when we're running using a directory of
+        # files not yet wrapped up and commited as an srp file...?
+        raise Excepion("AHA!  We *do* need a package.addfile_dir method!")
+
+
+    def addfile_file(self, name=None, fobj=None):
         """
         adds a file to the archive.  actually, this creates a new
         archive in /tmp and changes our __filename reference to point
