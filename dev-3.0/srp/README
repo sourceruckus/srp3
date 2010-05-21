@@ -46,19 +46,32 @@ source_package
   init(filename)
   commit()
 
+
+NOTE: still waffling on builder and installer objects.  they'll make
+the code more split up and probably easier to maintain... but they'll
+have to know a great deal about the make-up of the srp and brp objects
+in order to work...
+
+NOTE: builder results in a list of brp objects.  might be odd if the
+binary_pacakge constructor resulting in a list of packages...
+
+
 binary_package
-  init(source_package)
+  init(source_package)  or init(data, data, ...) from builder object
   init(filename)
   commit()
-  install()
-  upgrade()
+  install() or this is handled by installer object?
+  upgrade() or this is handled by installer object?
+
+
   
 installed_package
   init(name, id=None)
   uninstall()
-  check()
+  check(verify=True, size=True)
   repair()
   inspect()
+
 
 blob
   init(dir)

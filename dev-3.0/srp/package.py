@@ -392,29 +392,6 @@ class srp(utils.base_obj):
             raise Exception(err)
 
 
-#    def get_script_name(self):
-#        return self.__notes_p.script
-    
-#    def get_prepostlib(self):
-#        return self.__notes_p.prepostlib_p.__prepost__
-
-#    def create_blob(self):
-#        # __init__ should parse through the files ONCE, creating tar entries,
-#        # files entries (forged according to owneroverrides), and deps in one
-#        # fell swoop
-#        self.__blob_p = blob.v3()
-
-    def extract_blob(self):
-        self.__blob_p.extract()
-
-    def generate_deps(self):
-        pass
-
-    def get_deps(self):
-        pass
-
-    def version(self):
-        return self.__notes_p.notes_version
 
 
 
@@ -451,3 +428,23 @@ class brp(utils.base_obj):
         # need to read our data members from disk.
         # ...
             
+
+
+    def __commit(self):
+        utils.vprint("committing...")
+        # write name-version-rev.ostag.brp to disk
+        
+        # tar up the following:
+        #  - srpblob.tar.bz2
+        #  - FILES
+        #  - OWNEROVERRIDE
+        #  - PREPOSTLIB
+        #  - ...
+        
+        # do we need to write all these files?
+        # or can we just pickle our instance?
+
+        # cPickle.dump(brp_p, open("/tmp/foo.pkl", "w"))
+        # can't pickle bz2file objects
+
+        # can't pickle file objects

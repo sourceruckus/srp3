@@ -104,8 +104,6 @@ class v3(utils.base_obj):
                                   dir=os.path.join(config.RUCKUS, "brp"))
         
         blob_p, files_p = self.__create_blob_p(brp_id)
-        #files_p = self.__create_files_p(blob_p)
-        #deps_p = self.__create_deps_p()
         notes_p = self.__n
 
         self.__b_list.append(package.brp(None,
@@ -191,64 +189,7 @@ class v3(utils.base_obj):
         # restore CWD
         os.chdir(olddir)
 
-        # now that everything has been created successfully, copy the new
-        # member into the package instance.
-        #self.__blob_p = blob_p
         return blob_p, files_p
 
-        
-    def __create_files_p(self, blob_p):
-        utils.vprint("creating files_p...")
-        # create FILES
-        files_p = files.v3(blob_p, self.__n)
-        
-        # NOTE: actually, if we're going to pickle the whole thing to disk,
-        #       we don't need a FILES file.  we can load the package and query
-        #       the tarfile object to get a file listing.  it might be quicker
-        #       to have a listing of files without all the data associated with
-        #       them, we'll have to test this out.
-        
-        # NOTE: yeah, it's definately faster to have the tarfile's metadata
-        #       extracted into a FILES file.  we would have to sequentially
-        #       parse through the data and metadata for all preceding files in
-        #       order to lookup metadata for a file at the end of the archive.
-        #       this adds the overhead of maintaining the FILES file, but it
-        #       will act as cached metadata for the archive.
-        
-        # NOTE: maybe we should extend the FILES file to contain dependency
-        #       information...?
-
-        # now that everything has been created successfully, copy the new
-        # member into the package instance.
-        #self.__p.files_p = files_p
-        return files_p
 
 
-    def __create_deps_p(self):
-        utils.vprint("creating deps_p...")
-        # create DEPS files
-        #deps_p = deps(files_p)
-
-        # now that everything has been created successfully, copy the new
-        # member into the package instance.
-        #self.__p.deps_p = deps_p
-
-
-    def __commit(self):
-        utils.vprint("committing...")
-        # write name-version-rev.ostag.brp to disk
-        
-        # tar up the following:
-        #  - srpblob.tar.bz2
-        #  - FILES
-        #  - OWNEROVERRIDE
-        #  - PREPOSTLIB
-        #  - ...
-        
-        # do we need to write all these files?
-        # or can we just pickle our instance?
-
-        # cPickle.dump(brp_p, open("/tmp/foo.pkl", "w"))
-        # can't pickle bz2file objects
-
-        # can't pickle file objects
