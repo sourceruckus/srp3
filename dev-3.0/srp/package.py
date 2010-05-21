@@ -278,6 +278,7 @@ class srp(utils.base_obj):
             raise Exception(err)
         
         # try to extract "name"
+        name = os.path.basename(name)
         try:
             retval = tar_p.extractfile(name)
         except:
@@ -360,11 +361,35 @@ class srp(utils.base_obj):
     @utils.ruckuswritemethod
     def extractall(self):
         # this will get us ready to build (extract srp, and sourcetarball)
-        self.__tar_p.extractall(os.path.join(config.RUCKUS, "package"))
-        temptar = os.path.join(config.RUCKUS, "package", self.__notes_p.sourcefilename)
-        print "temptar:", temptar
-        temptar = tarfile.open(temptar)
-        temptar.extractall(os.path.join(config.RUCKUS, "build"))
+
+        # create TarFile instance of filename
+        try:
+            tar_p = tarfile.open(self.__filename, 'r')
+        except Exception, e:
+            err = "Failed to create TarFile instance: %s" % e
+            raise Exception(err)
+        
+        try:
+            tar_p.extractall(os.path.join(config.RUCKUS, "package"))
+        except Exception, e:
+            err = "Failed to extract all from '%s': %s" % (tar_p.name, e)
+            raise Exception(err)
+
+        try:
+            tar_p = tarfile.open(os.path.join(config.RUCKUS,
+                                              "package",
+                                              self.__notes_p.sourcefilename),
+                                 'r')
+        except Exception, e:
+            err = "Failed to create TarFile instance: %s" % e
+            raise Exception(err)
+
+
+        try:
+            tar_p.extractall(os.path.join(config.RUCKUS, "build"))
+        except Exception, e:
+            err = "Failed to extract all from '%s': %s" % (tar_p.name, e)
+            raise Exception(err)
 
 
 #    def get_script_name(self):
@@ -395,27 +420,34 @@ class srp(utils.base_obj):
 
 
 class brp(utils.base_obj):
-    def __init__(self, filename=None, srp=None):
+    """Binary Ruckus Package object
+    """
+
+    def __init__(self, filename=None, notes_p=None, files_p=None, blob_p=None):
+        """Create a Version 3 brp instance.  The filename argument refers to
+        the name of a binary package.  If none of the other arguments
+        are provided, it's assumed that filename refers to a
+        previously committed binary package.  Otherwise, the rest of
+        the arguments are used to create a new binary package instance
+        (ie, the builder object is providing us with our internal data
+        as apposed to reading it from a brp on disk).  A created
+        binary package is not written to disk until commit() is
+        called.
+        """
         self.__filename = filename
-        self.__srp = srp
+        self.__notes_p = notes_p
+        self.__files_p = files_p
+        self.__blob_p = blob_p
 
-#    def __init__(self, notes_p, files_p, tar_p=None):
-#        self.__notes_p = notes_p
-#        self.__files_p = files_p
-#        if tar_p:
-#            self.__tar_p = tar_p
-#        else:
-#            self.openblob()
+        if [notes_p, files_p, blob_p].count(None) != 3:
+            # we got at least one, we're being built from a source package.
+            # make sure we got everything, though.
+            if None in [notes_p, files_p, blob_p]:
+                err = "Must provide all data members when building"
+                raise Exception(err)
+            # we're all done now.
+            return
 
-    def openblob(self):
-        self.__tar_p = tarfile.open(config.BLOB, config.BLOB_COMPRESSION)
-        
-    def pickle(self):
-        #name = "%s-%s-%s.%s.brp" % (self.__notes_p.name,
-        #                            self.__notes_p.version,
-        #                            self.__notes_p.revision,
-        #                            utils.platform_id())
-        self.__tar_p = None
-        retval = cPickle.dumps(self, -1)
-        self.openblob()
-        return retval
+        # need to read our data members from disk.
+        # ...
+            

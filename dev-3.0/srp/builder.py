@@ -108,7 +108,8 @@ class v3(utils.base_obj):
         #deps_p = self.__create_deps_p()
         notes_p = self.__n
 
-        self.__b_list.append(package.brp(notes_p,
+        self.__b_list.append(package.brp(None,
+                                         notes_p,
                                          files_p,
                                          blob_p))
 
@@ -126,6 +127,7 @@ class v3(utils.base_obj):
         blob_p.dereference = False
 
         # add all the files
+        olddir = os.getcwd()
         os.chdir(os.path.join(config.RUCKUS, "tmp"))
         
         files_p = {}
@@ -185,7 +187,10 @@ class v3(utils.base_obj):
         # remove all the archived files
         for x in os.listdir("."):
             shutil.rmtree(x)
-        
+
+        # restore CWD
+        os.chdir(olddir)
+
         # now that everything has been created successfully, copy the new
         # member into the package instance.
         #self.__blob_p = blob_p
