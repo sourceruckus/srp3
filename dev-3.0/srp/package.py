@@ -1,4 +1,4 @@
-"""\
+"""
 This module defines classes for representing the different types of
 packages.
 """
@@ -19,22 +19,23 @@ import utils
 
 
 # exported objects
-__all__ = ["srp", "brp"]
+__all__ = ["source", "binary", "installed"]
 
 
-class srp(utils.base_obj):
-    """Version 3 package object
+class source(utils.base_obj):
+    """v3 source package object
     """
     
     def __init__(self, filename=None, dirname=None):
-        """Create a Version 3 package instance.  The filename argument refers
-        to the name of a source package.  If dirname is not provided,
-        it's assumed that filename refers to a previously committed
-        source package.  If dirname is provided, it's assumed that the
-        directory contains all the files necessary to create a source
-        package (the source tarball search path is actually .:..).  A
-        created source package is not written to disk until commit()
-        is called.
+        """
+        Create a v3 source package instance.  The filename argument
+        refers to the name of a source package.  If dirname is not
+        provided, it's assumed that filename refers to a previously
+        committed source package.  If dirname is provided, it's
+        assumed that the directory contains all the files necessary to
+        create a source package (the source tarball search path is
+        actually .:..).  A created source package is not written to
+        disk until commit() is called.
         """
         self.__filename = filename
         self.__dirname = dirname
@@ -164,7 +165,8 @@ class srp(utils.base_obj):
 
 
     def commit(self):
-        """writes package to disk.  if package already exists, it is only
+        """
+        writes package to disk.  if package already exists, it is only
         replaced if the new package would be different.
         """
         # make sure this isn't silly
@@ -249,11 +251,10 @@ class srp(utils.base_obj):
         tmpfile.close()
 
 
-    # ---------- API stuff ----------
     def extractfile_dir(self, name):
         """
-        extact a file from an "archive" when we're creating an archive
-        from a directory of files.
+        extact a file from the "archive" when we're instatiating a
+        packge from a directory of files.
         """
         olddir = os.getcwd()
         try:
@@ -266,7 +267,8 @@ class srp(utils.base_obj):
 
     def extractfile_file(self, name):
         """
-        extract a file from a previously created archive
+        extract a file from the archive of a previously created source
+        package
         """
         retval = None
         
@@ -302,7 +304,7 @@ class srp(utils.base_obj):
 
     def addfile_dir(self, name=None, fobj=None):
         """
-        adds a file to the archive, when the archive is actually a
+        adds a file to the "archive", when the archive is actually a
         directory of files.
         """
         # NOTE: do we really want this?  when would a file ever added
@@ -360,7 +362,10 @@ class srp(utils.base_obj):
 
     @utils.ruckuswritemethod
     def extractall(self):
-        # this will get us ready to build (extract srp, and sourcetarball)
+        """
+        extract the package contents in RUCKUS/package and the source
+        tarball in RUCKUS/build.  this will get us ready to build.
+        """
 
         # create TarFile instance of filename
         try:
@@ -384,7 +389,6 @@ class srp(utils.base_obj):
             err = "Failed to create TarFile instance: %s" % e
             raise Exception(err)
 
-
         try:
             tar_p.extractall(os.path.join(config.RUCKUS, "build"))
         except Exception, e:
@@ -393,17 +397,15 @@ class srp(utils.base_obj):
 
 
 
-
-
-
-class brp(utils.base_obj):
-    """Binary Ruckus Package object
+class binary(utils.base_obj):
+    """v3 binary package object
     """
 
     def __init__(self, filename=None, notes_p=None, files_p=None, blob_p=None):
-        """Create a Version 3 brp instance.  The filename argument refers to
-        the name of a binary package.  If none of the other arguments
-        are provided, it's assumed that filename refers to a
+        """
+        Create a v3 binary package instance.  The filename argument
+        refers to the name of a binary package.  If none of the other
+        arguments are provided, it's assumed that filename refers to a
         previously committed binary package.  Otherwise, the rest of
         the arguments are used to create a new binary package instance
         (ie, the builder object is providing us with our internal data
@@ -415,6 +417,10 @@ class brp(utils.base_obj):
         self.__notes_p = notes_p
         self.__files_p = files_p
         self.__blob_p = blob_p
+        
+        # make size method store its results here, so multiple size()
+        # calls will only result in a single calculation
+        self.__size = 0
 
         if [notes_p, files_p, blob_p].count(None) != 3:
             # we got at least one, we're being built from a source package.
@@ -427,10 +433,35 @@ class brp(utils.base_obj):
 
         # need to read our data members from disk.
         # ...
-            
 
 
-    def __commit(self):
+    def size(self):
+        """
+        combined size in bytes of all files in blob
+        """
+        if self.__size:
+            return self.__size
+
+        for f in self.__files_p:
+            # do we care about size of created dirs, symlinks, hardlinks, etc?
+            #
+            # dirs: size of a dir on disk is probably filesystem
+            #       dependant.  and what if the dir already exists?
+            #
+            # symlinks: filesystem dependant?
+            # hardlinks: filesystem dependant?
+            #
+            # for now, we're gonna go with whatever is in our TarInfo
+            # object already.
+            self.__size += self.__files_p[f].size
+        return self.__size
+
+        
+    def commit(self):
+        """
+        writes package to disk.  if package already exists, it is
+        overwritten.
+        """
         utils.vprint("committing...")
         # write name-version-rev.ostag.brp to disk
         

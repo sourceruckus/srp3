@@ -1,5 +1,6 @@
-"""srp.builder -
-This module defines classes responsible for building packages.
+"""
+This module defines classes responsible for doing work (ie, building,
+installing etc).
 """
 
 import os
@@ -14,14 +15,25 @@ import package
 import utils
 
 
-class v3(utils.base_obj):
+class builder(utils.base_obj):
+    """builder object
+    """
+
     def __init__(self):
+        """
+        Create a builder object.  This object can be used to build
+        binary packages from source packages.
+        """
         self.__p = None
         self.__n = None
         self.__b_list = []
-    
+
 
     def build(self, package_p, commit=True):
+        """
+        Build all the binary packages detailed in the specified source
+        package.  Returns a list of binary packages.
+        """
         self.__p = package_p
         # first, extract archive into RUCKUS/build
         try:
@@ -34,8 +46,8 @@ class v3(utils.base_obj):
                 self.__build_package()
                 lib.postbuild()
                 self.__create_brp_members()
-                if commit:
-                    self.__commit()
+#                if commit:
+#                    self.__commit()
                 
                 # set us up to build the next one
                 self.__n = self.__n.next_p
@@ -49,10 +61,14 @@ class v3(utils.base_obj):
             self.__p = None
             self.__n = None
             self.__b_list = []
-            
 
 
     def __build_package(self):
+        """
+        run the contained build script to build the files to be
+        installed by the binary package.  files to be packaged up end
+        up installed in RUCKUS/tmp
+        """
         utils.vprint("building package: %s" % self.__p.filename)
 
         # things to export:
@@ -91,27 +107,33 @@ class v3(utils.base_obj):
         if status != 0:
             raise Exception("ERROR: '%s' failed with retval: '%d'" % (iscript,
                                                                       status))
-        
 
 
     def __create_brp_members(self):
-        """NOTE: this addes the following members to the package instance:
-                   - blob_p
-                   - files_p
+        """
+        creates the necesary objects needed to instantiate a binary
+        package, instantiates the package, and adds it to
+        self.__b_list.
         """
         brp_id = tempfile.mkdtemp(prefix='brp-',
                                   dir=os.path.join(config.RUCKUS, "brp"))
         
-        blob_p, files_p = self.__create_blob_p(brp_id)
+        blob_p, files_p = self.__create_blob_and_files(brp_id)
         notes_p = self.__n
 
-        self.__b_list.append(package.brp(None,
-                                         notes_p,
-                                         files_p,
-                                         blob_p))
+        self.__b_list.append(package.binary(None,
+                                            notes_p,
+                                            files_p,
+                                            blob_p))
 
 
-    def __create_blob_p(self, brp_id):
+    def __create_blob_and_files(self, brp_id):
+        """
+        creates blob and files objects for a binary package.  this
+        archives all the files in RUCKUS/tmp, records extra file
+        metadata (checksums, owner overrides, etc), removes the files
+        in RUCKUS/tmp, and returns blob and files objects.
+        """
         utils.vprint("creating blob_p...")
         # create BLOB
         blob_name = os.path.join(brp_id, config.BLOB)
@@ -174,7 +196,6 @@ class v3(utils.base_obj):
                 # add tarinfo to files_p dict
                 files_p[abs_n] = i
         
-        
         # finalize the archive
         blob_p.close()
 
@@ -192,3 +213,42 @@ class v3(utils.base_obj):
 
 
 
+class installer(utils.base_obj):
+    """installer object
+    """
+
+    def __init__(self):
+        """
+        Create an installer object.  This object can be used to
+        install, upgrade, or uninstall a package.
+        """
+        self.__p = None
+
+
+    def install(self, package_p):
+        """
+        install the provided binary package object
+        """
+        self.__p = package_p
+        try:
+            self.__p.prepost.preinstall()
+            self.__check_deps()
+            self.__install_files()
+            self.__p.prepost.postinstall()
+            self.__commit()
+        finally:
+            self.__p = None
+
+
+    def upgrade(self, package_p):
+        """
+        upgrade the provided binary package object
+        """
+        self.__p = package_p
+
+
+    def uninstall(self, package_p):
+        """
+        uninstall the provided installed package object
+        """
+        self.__p = package_p
