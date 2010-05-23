@@ -63,6 +63,9 @@ uid = os.getuid()
 homedir = pwd.getpwuid(uid).pw_dir
 os.environ["SRP_ROOT_PREFIX"] = os.path.join(homedir, "fakeroot")
 reload(config)
+reload(utils)
+reload(package)
+reload(work)
 create_ruckus_dirs()
 cleanup()
 
@@ -77,8 +80,9 @@ p3 = package.source(dirname="%s/dev-3.0/v3/SRP_files" % toplevel)
 p3.commit("%s/dev-3.0/v3" % toplevel)
 
 # instantiate v3 package from previously created package
-p3_fromfile = package.source("foo-1.0-1.srp")
+p3_fromfile = package.source("%s/dev-3.0/v3/foo-1.0-1.srp" % toplevel)
 
 # build binary package(s) from p
 b = work.builder()
 p3_built = b.build(p3)
+p3_fromfile_built = b.build(p3_fromfile)

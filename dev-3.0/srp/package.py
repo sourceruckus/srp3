@@ -180,7 +180,7 @@ class source(utils.base_obj):
                                             self.__notes_p.version,
                                             self.__notes_p.revision)
 
-        filename = os.path.join(dirname, self.__filename)
+        self.__filename = os.path.join(dirname, self.__filename)
 
         needs_update = False
 
@@ -189,7 +189,7 @@ class source(utils.base_obj):
         # actual data, not the order it appears in the archive.
         # (files, perms, timestamps, etc)
         try:
-            old_one = tarfile.open(filename, "r")
+            old_one = tarfile.open(self.__filename, "r")
         except:
             #print "needs_update: no old one"
             needs_update = True
@@ -248,7 +248,7 @@ class source(utils.base_obj):
 
         print "package needs update: %s" % needs_update
         if needs_update:
-            f = open(filename, "w")
+            f = open(self.__filename, "w")
             tmpfile.seek(0)
             f.write(tmpfile.read())
             f.close()
