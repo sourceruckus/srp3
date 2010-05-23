@@ -164,10 +164,12 @@ class source(utils.base_obj):
             os.remove(self.__filename)
 
 
-    def commit(self):
+    def commit(self, dirname=''):
         """
         writes package to disk.  if package already exists, it is only
-        replaced if the new package would be different.
+        replaced if the new package would be different.  optional
+        dirname argument specifies an alternate directory to write the
+        package to.
         """
         # make sure this isn't silly
         if not self.__dirname:
@@ -177,6 +179,9 @@ class source(utils.base_obj):
         self.__filename = "%s-%s-%s.srp" % (self.__notes_p.name,
                                             self.__notes_p.version,
                                             self.__notes_p.revision)
+
+        filename = os.path.join(dirname, self.__filename)
+
         needs_update = False
 
         # let's try to open existing file so we can check for content
@@ -184,7 +189,7 @@ class source(utils.base_obj):
         # actual data, not the order it appears in the archive.
         # (files, perms, timestamps, etc)
         try:
-            old_one = tarfile.open(self.__filename, "r")
+            old_one = tarfile.open(filename, "r")
         except:
             #print "needs_update: no old one"
             needs_update = True
@@ -243,7 +248,7 @@ class source(utils.base_obj):
 
         print "package needs update: %s" % needs_update
         if needs_update:
-            f = open(self.__filename, "w")
+            f = open(filename, "w")
             tmpfile.seek(0)
             f.write(tmpfile.read())
             f.close()
