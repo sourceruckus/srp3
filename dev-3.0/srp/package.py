@@ -3,6 +3,7 @@ This module defines classes for representing the different types of
 packages.
 """
 
+from __future__ import with_statement
 
 import cPickle
 import os.path
@@ -41,6 +42,7 @@ class source(utils.base_obj):
         self.__dirname = dirname
         self.__sourcefilename = None
         self.__old_filename = None
+        self.__old_dirname = None
 
         if self.__dirname:
             # we're populating using directory of files
@@ -80,19 +82,22 @@ class source(utils.base_obj):
             except:
                 rev = "999"
 
-            # initialize the v2 notes file
-            f = self.extractfile(deprecated.sr.NOTES2)
-            x = notes.v2_wrapper(f, rev)
-            f.close()
-            to_add = x.create_v3_files()
+            self.__notes_p.chain = deprecated.sr.NOTES2
 
-            # get translated notes file and install script added to
-            # archive.  pkg.addfile does NOT modify the original package
-            # archive on disk
-            for name, f in to_add:
-                print "adding '%s' to archive..." % name
-                self.addfile(name=name, fobj=f)
-                print "added"
+            ## initialize the v2 notes file
+            #f = self.extractfile(deprecated.sr.NOTES2)
+            #x = notes.v2_wrapper(f, rev)
+            #f.close()
+            #to_add = x.create_v3_files()
+            #
+            ## get translated notes file and install script added to
+            ## archive.  pkg.addfile does NOT modify the original package
+            ## archive on disk
+            #print "to_add:", to_add
+            #for name, f in to_add:
+            #    print "adding '%s' to archive..." % name
+            #    self.addfile(name, f)
+            #    print "added"
 
         n = self.__notes_p
         not_done = True
@@ -100,6 +105,16 @@ class source(utils.base_obj):
             #n.info()
             try:
                 if n.chain:
+                    # if we're translating v2->v3 on the fly, we have
+                    # to translate the next NOTES file here
+                    if self.__old_dirname or self.__old_filename or n.chain == deprecated.sr.NOTES2:
+                        f = self.extractfile(n.chain)
+                        x = notes.v2_wrapper(f, rev)
+                        f.close()
+                        for name, f in x.create_v3_files():
+                            self.addfile(name, f)
+                        if n.chain == deprecated.sr.NOTES2:
+                            n.chain = config.NOTES
                     n.next_p = notes.v3(self.extractfile(n.chain))
                 else:
                     not_done = False
@@ -138,9 +153,10 @@ class source(utils.base_obj):
                         fname = os.path.join(d, n.sourcefilename)
                         f = self.extractfile(fname)
                         if not self.__sourcefilename:
-                            self.__sourcefilename = fname
+                            self.__sourcefilename = f.name
                         break
-                    except:
+                    except Exception, e:
+                        print "fail: %s" % e
                         pass
                 if f:
                     f.close()
@@ -255,18 +271,38 @@ class source(utils.base_obj):
 
         tmpfile.close()
 
+        # remove temporary dirname from v2->v3 conversion
+        if self.__old_dirname:
+            shutil.rmtree(self.__dirname)
+
 
     def extractfile_dir(self, name):
         """
         extact a file from the "archive" when we're instatiating a
         packge from a directory of files.
         """
+        retval = None
         olddir = os.getcwd()
-        try:
-            os.chdir(self.__dirname)
-            retval = open(name)
-        finally:
-            os.chdir(olddir)
+        print "looking for: %s" % name
+        for d in [self.__dirname, self.__old_dirname]:
+            try:
+                print "in: %s" % d
+                os.chdir(d)
+                # open via abspath so we can find the file during
+                # commit
+                retval = open(os.path.abspath(name))
+            except:
+                pass
+            finally:
+                os.chdir(olddir)
+            if retval:
+                break
+
+        if not retval:
+            msg = "Failed to extract file '%s'" % name
+            msg += " from %s or %s" % (self.__dirname, self.__old_dirname)
+            raise Exception(msg)
+
         return retval
 
 
@@ -307,7 +343,7 @@ class source(utils.base_obj):
         return retval
 
 
-    def addfile_dir(self, name=None, fobj=None):
+    def addfile_dir(self, name, fobj):
         """
         adds a file to the "archive", when the archive is actually a
         directory of files.
@@ -315,24 +351,34 @@ class source(utils.base_obj):
         # NOTE: do we really want this?  when would a file ever added
         # to the "archive" when we're running using a directory of
         # files not yet wrapped up and commited as an srp file...?
-        raise Excepion("AHA!  We *do* need a package.addfile_dir method!")
+        #raise Exception("AHA!  We *do* need a package.addfile_dir method!")
+
+        # We need this when we are instantiating a v3 package from dir
+        # of v2 files.  In this case, we'll create a temporary
+        # directory of files to populate with the translated 3 files
+        # so as not to disturb the old v2 files.  Should come back and
+        # add a command-line flag to explictly overwrite the old v2
+        # files with v3 files to ease migration, too.
+        if not self.__old_dirname:
+            self.__old_dirname = self.__dirname
+            self.__dirname = tempfile.mkdtemp(prefix="srp-")
+            os.rmdir(self.__dirname)
+            shutil.copytree(self.__old_dirname, self.__dirname)
+
+        with open(os.path.join(self.__dirname, name), "w") as f:
+            f.write(fobj.read())
+
+        fobj.seek(0)
 
 
-    def addfile_file(self, name=None, fobj=None):
+
+    def addfile_file(self, name, fobj):
         """
         adds a file to the archive.  actually, this creates a new
         archive in /tmp and changes our __filename reference to point
         there.  parsing a package file shouldn't cause the package on
         disk to change (unless we very explicitly tell it to)
         """
-        # first off, if we're running with self.__dirname, we don't
-        # have an archive...
-        if self.__dirname:
-            f = open(os.path.join(self.__dirname, name), "w")
-            f.write(fobj.read())
-            f.close()
-            fobj.seek(0)
-            return
 
         if not self.__old_filename:
             # create a temporary file

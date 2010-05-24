@@ -65,6 +65,7 @@ def init(file_p, rev=None, pkg=None):
     return retval_p
 
 
+
 class v2_wrapper(utils.base_obj):
     def __init__(self, file_p, rev="99"):
         """this wrapper class shouldn't be used, except to initalize a basic
@@ -124,11 +125,13 @@ class v2_wrapper(utils.base_obj):
         self.mandir = file_p.readline().rstrip()
         self.srcdir = file_p.readline().rstrip()
         self.otheropts = file_p.readline().rstrip()
-        
-        self.i_script = "export SRP_ROOT='" + config.RUCKUS + "/tmp' && \n"
 
-        if self.flags != "SRP_NONE":
-            self.i_script += "export CFLAGS=" + self.flags + " && \nexport CXXFLAGS=" + self.flags + " && \n"
+        # don't insert any extra code into i_script.  srp2 was doing
+        # this at NOTES read-time, but srp3 will set up the
+        # environment externally, then run the i_script.
+        #self.i_script = "export SRP_ROOT='" + config.RUCKUS + "/tmp' && \n"
+        #if self.flags != "SRP_NONE":
+        #    self.i_script += "export CFLAGS=" + self.flags + " && \nexport CXXFLAGS=" + self.flags + " && \n"
 
         # have to tweak srp_flags a bit in here.  any v2 flags that
         # had default arguments should have the old default value
@@ -185,10 +188,11 @@ class v2_wrapper(utils.base_obj):
         x.seek(0)
         retval.append([script, x])
 
+        # prepostlib?
+
+        # owneroverride?
+
         return retval
-
-        
-
 
 
 
@@ -214,6 +218,7 @@ class empty(utils.base_obj):
 
         # initialize lists
         self.flags = []
+
 
 
 class v2(empty):
@@ -311,29 +316,6 @@ class v2(empty):
         # keep the old package instance around for now...
         self.p = p
 
-
-class empty(utils.base_obj):
-    def __init__(self):
-        # initialize strings
-        self.notes_version = ''
-        self.name = ''
-        self.version = ''
-        self.revision = ''
-        self.sourcefilename = ''
-        self.description = ''
-        self.script = ''
-        self.prepostlib = ''
-        self.owneroverride = ''
-        self.ldpath = ''
-        self.chain = ''
-
-        # initialize objects
-        self.prepostlib_p = None
-        self.next_p = None
-        self.owneroverride_p = None
-
-        # initialize lists
-        self.flags = []
 
 
 class v3(empty):

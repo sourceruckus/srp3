@@ -42,9 +42,16 @@ class builder(utils.base_obj):
             while self.__n:
                 # build it
                 lib = self.__n.prepostlib_p
+                print "prebuild"
+                print lib
+                print lib.prebuild
+                print dir(lib)
                 lib.prebuild()
+                print "build"
                 self.__build_package()
+                print "postbuild"
                 lib.postbuild()
+                print "wrap it up"
                 self.__create_brp_members()
 #                if commit:
 #                    self.__commit()
