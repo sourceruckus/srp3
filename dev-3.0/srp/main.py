@@ -104,4 +104,5 @@ p2_fromfile_built = b.build(p2_fromfile)
 # owneroverride handled during files_p creation now?  is the
 # owneroverride_p just there as an appendix?
 
-
+# ok, prepostlib is now translated to a v3 object via a v2_wrapper
+# class.  still need to work on owneroverride.

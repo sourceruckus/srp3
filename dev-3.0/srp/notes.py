@@ -25,47 +25,6 @@ class VersionMismatchError(Exception):
 
 
 
-@utils.tracedmethod("srp.notes")
-def init(file_p, rev=None, pkg=None):
-    """create notes instance(s). we will attempt to use the latest and
-    greatest, but fall back to the older deprecated class as a last resort
-    """
-    tried = []
-    retval_p = None
-
-    # try v3
-    try:
-        retval_p = v3(file_p)
-        return retval_p
-    except Exception, e:
-        file_p.seek(0)
-        tried.append("v3 (%s)" % e)
-
-    # try v2 translated to v3
-    try:
-        x = v2_wrapper(file_p, rev)
-        to_add = x.create_v3_files()
-        
-        # get translated notes file and install script added to
-        # archive.  pkg.addfile does NOT modify the original package
-        # archive on disk
-        for name, f in to_add:
-            print "adding '%s' to archive..." % name
-            pkg.addfile(name=name, fobj=f)
-            print "added"
-
-        retval_p = v3(to_add[0][1])
-
-    except Exception, e:
-        tried.append("v2 (%s)" % e)
-
-    if retval_p == None:
-        err = "Failed to create NOTES instace(s): %s" % ", ".join(tried)
-        raise Exception(err)
-    return retval_p
-
-
-
 class v2_wrapper(utils.base_obj):
     def __init__(self, file_p, rev="99"):
         """this wrapper class shouldn't be used, except to initalize a basic
@@ -126,6 +85,9 @@ class v2_wrapper(utils.base_obj):
         self.srcdir = file_p.readline().rstrip()
         self.otheropts = file_p.readline().rstrip()
 
+        self.prepostlib = None
+        self.owneroverride = None
+
         # don't insert any extra code into i_script.  srp2 was doing
         # this at NOTES read-time, but srp3 will set up the
         # environment externally, then run the i_script.
@@ -139,14 +101,22 @@ class v2_wrapper(utils.base_obj):
         # v3...
         for f in self.srp_flags[:]:
             # PREPOSTLIB
-            if f.startswith("SRP_PREPOSTLIB") and "=" not in f:
-                self.srp_flags.remove(f)
-                self.srp_flags.append("%s=%s" % (f, deprecated.sr.PREPOSTLIB2))
+            if f.startswith("SRP_PREPOSTLIB"):
+                if "=" not in f:
+                    self.srp_flags.remove(f)
+                    self.srp_flags.append("%s=%s" % (f, deprecated.sr.PREPOSTLIB2))
+                    self.prepostlib = deprecated.sr.PREPOSTLIB2
+                else:
+                    self.prepostlib = f.split("=")[-1]
             # OWNEROVERRIDE
-            if f.startswith("SRP_OWNEROVERRIDE") and "=" not in f:
-                self.srp_flags.remove(f)
-                self.srp_flags.append("%s=%s" %
-                                      (f, deprecated.sr.OWNEROVERRIDE2))
+            if f.startswith("SRP_OWNEROVERRIDE"):
+                if "=" not in f:
+                    self.srp_flags.remove(f)
+                    self.srp_flags.append("%s=%s" %
+                                          (f, deprecated.sr.OWNEROVERRIDE2))
+                    self.owneroverride = deprecated.sr.OWNEROVERRIDE2
+                else:
+                    self.owneroverride = f.split("=")[-1]
 
         # the rest of the file is i_script
         buf = "".join(file_p.readlines()).rstrip()
@@ -192,6 +162,11 @@ class v2_wrapper(utils.base_obj):
 
         # owneroverride?
 
+        # prepostlib and owneroverride will have to be handled by
+        # package calling a v2_wrapper instance of each.  we can't do
+        # it here because we don't have any means of accessing the
+        # archive...
+
         return retval
 
 
@@ -221,103 +196,6 @@ class empty(utils.base_obj):
 
 
 
-class v2(empty):
-    def __init__(self, file_p):
-        super(self.__class__, self).__init__()
-        
-        # maybe we should say we're backwards compatible with the
-        # following caveats:
-        #  1. NOTES-2 file must have not been using all the prefix munging
-        #     options.
-        #  2. PREPOSTLIB methods must not have been using their arguments
-        #  3. version is dirname.split(name-)[-1].
-        #  4. revision is going to be set to 99
-        
-        
-        # use old v2 method(s) to create a v2-ish notes instance
-
-        # translate it into a v3 notes instance
-
-
-    def __icky(self):
-
-        # unfortunately, to do this with the smallest headache (which is what
-        # we want, since this is all backwards compatibility stuff), we have to
-        # extract a few files to the disk...  to maintain the illusion of not
-        # writing to disk, we'll only write the files we really need and we'll
-        # write them in /tmp by setting SRP_ROOT_PREFIX to /tmp/something
-
-        # first, create our /tmp/something directory
-        tmpdir = tempfile.mkdtemp(prefix="srp-")
-        # now that we created that tmpdir, we have to make sure we delete it
-        # before exiting
-        try:
-            # fudge deprecated.sr variables
-            try:
-                old_prefix = os.environ["SRP_ROOT_PREFIX"]
-            except:
-                old_prefix = ""
-            os.environ["SRP_ROOT_PREFIX"] = tmpdir
-            reload(deprecated.sr)
-            print("fudged deprecated.sr.SRP_ROOT_PREFIX: %s" %
-                  deprecated.sr.SRP_ROOT_PREFIX)
-
-            # make sure the necessary ruckus directories exist.
-            for x in deprecated.sr.ruckus_dirs:
-                dir = os.path.join(deprecated.sr.RUCKUS, x)
-                print("making: %s" % dir)
-                os.makedirs(dir)
-
-            target_dir = os.path.join(deprecated.sr.RUCKUS, "package")
-            
-            to_extract = [deprecated.sr.NOTES2,
-                          deprecated.sr.PREPOSTLIB2,
-                          deprecated.sr.OWNEROVERRIDE2]
-            
-            # extract any files that are available.  the only critical failure
-            # is the NOTES file.
-            for x in to_extract:
-                try:
-                    file_p = package_p.extractfile(x)
-                    target_file = os.path.join(target_dir, x)
-                    target_file_p = open(target_file, 'w')
-                    print("extracting: %s --> %s" % (x, target_file))
-                    shutil.copyfileobj(file_p, target_file_p)
-                except Exception, e:
-                    if x == deprecated.sr.NOTES2:
-                        err = "Failed to extract NOTES file '%s': %s" % (x, e)
-                        raise Exception(err)
-                    else:
-                        # anything else is optional
-                        pass
-
-            # now use deprecated.sr_package2 
-            p = deprecated.sr_package2.package()
-            p._read_notes()
-            
-        finally:
-            # clean up tmpdir
-            shutil.rmtree(tmpdir)
-            # revert the fudged variables in deprecated.sr
-            os.environ["SRP_ROOT_PREFIX"] = old_prefix
-            reload(deprecated.sr)
-
-        # now map everything into a compatible object
-        self.__notes_version = "2"
-        self.__name = p.name
-        self.__sourcefilename = p.filename
-        self.__description = p.description
-        self.__flags = p.srp_flags
-        self.__script = p.i_script #<--- needs to be a filename only
-        self.__prepostlib = p.prepost #<--- needs to be a filename only
-        self.__owneroverride = p.ownerinfo #<--- needs to be a filename only
-        self.__ldpath = p.ldpath
-
-        # keep the old package instance around for now...
-        self.p = p
-
-
-
 class v3(empty):
     def __init__(self, file_p):
         super(self.__class__, self).__init__()
@@ -337,10 +215,6 @@ class v3(empty):
 
             self.__parse_flags()
 
-            # create an prepostlib instance full of empty (or default)
-            # functions if a library wasn't provided by the package.
-            #if not self.__prepostlib_p:
-            #    self.__prepostlib_p = prepostlib.v3(package_p)
         except Exception, e:
             err = "Failed to parse NOTES file '%s': %s" % (file_p.name, e)
             raise Exception(err)
@@ -348,17 +222,6 @@ class v3(empty):
         # double check the notes_version
         if self.notes_version != "3":
             raise VersionMismatchError
-
-        # create next instance, if using SRP_CHAIN
-        #print "before:", dir(self)
-        #if self.__chain:
-        #    print "right here:", self.__chain
-        #    try:
-        #        self.__next_p = v3(package_p, self.__chain)
-        #    except Exception, e:
-        #        err = "Failed to instantiate next NOTES object in chain"
-        #        err += ": %s" % e
-        #        raise Exception(err)
 
 
     def info2(self):

@@ -23,7 +23,7 @@ except:
 
 #LIBDIR_REL = "__LIBDIR__"
 #LIBDIR_REL = "/usr/lib/srp"
-LIBDIR_REL = "/home/mike/src/srp/srpdev/srp"
+LIBDIR_REL = "/home/mike/src/git/srp3/dev-3.0/srp"
 LIBDIR = os.path.join(os.sep, SRP_ROOT_PREFIX, LIBDIR_REL[1:])
 
 #RUCKUS_REL = "__RUCKUS__"

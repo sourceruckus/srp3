@@ -5,6 +5,8 @@ import new
 import os.path
 import sys
 import types
+import tempfile
+import random
 
 import config
 import utils
@@ -12,25 +14,64 @@ import utils
 import deprecated.sr
 
 
-@utils.tracedmethod("srp.prepostlib")
-def init(file_p):
-    """create prepostlib instance(s). we will attempt to use the latest
-    and greatest, but fall back to the older deprecated class as a
-    last resort
-    """
-    retval_p = None
-    tried = []
-    to_try = [v3, v2]
-    for x in to_try:
-        try:
-            retval_p = x(file_p)
-            break
-        except Exception, e:
-            tried.append("%s (%s)" % (x, e))
-    if retval_p == None:
-        err = "Failed to create PREPOSTLIB instace(s): %s" % ", ".join(tried)
-        raise Exception(err)
-    return retval_p
+class v2_wrapper(utils.base_obj):
+    def __init__(self, file_p):
+        """this wrapper class shouldn't be used, except to initalize a basic
+        v2 prepostlib file to translate into a v3 instance
+        """
+        if file_p:
+            file_p.seek(0)
+            self.name = file_p.name
+            self.lines = file_p.read().split('\n')
+        else:
+            self.name = "PREPOSTLIB_%s.py" % "".join(random.sample(chars, 5))
+            self.lines = []
+
+
+    def create_v3_files(self):
+        """returns a list of name, fobj pairs
+        """
+        retval = []
+
+        path_deprecated = [os.path.join(config.LIBDIR, "deprecated"),
+                           os.path.join(config.LIBDIR_REL, "deprecated")]
+
+        header = ["import sys",
+                  "import os",
+                  "import srp.config",
+                  "path_deprecated = [os.path.join(srp.config.LIBDIR, \"deprecated\"),",
+                  "                   os.path.join(srp.config.LIBDIR_REL, \"deprecated\")]",
+                  "sys.path.extend(path_deprecated)",
+                  ""]
+
+        new_lines = header
+
+        for line in self.lines:
+            if line.startswith("def"):
+                print "LINE: %s" % line
+                fname = line.split('(')[0].split()[-1]
+                print "FNAME: %s" % fname
+                arg = line.split('(')[-1].split(')')[0]
+                print "ARG: %s" % arg
+                new_lines.extend(["def %s():" % fname,
+                                  "    %s_v2(None)" % fname,
+                                  "",
+                                  "def %s_v2(%s):" % (fname, arg)])
+            else:
+                new_lines.append(line)
+                
+        print "--- new_lines ---"
+        print "\n".join(new_lines)
+        print "--- /new_lines ---"
+
+        x = tempfile.NamedTemporaryFile(mode="w+")
+        x.write("\n".join(new_lines))
+        x.seek(0)
+        name = os.path.basename(self.name)
+        retval.append([name, x])
+
+        return retval
+
 
 
 class v3(utils.base_obj):
@@ -50,6 +91,8 @@ class v3(utils.base_obj):
             if file_p:
                 # execute the provided code in the new module's __dict__
                 exec file_p.read() in self.__dict__
+                file_p.seek(0)
+                print file_p.read()
             
             # add missing standard functions
             print "adding undefined methods to prepostlib:"
@@ -75,6 +118,7 @@ class v3(utils.base_obj):
             raise Exception(temp)
 
 
+# NOT QUITE DEAD YET.  but should probably be removed shortly...
 class v2(v3):
     
     def __init__(self, file_p=None):
@@ -112,6 +156,11 @@ class v2(v3):
                     f_new.f_v2 = f_old
                     print f_new
                     setattr(self, f_name, f_new)
+
+        except Exception, e:
+            temp = "Failed to import package's prepostlib module:"
+            temp += " %s" % e
+            raise Exception(temp)
                     
         finally:
             for x in path_deprecated:

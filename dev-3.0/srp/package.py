@@ -108,11 +108,28 @@ class source(utils.base_obj):
                     # if we're translating v2->v3 on the fly, we have
                     # to translate the next NOTES file here
                     if self.__old_dirname or self.__old_filename or n.chain == deprecated.sr.NOTES2:
+                        # wrap notes file
                         f = self.extractfile(n.chain)
                         x = notes.v2_wrapper(f, rev)
                         f.close()
                         for name, f in x.create_v3_files():
                             self.addfile(name, f)
+                        # wrap prepostlib file
+                        if x.prepostlib:
+                            print "FOO:", x.prepostlib
+                            f = self.extractfile(x.prepostlib)
+                            print "BAR:", f
+                            y = prepostlib.v2_wrapper(f)
+                            f.close()
+                            for name, f in y.create_v3_files():
+                                self.addfile(name, f)
+                        # wrap owneroverride file
+                        #if x.owneroverride:
+                        #    f = self.extractfile(x.owneroverride)
+                        #    y = owneroverride.v2_wrapper(f)
+                        #    f.close()
+                        #    for name, f in y.create_v3_files():
+                        #        self.addfile(name, f)
                         if n.chain == deprecated.sr.NOTES2:
                             n.chain = config.NOTES
                     n.next_p = notes.v3(self.extractfile(n.chain))
@@ -127,13 +144,13 @@ class source(utils.base_obj):
 
                 # prepostlib
                 if n.prepostlib:
-                    n.prepostlib_p = prepostlib.init(
+                    n.prepostlib_p = prepostlib.v3(
                         self.extractfile(n.prepostlib))
                 else:
                     # create a prepostlib instance full of empty (or
                     # default) functions if a library wasn't provided
                     # by the package.
-                    n.prepostlib_p = prepostlib.init(None)
+                    n.prepostlib_p = prepostlib.v3(None)
                     
                 # owneroverride
                 if n.owneroverride:
