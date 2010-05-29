@@ -124,12 +124,12 @@ class source(utils.base_obj):
                             for name, f in y.create_v3_files():
                                 self.addfile(name, f)
                         # wrap owneroverride file
-                        #if x.owneroverride:
-                        #    f = self.extractfile(x.owneroverride)
-                        #    y = owneroverride.v2_wrapper(f)
-                        #    f.close()
-                        #    for name, f in y.create_v3_files():
-                        #        self.addfile(name, f)
+                        if x.owneroverride:
+                            f = self.extractfile(x.owneroverride)
+                            y = owneroverride.v2_wrapper(f)
+                            f.close()
+                            for name, f in y.create_v3_files():
+                                self.addfile(name, f)
                         if n.chain == deprecated.sr.NOTES2:
                             n.chain = config.NOTES
                     n.next_p = notes.v3(self.extractfile(n.chain))

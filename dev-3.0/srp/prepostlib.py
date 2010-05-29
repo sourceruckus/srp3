@@ -1,8 +1,7 @@
 """prepostlib
 """
 
-import new
-import os.path
+import os
 import sys
 import types
 import tempfile
@@ -85,9 +84,6 @@ class v3(utils.base_obj):
 
     def __init__(self, file_p=None):
         try:
-            # create a new module
-            #self.__prepost__ = new.module("prepost")
-
             if file_p:
                 # execute the provided code in the new module's __dict__
                 exec file_p.read() in self.__dict__
