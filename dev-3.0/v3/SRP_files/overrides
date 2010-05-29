@@ -1,0 +1,4 @@
+# -*- mode: sh -*-
+/usr/[[:alnum:]/]*/bin:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
+# this should set /usr/*/bin to 700 and all files installed in there
+# to 600 owned by daemon:games
