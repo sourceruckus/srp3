@@ -45,6 +45,11 @@ import utils
 #
 # NOTE: should i actually do the file modifications in the builder?
 #       or do them via owneroverride member functions?
+#
+# NOTE: i probably want this to be a list, not a map, so i can ensure
+#       that rules are applied in the order they're defined...  we
+#       won't ever be indexing into a specific key anway, since we
+#       allow regex for key.
 
 
 class v2_wrapper(utils.base_obj):
@@ -85,27 +90,35 @@ class v2_wrapper(utils.base_obj):
 
 
 
-class v3(utils.base_obj, dict):
+class v3(utils.base_obj, list):
     def __init__(self, file_p):
-        dict.__init__(self)
+        list.__init__(self)
 
         if not file_p:
             return
 
         file_p.seek(0)
         lines = file_p.read().split('\n')
-        f.close()
         
         for line in lines:
             # remove comments
             line = line.split("#")[0].strip()
-            # split on :
-            key, options = line.split(":")
+            if not line:
+                continue
+            print "line: '%s'" % line
+            # split on : but keep in mind that regex can have ':' in
+            # it.
+            line = line.split(":")
+            options = line[-1]
+            key = ":".join(line[:-1])
+
             # split options on ,
             options = options.split(",")
+
             # create options dict
             options_dict = {}
             for x in options:
                 k, v = x.split("=")
                 options_dict[k] = v
-            self[key] = options_dict
+
+            self.append({'key': key, 'options': options_dict})
