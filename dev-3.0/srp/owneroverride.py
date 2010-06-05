@@ -3,6 +3,7 @@
 
 import os
 import random
+import re
 import tempfile
 
 import config
@@ -110,7 +111,7 @@ class v3(utils.base_obj, list):
             # it.
             line = line.split(":")
             options = line[-1]
-            key = ":".join(line[:-1])
+            pattern = ":".join(line[:-1])
 
             # split options on ,
             options = options.split(",")
@@ -121,4 +122,4 @@ class v3(utils.base_obj, list):
                 k, v = x.split("=")
                 options_dict[k] = v
 
-            self.append({'key': key, 'options': options_dict})
+            self.append({'regex': re.compile(pattern), 'options': options_dict})
