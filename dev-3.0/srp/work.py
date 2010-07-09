@@ -161,6 +161,7 @@ class builder(utils.base_obj):
         
         for node, dirs, files in os.walk("."):
             files.extend(dirs)
+            files.sort()
             print files
             for f in files:
                 n = os.path.join(node, f)
@@ -172,14 +173,51 @@ class builder(utils.base_obj):
                 abs_n = n[1:]
                 
                 # forge target user/group ownership per OWNEROVERRIDE
-                if abs_n in self.__n.owneroverride_p:
-                    uname, gname = self.__n.owneroverride_p[abs_n].split(":")
-                    print "OWNEROVERRIDE: uname=%s, gname=%s" % (uname, gname)
-                    i.uname = uname
-                    i.gname = gname
-                    # at install time, uname and gname will be resolved to uid
-                    # and gid, respectively.  if either is unresolvable, the
-                    # installing user's info will be used.
+                for rule in self.__n.owneroverride_p[abs_n]:
+                    # apply the rule
+
+                    # uh, how exactly?  am i guaranteed that each
+                    # supported rule will have a key?  or do i have to
+                    # put a bunch of try blocks in here...?
+
+                    # look for a __override_KEY method for each key value?
+                    for key, value in rule['options'].items():
+                        try:
+                            f = eval("__override_%s" % key)
+                        except:
+                            print "WARNING: invalid override option specified: %s" % key
+                        try:
+                            f(value, i)
+                        except Exception, e:
+                            print "WARNING: override method '%s' failed: %s: %s" % (key, value, e)
+
+                    # uh, this will only work for files.  we have to
+                    # also be able to override metadata for
+                    # directories.  we can specify a non-recursive
+                    # rule for a dir in the override file, but we'll
+                    # never check to see if a dir matches it because
+                    # we only iterate over files here... directory
+                    # creation/storage in tarfiles is transparent,
+                    # right?
+                    #
+                    # actually, it looks like dirs _can_ have an entry
+                    # in a tarfile... but they don't _need_ to?
+                    # either way, they show up with a full set of
+                    # metadata (although size is 0), so maybe this
+                    # method should be looping over files _and_ dirs?
+                    #
+                    # it already is... we extend files list with dirs.
+                    # never mind.  this will work just fine.  ;-)
+
+                        
+                #if abs_n in self.__n.owneroverride_p:
+                #    uname, gname = self.__n.owneroverride_p[abs_n].split(":")
+                #    print "OWNEROVERRIDE: uname=%s, gname=%s" % (uname, gname)
+                #    i.uname = uname
+                #    i.gname = gname
+                #    # at install time, uname and gname will be resolved to uid
+                #    # and gid, respectively.  if either is unresolvable, the
+                #    # installing user's info will be used.
                 
                 # add file to archive
                 if i.isreg():

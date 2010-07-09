@@ -79,24 +79,24 @@ b = work.builder()
 
 # create v3 package from dir
 p3 = package.source(dirname="%s/dev-3.0/v3/SRP_files" % toplevel)
-p3.commit("%s/dev-3.0/v3" % toplevel)
+#p3.commit("%s/dev-3.0/v3" % toplevel)
 
 # instantiate v3 package from previously created package
-p3_fromfile = package.source("%s/dev-3.0/v3/foo-1.0-1.srp" % toplevel)
+#p3_fromfile = package.source("%s/dev-3.0/v3/foo-1.0-1.srp" % toplevel)
 
 # instantiate v3 package from dir of v2 files
 p2 = package.source(dirname="%s/examples/foo-1.0/.build/SRP_files" % toplevel)
-p2.commit("%s/examples/foo-1.0/.build" % toplevel)
+#p2.commit("%s/examples/foo-1.0/.build" % toplevel)
 
 # instantiate v3 package from previously created v2 package
-p2_fromfile = package.source("%s/examples/foo-1.0/foo-1.0-1.srp" % toplevel)
+#p2_fromfile = package.source("%s/examples/foo-1.0/foo-1.0-1.srp" % toplevel)
 
 
 # build binary package(s) from p
-p3_built = b.build(p3)
-p3_fromfile_built = b.build(p3_fromfile)
-p2_build = b.build(p2)
-p2_fromfile_built = b.build(p2_fromfile)
+#p3_built = b.build(p3)
+#p3_fromfile_built = b.build(p3_fromfile)
+#p2_build = b.build(p2)
+#p2_fromfile_built = b.build(p2_fromfile)
 
 
 # what about prepostlib and owneroverride?  prepostlib is showing up
