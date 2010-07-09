@@ -5,6 +5,7 @@ import os
 import random
 import re
 import tempfile
+import types
 
 import config
 import utils
@@ -106,7 +107,7 @@ class v3(utils.base_obj, list):
             line = line.split("#")[0].strip()
             if not line:
                 continue
-            print "line: '%s'" % line
+            #print "line: '%s'" % line
             # split on : but keep in mind that regex can have ':' in
             # it.
             line = line.split(":")
@@ -122,4 +123,48 @@ class v3(utils.base_obj, list):
                 k, v = x.split("=")
                 options_dict[k] = v
 
+            # make sure our flag options exist with default values
+            for flag, value in [('recursive', 'false')]:
+                try:
+                    # this will lowercase-ize the flag value if it was
+                    # specified so we don't have to check multiple
+                    # cases later on
+                    options_dict[flag] = options_dict[flag].lower()
+                except:
+                    options_dict[flag] = value
+
             self.append({'regex': re.compile(pattern), 'options': options_dict})
+
+
+    def __getitem__(self, fname):
+        """
+        unlike most __getitem__ methods, this one returns a list of
+        items instead of a single item.  as such, it returns [] if
+        there are no matching items istead of raising an exception.
+
+        NOTE: if passed an int, the list.__getitem__ method is called
+              to allow for simple indexing.
+        """
+        # if we're simply trying to index into the list, call the list
+        # method to do so
+        if type(fname) == types.IntType:
+            return list.__getitem__(self, fname)
+
+        retval = []
+        for x in self:
+            if x['options']['recursive'] != "false":
+                # we have to try matching on fname and each of it's parent dirs
+                sep = os.path.sep
+                y = fname.split(sep)
+                for i in range(len(y)):
+                    subname = sep.join(y[:len(y)-i])
+                    if not subname:
+                        continue
+                    if x['regex'].search(subname):
+                        retval.append(x)
+                        break
+
+            elif x['regex'].search(fname):
+                retval.append(x)
+
+        return retval
