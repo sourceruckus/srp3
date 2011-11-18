@@ -1,41 +1,194 @@
-goals:
+-*- mode: outline; mode: flyspell -*-
 
-- non-write ops (creating package instances) shouldn't write in RUCKUS.
-  either write in a /tmp dir or parse through the tarball without extracting
-  anywhere.
+Let's keep the goals really high-level (i.e., from the user's standpoint)
+and not get into implementation details.
 
-- clean, modular, object oriented design.  use new-style classes possibly
-  also using metaclasses and function decorators.
+* Goals:
 
-- support for multiple (in the future) versions of packages (built from
-  different versions of srp, that is).
+** non-write ops (creating package instances) shouldn't require root perms
 
-- new, chainable NOTES file (ex: foo.srp builds into foo.brp, foo-doc.brp,
-  and foo-dev.brp)
+  This means normal users should be able to build and inspect packages.
+  Only installing should require special permissions.
 
-- cleaner output handling, especially when debugging
+  NOTE: Either write in a /tmp dir or parse through the tarball without extracting
+        anywhere.  Or both.  I think we're already doing this...
 
-- tkinter front-end (maybe)
+** clean output handling
 
-- change BRP's hosttype to be a little more useful (fc5.i686, rh7.i686,
-  hpux10.risc, sol8.sparc, win98.i686, unix.i386, etc)
+  SRP's output handling has historically been horrible, especially when
+  redirecting output.  Debug statements in v1 and v2 were atrocious.  If we
+  want to continue to support the ridiculous level of debug verbosity in v2,
+  we should write it to a log file so it doesn't clutter the screen.
 
-- add lots more SRP flags (SRP_PERLMOD, SRP_USER, SRP_SERVICE,
-  SRP_REVERT, SRP_REPAIRABLE, etc)
+  NOTE: Using syslog might be a nice solution for some of this...
 
-- handle source package creation.  dep tracking.  know when a rebuild
-  is needed.  Makfile-ish.
+** Handle source package creation
 
-- add changelog entries to source packages?  maybe even generate diffs?
+  Users should be able to use srp to create an srp file.  Historically, you
+  had to put them together using tar.
 
-- implement (most/all?) SRPFLAGS as modules.  mod_user.  mod_ldconfig.
-  mod_service.  accomplish work via pre/post hooks?
+  This version should introduce the concept of assembling a source package,
+  complete with dependency tracking (i.e., know when a rebuild is needed;
+  Makfile-ish).
 
-- fully backwards compatible with srp2 packages (source and binary)
+  NOTE: I think we were already doing this with the old v3 developmental
+        tree.
+
+** Add lots more SRP flags 
+
+  SRP_PERLMOD
+  SRP_GTK_ICONS
+  SRP_GTK_THEMES
+  SRP_USER
+  SRP_SERVICE
+  SRP_REVERT
+  SRP_REPAIRABLE
+
+** Repairable pacakges
+
+  Keep package contents on file, not just checksums.  This way we can
+  "repair" pacakges by reverting installed files to original contents.
+
+  srp -m --repair installed_package [brp_if_needed]
+
+** Re-checksum packages (i.e., install, tweek, rechecksum)
+
+  srp -m --regen-checksums [installed_packagename | ALL]
+
+** BRP checksums are generated at install-time
+
+  This will allow us to modify the payload at install-time and have the
+  checksums match up.  We can then add all these options:
+
+  srp -i --strip-debug foo.brp
+  srp -i --strip-translations foo.brp
+  srp -i --strip-docs foo.brp foo.brp
+  srp -i --strip-man foo.brp
+  srp -i --strip-info foo.brp
+
+** no more sub-packages (i.e., SRP_CHAIN)
+
+  This feature was introduced in v2, and should be ditched.  It is my humble
+  opinion that sub-packages are one of the things wrong with other package
+  managers, and most distros in general.  They're overused and they end up
+  confusing the unlucky end-user.  Either install something or don't.  Don't
+  install half of it.  The occasional case where this is really desired
+  (e.g., building latex docs for a package that you want to build before
+  latex) can be worked around by having the would-be sub-package live as a
+  standalone package.  Redundant copies of sources and other files can be
+  eliminated by using Makefile targets to copy files around or something.
+
+** not backwards compatible
+
+  That's right, it's a feature.  Backwards compatibility just leads to nasty
+  implementations with all kinds of legacy bloat.  This is a rewrite to be
+  clean, fast, and small.  Don't weigh it down with old cruft.
+
+** tool for converting NOTES files
+
+  That being said, we should include a tool to generate new-style NOTES
+  files from v2 ones.  It should be a standalone utility, though.  And it
+  should generate some output regarding compatibility problems (e.g.,
+  WARNING: old NOTES file uses SRP_PREPOSTLIB, you'll need to rewrite it for
+  v3)
+
+** graphical tool for examining packages (maybe)
+
+  This is a really low priority, but it might be nice to have either a pygtk
+  or tkinter GUI for examining the contents of a package.  Could display all
+  kinds of info (including file contents) right in a single multi-paned
+  display.
+
+
+* Implementation Goals
+
+** clean, modular, object oriented design.
+
+  Original v3 work was making too much use of metaclasses... and got pretty
+  much derailed going crazy trying to implement protected member data via
+  lots of decorators... should ditch that (i.e., don't base the internals of
+  SRP on the internals of Python!)
+
+** consistent usage of subprocess module
+
+  This might just fix a lot of our old output issues, as I suspect a lot of
+  them stem from redirecting output of a process that uses a mish-mash of
+  os.system() and commands.getstatusoutput().  The subprocess module gives
+  us a nice interface to traditional popen-style subprocess management,
+  which is the right way to do it.
+
+** add site-configurable distro string to BRP hosttype
+
+  Old BRP hosttype is simply `uname -o`.`uname -m`.  Given the nature of
+  what we're doing here, the first part of that is almost always "linux".
+  Perhaps we should leave that as the default, but add the ability to change
+  that first part via a config file.
+
+  Or we could ditch the first part entirely.  Assuming that library and
+  program inter-dependencies are tracked correctly, we shouldn't have to
+  know what distro a package was compiled on.  Only the machine type is
+  needed.  This info could also just be embedded in the package meta-data.
+
+** Implement SRPFLAGS modularly (mod_user.py, mod_ldconfig.py)
+
+  SRPFLAG modules should contain function definitions and then a call to
+  register_srp_flag method.
+
+  register_srp_flag("SRP_LDCONFIG",
+                    postinstall=run_ldconfig,
+                    postuninstall=run_ldconfig)
+
+  That function should make SRP_LDCONFIG a valid flag name and should add
+  run_ldconfig to the global postinstall_funcs and postuninstall_funs lists.
+
+
+  register_feature(NAME, prebuild_func, postbuild_func,
+                   preinstall_func, postinstall_func, preuninstall_func,
+                   postuninstall_func, build, install, uninstall,
+                   default=False)
+
+  Pre/Post methods take no argument.  build, install, uninstall are passed
+  the file to be operated on.
+
+  Default features don't need a FLAG_NAME.
+
+  List of Features for source_package:
+    install: log and install file (log includes all TarInfo data)
+
+  List of Features for binary_package:
+    install: check for old file, install new file from brp
+    uninstall: remove file
+#    upgrade: check for old file, log and install new file
+    checksum: add checksum to a file's log (SHA)
+    user: add/remove user
+    group: add/remove group
+    service: add/remove service
+    perl_mod: add/remove Perl module
+    latex_mod: add/remove LaTeX module
+    python_mod: add/remove Python module
+    gtk_icons: update gtk-icon-cache
+    repairable: store BRP in repairable db
+    strip_debug: strip debug symbols from file
+    ...
+
+
+  what about inter-Feature dependencies?  i.e., gotta strip_debug before
+  checksum
+
+  Actually, install/uninstall should be the install/uninstall funcs for a
+  single Feature, "TrackFiles"... or something like that.
+
+  Not sure what to do with "upgrade".  it should have an install func that
+  does our current upgrade logic... I guess it'll have to be a seperate
+  Feature.  In that case, all the "upgrade" Feature will do is the prep-work
+  done prior to the "TrackFiles" install ... wait...
+
+  Upgrade is just a special case for actual installation of a BRP...
+   
 
 - use a decorator to flag write-ops
 
-- make installed hard links work propperly
+- make installed hard links work properly
 
 
 
