@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import os
 
@@ -8,22 +8,22 @@ import trackfiles
 
 # generate list of funcs for install
 install_funcs = get_function_list("inst", ["trackfiles"])
-print install_funcs
-print "\n\n"
+print(install_funcs)
+print("\n\n")
 
 # walk fs node calling funcs
 for path, dirs, files in os.walk("FOO"):
     if files:
         for f in files:
             fname = os.path.join(path, f)
-            print fname
+            print(fname)
             for func in install_funcs:
-                print "%s(%s)" % (func, fname)
+                print("%s(%s)" % (func, fname))
                 func(fname)
 
-print "\n\n"
+print("\n\n")
 
-print "contents of toc"
-print toc.data
+print("contents of toc")
+print(toc.data)
 
 
