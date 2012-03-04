@@ -36,6 +36,7 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
 g = p.add_mutually_exclusive_group(required=True)
 
 g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
+               const="defaults",
                help="""Install the provided PACKAGE(s).  If a different
                     version of PACKAGE is already installed, it will be
                     upgraded unless --no-upgrade is set.  Note that upgrade
@@ -48,6 +49,7 @@ g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
                     --install=no_upgrade,strip_debug).""")
 
 g.add_argument('-u', '--uninstall', metavar="OPTIONS", nargs='?',
+               const="defaults",
                help="""Uninstall the provided PACKAGE(s).  If PACKAGE isn't
                     installed, this will quietly return successfully (well,
                     it DID get uninstalled at some point).  Can optionally
@@ -56,6 +58,7 @@ g.add_argument('-u', '--uninstall', metavar="OPTIONS", nargs='?',
                     --uninstall=no_leftovers).""")
 
 g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
+               const="defaults",
                help="""Query PACKAGE(s).  Print all the information
                     associated with the specified PACKAGE(S).  Can
                     optionally be passed a comma-delimited list of FIELDS to
@@ -63,6 +66,7 @@ g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
                     --query=size,date_installed).""")
 
 g.add_argument('-b', '--build', metavar="OPTIONS", nargs='?',
+               const="defaults",
                help="""Build PACKAGE.  Resulting binary package will be
                     written to PWD.  Can optionally be passed a
                     comma-delimited list of FIELDS to tailor the build
@@ -75,9 +79,16 @@ g.add_argument('-a', '--action', metavar="ACTIONS",
                     performed (e.g.,
                     --action=strip_debug,strip_docs,commit).""")
 
+# FIXME: should PATTERN be a regular expression or a unix glob-style
+#        fnmatch?  default should be either '.*' or '*' depending...
+#
+# FIXME: for now, i'm leaning towards fnmatch.fileter to get a list of
+#        matching packages.
 g.add_argument('-l', '--list', metavar="PATTERN", nargs='?',
-               help="""List installed packages matching regexp PATTERN (or
-                    all packages if PATTERN not supplied).""")
+               const="*",
+               help="""List installed packages matching Unix shell-style
+                    wildcard PATTERN (or all packages if PATTERN not
+                    supplied).""")
 
 g.add_argument('-I', '--init', action='store_true',
                help="Initialize metadata.")
@@ -98,12 +109,25 @@ p.add_argument('-F', '--force', action='store_true',
                     It can also be used to force installation even if
                     dependencies are not met.""")
 
+# FIXME: should -p support fnmatch globbing directly or force users to pass
+#        output of srp -l PATTERN in via a pipe...?
+#
+# FIXME: actually, maybe the other modes should do the matching...  for
+#        example, you might want uninstall to double-check that the
+#        fnmatch.filter results are actually what the user was expecting
+#        before uninstalling them... but a double-check prompt would be
+#        silly for --query.
 p.add_argument('-p', '--package', metavar='PACKAGE', nargs='+',
                help="""Specifies the PACKAGE(s) for --install, --uninstall,
-                    --query, --action, and --build.  If left out, packages are
-                    expected on stdin.""")
+               --query, --action, and --build.  Note that PACKAGE can be a
+               Unix shell-style wildcard for modes that act on previously
+               installed packages (e.g., --uninstall, --query, --action).
+               If left out, packages are expected on stdin.""")
 
 args = p.parse_args()
 
 
 print(args)
+
+if args.install:
+    print("install")
