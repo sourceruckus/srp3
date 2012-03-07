@@ -1,20 +1,18 @@
 The Source Ruckus Packager
-(c) 2001-2006 Michael D Labriola <mdlabriola@yahoo.com>
+(c) 2001-2012 Michael D Labriola <michael.d.labriola@gmail.com>
 
 
-The Source Ruckus Packger (SRP) is a lightweight package manager written in
-Python.  It aims to create an easy to use and maintain system for managing
-software packages across multiple platforms.  This is done by using
-source-based packages that get compiled at install time.  The speed trade off
-of compiling everything at install time is easily made up for by the ability to
-maintain a single cross-platform package.
-
+The Source Ruckus Packager (SRP) is a lightweight, yet full-featured package
+manager.  Same general idea as other package management systems (e.g., RPM,
+DEB), just done differently.  The target audience for this packager is not
+the big-time distro developers, but rather the small guy rolling his own at
+home (or small office).
 
 SRP is written in Python, so it should be relatively easy to port to other *nix
 systems.
 
 Requires:
-  Python >= 2.3
+  Python >= 3.2
 
 
 
