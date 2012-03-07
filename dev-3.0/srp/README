@@ -92,13 +92,6 @@ and not get into implementation details.
   WARNING: old NOTES file uses SRP_PREPOSTLIB, you'll need to rewrite it for
   v3)
 
-** graphical tool for examining packages (maybe)
-
-  This is a really low priority, but it might be nice to have either a pygtk
-  or tkinter GUI for examining the contents of a package.  Could display all
-  kinds of info (including file contents) right in a single multi-paned
-  display.
-
 
 * Implementation Goals
 

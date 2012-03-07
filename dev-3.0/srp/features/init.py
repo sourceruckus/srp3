@@ -226,3 +226,13 @@ if __name__ == "__main__":
 
     elif args.init:
         print("do_init_metadata()")
+
+
+# /usr/bin/srp (import srp.cli; srp.cli.main(sys.argv))
+#
+# python-x.y/site/srp/__init__.py
+#                    .core/__init__.py (highlevel methods (e.g., install, uninstall)
+#                    .cli.py
+#                    .package/__init__.py (guts of package types)
+#                    .features.py
+#                    .features/somefeature.py
