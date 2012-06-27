@@ -3,12 +3,19 @@
 
 import sys
 
-sys.path.append("dev-3.0")
+# FIXME: need to rig something up so I can easily run this from inside the
+#        source tree (i.e., w/out installing)
+sys.path.append("modules")
 import srp.cli
 
-try:
-    srp.cli.main()
-except Exception(e):
-    print("ERROR: %s" %e)
-    sys.exit(1)
-sys.exit(0)
+# FIXME: should i catch exceptions from main or just let it handle things
+#        itself?
+#
+#try:
+#    srp.cli.main()
+#except Exception as e:
+#    print("ERROR: %s" % e)
+#    sys.exit(1)
+#sys.exit(0)
+
+srp.cli.main()
