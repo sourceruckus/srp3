@@ -1,5 +1,3 @@
-"""main program"""
-
 import argparse
 import sys
 
@@ -8,9 +6,11 @@ prog = "The Source Ruckus Packager"
 version = "3.0.0-alpha1"
 build_year = "2012"
 
+# FIXME: should move some of this to config
+
 desc = """\
 %s, version %s
-(C) 2001 - %s Michael D Labriola <michael.d.labriola@gmail.com>
+(C) 2001-%s Michael D Labriola <michael.d.labriola@gmail.com>
 """ % (prog, version, build_year)
 
 epi = """\
@@ -32,6 +32,9 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
 
 # one and only one of the following options is required
 g = p.add_mutually_exclusive_group(required=True)
+
+g.add_argument('-c', '--create', metavar="DIR",
+               help="""Create a source package from a SRP_files dir.""")
 
 g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
                const="defaults",
@@ -150,6 +153,11 @@ p.add_argument('-p', '--package', metavar='PACKAGE', nargs='+',
                expected on stdin.""")
 
 
+# once we parse our command line arguments, we'll store the results globally
+# here
+args = None
+
+
 # FIXME: should i be able to augment package list via stdin? I.e., use
 #        --package AND also read more package from stdin.
 def get_package_list():
@@ -170,7 +178,8 @@ def get_package_list():
     return retval
 
 
-if __name__ == "__main__":
+def main():
+    global args
     args = p.parse_args()
 
     print(args)
