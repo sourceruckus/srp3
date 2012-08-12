@@ -1,0 +1,65 @@
+# -*- mode: conf -*-
+
+[header]
+version = 3
+
+[info]
+name = foo
+version = 1.0
+revision = 1
+sourcefilename = foo-1.0.tar.bz2
+description = example package
+
+[options]
+flags = SRP_NO_COMPILE SRP_PREPOSTLIB=voodoo.py SRP_CHAIN=NOTES-doc SRP_BLARG SRP_OWNEROVERRIDE=overrides
+script = go
+
+[go]
+%%BUFFER_BEGIN%%
+#!/bin/sh
+make DESTDIR=$SRP_ROOT install
+%%BUFFER_END%%
+
+[go-dev]
+%%BUFFER_BEGIN%%
+#!/bin/sh
+TARGET_DIR=/usr/include/`basename $PWD` &&
+mkdir -p $SRP_ROOT$TARGET_DIR &&
+cp -vdpR headers/* $SRP_ROOT$TARGET_DIR &&
+ln -fs $SRP_ROOT$TARGET_DIR $SRP_ROOT/usr/include/foo
+%%BUFFER_END%%
+
+[voodoo.py]
+%%BUFFER_BEGIN%%
+def preinstall():
+    try:
+        pass
+    except Exception, e:
+        raise Exception("failed to do some stuff: %s" % e)
+
+def postinstall():
+    try:
+        pass
+    except Exception, e:
+        raise Exception("failed to do some stuff: %s" % e)
+
+def preuninstall():
+    try:
+        pass
+    except Exception, e:
+        raise Exception("failed to do some stuff: %s" % e)
+
+def postuninstall():
+    try:
+        pass
+    except Exception, e:
+        raise Exception("failed to do some stuff: %s" % e)
+%%BUFFER_END%%
+
+[overrides]
+%%BUFFER_BEGIN%%
+^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
+# this will set o+rw,gu-rwx perms and daemon:games ownership to any
+# file whose ancestor directory matches the regex (ie, /usr/bin,
+# /usr/local/bin, /usr///fffasdf/bin, etc)
+%%BUFFER_END%%

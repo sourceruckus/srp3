@@ -1,0 +1,2 @@
+#!/bin/sh
+make DESTDIR=$SRP_ROOT install-docs

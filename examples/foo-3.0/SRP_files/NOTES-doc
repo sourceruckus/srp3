@@ -1,0 +1,15 @@
+# -*- mode: conf -*-
+
+[header]
+version = 3
+
+[info]
+name = foo-doc
+version = 1.0
+revision = 1
+sourcefilename = foo-1.0.tar.bz2
+description = example package documentation
+
+[options]
+flags = SRP_NO_COMPILE SRP_PREPOSTLIB=voodoo2.py SRP_OWNEROVERRIDE=foo SRP_CHAIN=NOTES-dev
+script = go-doc

@@ -1,0 +1,6 @@
+# -*- mode: sh -*-
+^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
+# this will set o+rw,gu-rwx perms and daemon:games ownership to any
+# file whose ancestor directory matches the regex (ie, /usr/bin,
+# /usr/local/bin, /usr///fffasdf/bin, etc)
+
