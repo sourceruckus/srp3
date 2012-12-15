@@ -4,16 +4,14 @@
 # Features will track other details of installed files (e.g.,
 # TrackFilesChecksum, TrackFilesPerms, TrackFilesLinks).
 
-#from srp.features import *
-#from srp.toc import *
-
 import srp
 
-def install(fname):
-    """at install time, we need to log the file and actually install it"""
-    #srp.toc.add_file(fname)
-    #srp.toc.data[fname] = {'fname': fname}
-    srp.toc.add_item(fname, 'fname', fname)
+# FIXME: I haven't decided yet whether the trackfiles features actually installs
+# the file...  I think it just tracks the name in toc, and later on we actually
+# install...?
+
+def track_fname(fname):
+    srp.toc.add_item(fname)
 
 
 # actually, we don't really have to do anything at uninstall time...  we're
@@ -25,19 +23,13 @@ def install(fname):
 
 srp.register_feature("trackfiles",
                      __doc__,
-                     inst = (install, []))
-
-#register_feature("foo", "", inst = (lambda: None, ["trackfiles", "bar"]))
-#register_feature("bar", "", inst = (lambda: None, ["baz"]))
-#register_feature("baz", "", inst = (lambda: None, []))
-
-# requesting 'foo' should get [trackfiles, baz, bar, foo]
+                     inst = (track_fname, []))
 
 
 import os
-def foostat(fname):
+def track_stat(fname):
     srp.toc.add_item(fname, 'stat', os.lstat(fname))
 
 srp.register_feature("trackfilesstat",
                      "stat for file",
-                     inst = (foostat, ["trackfiles"]))
+                     inst = (track_stat, ["trackfiles"]))
