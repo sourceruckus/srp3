@@ -1,65 +1,56 @@
 # -*- mode: conf -*-
 
-[header]
-version = 3
+# FIXME: should we compress the whole srp file?  or just the blob to be
+#        installed (old behavior)?
+
+# FIXME: srp should add the following things when it creates the brp:
+#
+#        header:blob_compression: none, gz, bz2, lz
+#
+
+[prereqs]
+# these specificy the minimum version of srp require to build this package
+version_major = 3
+version_minor = 0
+version_bugfix = 0
+# this is so we can require specific features
+#
+# FIXME: we can embed actual python lists in here and then run them trough
+#        eval()... or we can just keep this as a space delimited list...
+#features = ["f1", "f2", "f3"]
+features = f1 f2 f3
 
 [info]
 name = foo
-version = 1.0
+version = 3.0.0
 revision = 1
-sourcefilename = foo-1.0.tar.bz2
-description = example package
+sourcefilename = srp-example-3.0.0.tar.bz2
+description = example package of doom
 
 [options]
-flags = SRP_NO_COMPILE SRP_PREPOSTLIB=voodoo.py SRP_CHAIN=NOTES-doc SRP_BLARG SRP_OWNEROVERRIDE=overrides
+flags = SRP_PREPOSTLIB=voodoo.py SRP_OWNEROVERRIDE=overrides
 script = go
 
-[go]
-%%BUFFER_BEGIN%%
-#!/bin/sh
-make DESTDIR=$SRP_ROOT install
-%%BUFFER_END%%
+# FIXME: for starters, all the stuff below this comment is commented out.  this
+#        is so i can test python3's configparser, which doesn't like the
+#        %%BUFFER stuff.  we'll probably end up stripping non-ini format
+#        sections from the NOTES file and then pass a filebuf into configparser
+#        to parse the rest of the key/value pairs
+#
+# FIXME: alternatively, we could stick base64 encoding txt in here... see
+#        test.py...
 
-[go-dev]
-%%BUFFER_BEGIN%%
-#!/bin/sh
-TARGET_DIR=/usr/include/`basename $PWD` &&
-mkdir -p $SRP_ROOT$TARGET_DIR &&
-cp -vdpR headers/* $SRP_ROOT$TARGET_DIR &&
-ln -fs $SRP_ROOT$TARGET_DIR $SRP_ROOT/usr/include/foo
-%%BUFFER_END%%
-
-[voodoo.py]
-%%BUFFER_BEGIN%%
-def preinstall():
-    try:
-        pass
-    except Exception, e:
-        raise Exception("failed to do some stuff: %s" % e)
-
-def postinstall():
-    try:
-        pass
-    except Exception, e:
-        raise Exception("failed to do some stuff: %s" % e)
-
-def preuninstall():
-    try:
-        pass
-    except Exception, e:
-        raise Exception("failed to do some stuff: %s" % e)
-
-def postuninstall():
-    try:
-        pass
-    except Exception, e:
-        raise Exception("failed to do some stuff: %s" % e)
-%%BUFFER_END%%
-
-[overrides]
-%%BUFFER_BEGIN%%
-^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
-# this will set o+rw,gu-rwx perms and daemon:games ownership to any
-# file whose ancestor directory matches the regex (ie, /usr/bin,
-# /usr/local/bin, /usr///fffasdf/bin, etc)
-%%BUFFER_END%%
+#[go]
+#%%BUFFER_BEGIN%%
+##!/bin/bash
+#make -j5 &&
+#make DESTDIR=$SRP_ROOT install || exit 1
+#%%BUFFER_END%%
+#
+#[overrides]
+#%%BUFFER_BEGIN%%
+#^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
+## this will set o+rw,gu-rwx perms and daemon:games ownership to any
+## file whose ancestor directory matches the regex (ie, /usr/bin,
+## /usr/local/bin, /usr///fffasdf/bin, etc)
+#%%BUFFER_END%%

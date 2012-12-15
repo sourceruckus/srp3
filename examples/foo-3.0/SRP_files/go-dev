@@ -1,5 +1,0 @@
-#!/bin/sh
-TARGET_DIR=/usr/include/`basename $PWD` &&
-mkdir -p $SRP_ROOT$TARGET_DIR &&
-cp -vdpR headers/* $SRP_ROOT$TARGET_DIR &&
-ln -fs $SRP_ROOT$TARGET_DIR $SRP_ROOT/usr/include/foo

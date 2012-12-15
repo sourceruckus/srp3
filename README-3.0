@@ -92,6 +92,13 @@ and not get into implementation details.
   WARNING: old NOTES file uses SRP_PREPOSTLIB, you'll need to rewrite it for
   v3)
 
+** no more PREPOSTLIBs
+
+  These were useful, but their primary use turned out to be for hackish
+  workarounds that should have really been fixed in SRP itself.  The libs that I
+  used all over the place (i.e., for common tasks like adding users or services)
+  should all get implemented in the core SRP code as Features.
+
 
 * Implementation Goals
 

@@ -3,6 +3,7 @@
 * create toplevel exectuable
 
 * srp --init
+actually, i shouldn't need this until later on...
 
 * srp --create SRP_DIR
 
