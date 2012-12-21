@@ -5,9 +5,14 @@ Module implementing the SRP Command Line Interface
 import argparse
 import sys
 
+import srp
+
 
 prog = "The Source Ruckus Packager"
 version = "3.0.0-alpha1"
+version_major = 3
+version_minor = 0
+version_bugfix = 0
 build_year = "2012"
 
 # FIXME: should move some of this to config
@@ -37,8 +42,8 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
 # one and only one of the following options is required
 g = p.add_mutually_exclusive_group(required=True)
 
-g.add_argument('-c', '--create', metavar="DIR",
-               help="""Create a source package from a SRP_files dir.""")
+g.add_argument('-c', '--create', metavar="NOTES",
+               help="""Create a source package from an SRP NOTES file.""")
 
 g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
                const="defaults",
@@ -232,6 +237,10 @@ def main():
         for x in get_package_list():
             print("do_query(package=%s, fields=%s)" % (x, args.query.split(',')))
 
+    elif args.create:
+        print("do_create(notes=%s)" % (args.create))
+        do_create(args.create)
+
     elif args.list != None:
         if not args.list:
             args.list = ["*"]
@@ -249,3 +258,23 @@ def main():
 #                    .package/__init__.py (guts of package types)
 #                    .features.py
 #                    .features/somefeature.py
+
+
+def do_create(fname):
+    with open(fname) as fobj:
+        n = srp.notes.notes(fobj)
+    print(n)
+    
+    # check for required version
+    if version_major < n.prereqs.version_major:
+        raise Exception("package requires srp >= {}".format(n.prereqs.version))
+    elif version_minor < n.prereqs.version_minor:
+        raise Exception("package requires srp >= {}".format(n.prereqs.version))
+    elif version_bugfix < n.prereqs.version_bugfix:
+        raise Exception("package requires srp >= {}".format(n.prereqs.version))
+
+    # check for required features
+
+    # run through all queued up stage funcs for create
+
+        

@@ -4,5 +4,6 @@ Source Ruckus Packager
 """
 
 import srp.cli
+import srp.notes
 import srp.toc
 from srp.features import *

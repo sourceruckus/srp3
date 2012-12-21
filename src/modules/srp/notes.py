@@ -46,6 +46,9 @@ class notes:
                 getattr(self, s).buf = base64.b64decode(getattr(self, s).buf.encode()).decode()
 
         # and now do some re-typing (for standard items)
+        self.prereqs.version = ".".join([self.prereqs.version_major,
+                                         self.prereqs.version_minor,
+                                         self.prereqs.version_bugfix])
         self.prereqs.version_major = int(self.prereqs.version_major)
         self.prereqs.version_minor = int(self.prereqs.version_minor)
         self.prereqs.version_bugfix = int(self.prereqs.version_bugfix)
