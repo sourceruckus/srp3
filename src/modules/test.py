@@ -12,8 +12,9 @@ print("\n\n")
 
 # generate list of funcs for install
 #install_funcs = srp.get_function_list("inst", ["trackfiles"])
-install_funcs = srp.get_function_list("inst")
-print(install_funcs)
+install_funcs = srp.get_function_list("inst", None)
+for x in install_funcs:
+    print(x.name)
 print("\n\n")
 
 # walk fs node calling funcs
@@ -22,9 +23,9 @@ for path, dirs, files in os.walk("FOO"):
         for f in files:
             fname = os.path.join(path, f)
             print(fname)
-            for func in install_funcs:
-                print("%s(%s)" % (func, fname))
-                func(fname)
+            for f in install_funcs:
+                print("%s(%s)" % (f.func, fname))
+                f.func(fname)
 
 print("\n\n")
 

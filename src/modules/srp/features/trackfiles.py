@@ -23,7 +23,7 @@ def track_fname(fname):
 
 srp.register_feature("trackfiles",
                      __doc__,
-                     inst = (track_fname, []))
+                     inst = srp.stage_struct("trackfiles", track_fname, [], []))
 
 
 import os
@@ -32,4 +32,12 @@ def track_stat(fname):
 
 srp.register_feature("trackfilesstat",
                      "stat for file",
-                     inst = (track_stat, ["trackfiles"]))
+                     inst = srp.stage_struct("trackfilesstat", track_stat, ["trackfiles"], []))
+
+
+def track_foo(fname):
+    pass
+
+srp.register_feature("trackfilesfoo",
+                     "foo",
+                     inst = srp.stage_struct("trackfilesfoo", track_foo, ["trackfiles"], ["trackfilesstat"]))
