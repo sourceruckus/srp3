@@ -11,8 +11,8 @@ pprint(srp.registered_features)
 print("\n\n")
 
 # generate list of funcs for install
-#install_funcs = srp.get_function_list("inst", ["trackfiles"])
-install_funcs = srp.get_function_list("inst", None)
+#install_funcs = srp.get_function_list("install", ["trackfiles"])
+install_funcs = srp.get_function_list("install")
 for x in install_funcs:
     print(x.name)
 print("\n\n")

@@ -1,3 +1,7 @@
+"""
+Module implementing the SRP Command Line Interface
+"""
+
 import argparse
 import sys
 
