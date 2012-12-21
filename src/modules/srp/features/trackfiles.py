@@ -21,23 +21,23 @@ def track_fname(fname):
 #    toc.remove_file(fobj)
 
 
-srp.register_feature("trackfiles",
-                     __doc__,
-                     install = srp.stage_struct("trackfiles", track_fname, [], []))
+srp.register_feature(srp.feature_struct("trackfiles",
+                                        __doc__,
+                                        install = srp.stage_struct("trackfiles", track_fname, [], [])))
 
 
 import os
 def track_stat(fname):
     srp.toc.add_item(fname, 'stat', os.lstat(fname))
 
-srp.register_feature("trackfilesstat",
-                     "stat for file",
-                     install = srp.stage_struct("trackfilesstat", track_stat, ["trackfiles"], []))
+srp.register_feature(srp.feature_struct("trackfilesstat",
+                                        "stat for file",
+                                        install = srp.stage_struct("trackfilesstat", track_stat, ["trackfiles"], [])))
 
 
 def track_foo(fname):
     pass
 
-srp.register_feature("trackfilesfoo",
-                     "foo",
-                     install = srp.stage_struct("trackfilesfoo", track_foo, ["trackfiles"], ["trackfilesstat"]))
+srp.register_feature(srp.feature_struct("trackfilesfoo",
+                                        "foo",
+                                        install = srp.stage_struct("trackfilesfoo", track_foo, ["trackfiles"], ["trackfilesstat"])))

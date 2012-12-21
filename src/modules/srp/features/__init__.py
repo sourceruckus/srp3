@@ -5,20 +5,70 @@ Module implementing the SRP Feature API
 registered_features = {}
 
 
+class feature_struct:
+    """The primary object used for feature registration.  The name and doc items
+    are the feature's name and short description.  The remaining items are
+    stage_struct objects for each relevant stage."""
+    def __init__(self, name=None, doc=None, create=None, build=None,
+                 install=None, uninstall=None, action=None):
+        self.name=name
+        self.doc=doc
+        self.create=create
+        self.build=build
+        self.install=install
+        self.uninstall=uninstall
+        self.action=action
+
+
+    def __repr__(self):
+        s = "feature_struct({name!r}, {doc!r}"
+        for x in ["create", "build", "install", "uninstall", "action"]:
+            if getattr(self, x, None) != None:
+                # NOTE: We use string += here instead of substitution because
+                #       we're trying to embed format strings to be formatted
+                #       later...
+                s+=", " + x + "={" + x + "}"
+        s+=")"
+        return s.format(**self.__dict__)
+
+
+    def valid(self):
+        """Method used to do validity checking on instances"""
+        if not (self.name and self.doc):
+            return False
+        if not (self.create or self.build or self.install or self.uninstall
+                or self.action):
+            return False
+        return True
+
+
 class stage_struct:
-    """This object is used for feature registration.  An instance for each stage
-    is passed to register_feature.  name is the name of the feature as
-    referenced by other features.  func is the function to be called during this
-    stage.  pre_reqs is a list of feature names that are required to happen
-    prior to this feature's func being called.  post_reqs is a list of feature
-    names that are required to happen after this feature's func (i.e., this
-    feature's func has to happen first)."""
+    """This object is used for feature registration by using an instance to
+    populate one of the stage fields of feature_struct.  name is the name of the
+    feature as referenced by other features.  func is the function to be called
+    during this stage.  pre_reqs is a list of feature names that are required to
+    happen prior to this feature's func being called.  post_reqs is a list of
+    feature names that are required to happen after this feature's func (i.e.,
+    this feature's func has to happen first)."""
     def __init__(self, name=None, func=None, pre_reqs=[], post_reqs=[]):
         self.name = name
         self.func = func
         self.pre_reqs = pre_reqs
         self.post_reqs = post_reqs
     
+
+    def __repr__(self):
+        s = "stage_struct({name!r}, {func!r}"
+        for x in ["pre_reqs", "post_reqs"]:
+            if getattr(self, x, []) != []:
+                # NOTE: We use string += here instead of substitution because
+                #       we're trying to embed format strings to be formatted
+                #       later...
+                s+=", " + x + "={" + x + "}"
+        s+=")"
+        return s.format(**self.__dict__)
+
+
     def __lt__(self, other):
         """The less than method is implemented so we can sort a list of
         instances propperly using our pre_reqs and post_reqs feature lists."""
@@ -51,25 +101,12 @@ class stage_struct:
             return True
 
 
-def register_feature(name,
-                     doc,
-                     build = None,
-                     install = None,
-                     uninstall = None,
-                     action = None):
-    """The registration method for the Feature API.  name is the feature's name.
-    doc is a short description of the feature.  build, install, uninstall, and
-    action are optional stage_struct object that specify an action to be taken
-    for their respective stages.  At least one stage is required."""
-    
-    if not (build or install or uninstall or action):
-        raise Exception("at least one stage must be specified")
+def register_feature(feature_obj):
+    """The registration method for the Feature API."""
+    if not feature_obj.valid():
+        raise Exception("invalid feature_obj")
 
-    registered_features[name] = {"doc": doc,
-                                 "build": build,
-                                 "install": install,
-                                 "uninstall": uninstall,
-                                 "action": action}
+    registered_features[feature_obj.name] = feature_obj
 
 
 # FIXME: haven't decided yet how we're really specifying features (i.e., is
@@ -100,7 +137,7 @@ def get_function_list_deps(f, stage, retval=[]):
     for the specified feature and stage."""
     # if requested feature is unsupported, the following call will raise an
     # exception.
-    x = registered_features[f][stage]
+    x = getattr(registered_features[f], stage)
 
     # if f has already been added, we're done
     if x in retval:
