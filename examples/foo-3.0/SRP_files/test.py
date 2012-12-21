@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import configparser
 import re
 import base64
@@ -5,8 +7,8 @@ import base64
 def encodescript(m):
     return "buf = {}".format(base64.b64encode(m.group(1).encode()).decode())
 
-def bufferfixer(buf):
-    return re.sub("^[\s]*script[[\s]]*[=:][[\s]]*\"\"\".*(#!.*)\"\"\"", encodescript, buf, flags=re.DOTALL|re.MULTILINE)
+#def bufferfixer(buf):
+#    return re.sub("^[\s]*script[[\s]]*[=:][[\s]]*\"\"\".*(#!.*)\"\"\"", encodescript, buf, flags=re.DOTALL|re.MULTILINE)
 
 def bufferfixer2(buf):
     return re.sub("^%%BUFFER_BEGIN%%\n(.*?)\n%%BUFFER_END%%\n", encodescript, buf, flags=re.DOTALL|re.MULTILINE)

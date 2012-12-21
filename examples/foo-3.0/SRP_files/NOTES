@@ -5,11 +5,11 @@
 
 # FIXME: srp should add the following things when it creates the brp:
 #
-#        header:blob_compression: none, gz, bz2, lz
+#        header:blob_compression: none, gz, bz2, lz?
 #
 
 [prereqs]
-# these specificy the minimum version of srp require to build this package
+# these specificy the minimum version of srp required to build this package
 version_major = 3
 version_minor = 0
 version_bugfix = 0
@@ -28,29 +28,29 @@ sourcefilename = srp-example-3.0.0.tar.bz2
 description = example package of doom
 
 [options]
-flags = SRP_PREPOSTLIB=voodoo.py SRP_OWNEROVERRIDE=overrides
-script = go
+# default is [core, checksum, perms]
+flags = user=foo:foo,bar:bar ldpath=/opt/flabigaster/lib gtk_icons
 
-# FIXME: for starters, all the stuff below this comment is commented out.  this
-#        is so i can test python3's configparser, which doesn't like the
-#        %%BUFFER stuff.  we'll probably end up stripping non-ini format
-#        sections from the NOTES file and then pass a filebuf into configparser
-#        to parse the rest of the key/value pairs
+# NOTE: Any section that needs to hold a multi-line, preformatted, buffer can be
+#       protected from the INI parser by putting it in a %%BUFFER_BEGIN%% block.
+#       This should be done for the build script, the perms section, and any
+#       other section we add that is going to be parsed by something else (i.e.,
+#       it's not just simple key/value pairs).
 #
-# FIXME: alternatively, we could stick base64 encoding txt in here... see
-#        test.py...
+# NOTE: Internally, these %%BUFFER%% blocks are base64 encoded prior to the main
+#       parsing pass and are decoded before they're used.
 
-#[go]
-#%%BUFFER_BEGIN%%
-##!/bin/bash
-#make -j5 &&
-#make DESTDIR=$SRP_ROOT install || exit 1
-#%%BUFFER_END%%
-#
-#[overrides]
-#%%BUFFER_BEGIN%%
-#^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
-## this will set o+rw,gu-rwx perms and daemon:games ownership to any
-## file whose ancestor directory matches the regex (ie, /usr/bin,
-## /usr/local/bin, /usr///fffasdf/bin, etc)
-#%%BUFFER_END%%
+[script]
+%%BUFFER_BEGIN%%
+#!/bin/bash
+make -j5 &&
+make DESTDIR=$SRP_ROOT install || exit 1
+%%BUFFER_END%%
+
+[perms]
+%%BUFFER_BEGIN%%
+^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
+# this will set o+rw,gu-rwx perms and daemon:games ownership to any
+# file whose ancestor directory matches the regex (ie, /usr/bin,
+# /usr/local/bin, /usr///fffasdf/bin, etc)
+%%BUFFER_END%%
