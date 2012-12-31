@@ -273,8 +273,14 @@ def do_create(fname):
         raise Exception("package requires srp >= {}".format(n.prereqs.version))
 
     # check for required features
-    print(srp.features.registered_features)
+    missing = n.prereqs.features[:]
+    for x in srp.features.registered_features:
+        try:
+            missing.remove(x)
+        except:
+            pass
+    if missing:
+        raise Exception("package requires missing features: {}".format(missing))
 
     # run through all queued up stage funcs for create
-
-        
+    
