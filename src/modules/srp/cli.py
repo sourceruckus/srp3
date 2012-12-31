@@ -274,6 +274,7 @@ def do_create(fname):
         raise Exception("package requires srp >= {}".format(n.prereqs.version))
 
     # check for required features
+    print(srp.features.registered_features)
 
     # run through all queued up stage funcs for create
 

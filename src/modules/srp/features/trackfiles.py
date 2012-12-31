@@ -6,6 +6,8 @@
 
 import srp
 
+from srp.features import *
+
 # FIXME: I haven't decided yet whether the trackfiles features actually installs
 # the file...  I think it just tracks the name in toc, and later on we actually
 # install...?
@@ -21,23 +23,23 @@ def track_fname(fname):
 #    toc.remove_file(fobj)
 
 
-srp.register_feature(srp.feature_struct("trackfiles",
-                                        __doc__,
-                                        install = srp.stage_struct("trackfiles", track_fname, [], [])))
+register_feature(feature_struct("trackfiles",
+                                __doc__,
+                                install = stage_struct("trackfiles", track_fname, [], [])))
 
 
 import os
 def track_stat(fname):
     srp.toc.add_item(fname, 'stat', os.lstat(fname))
 
-srp.register_feature(srp.feature_struct("trackfilesstat",
-                                        "stat for file",
-                                        install = srp.stage_struct("trackfilesstat", track_stat, ["trackfiles"], [])))
+register_feature(feature_struct("trackfilesstat",
+                                "stat for file",
+                                install = stage_struct("trackfilesstat", track_stat, ["trackfiles"], [])))
 
 
 def track_foo(fname):
     pass
 
-srp.register_feature(srp.feature_struct("trackfilesfoo",
-                                        "foo",
-                                        install = srp.stage_struct("trackfilesfoo", track_foo, ["trackfiles"], ["trackfilesstat"])))
+register_feature(feature_struct("trackfilesfoo",
+                                "foo",
+                                install = stage_struct("trackfilesfoo", track_foo, ["trackfiles"], ["trackfilesstat"])))

@@ -155,3 +155,34 @@ def get_function_list_deps(f, stage, retval=[]):
     retval.append(x)
 
     return retval
+
+
+
+
+
+
+# NOTE: We want importing this package to automatically import all .py files in
+#       this directory, because that triggers each individual feature's
+#       registration code.  So, we do some globbing, manipulation, and then use
+#       the __import__ statement here.
+#
+# NOTE: We do not define __all__, so doing 'from features import *' will ONLY
+#       import the API structure and functions (which happens to avoid the
+#       circular deps problem when a feature module tries to import * from
+#       srp.features)
+from glob import glob
+import os
+for x in glob("{}/*.py".format(__path__[0])):
+    if x == __file__:
+        # skip __init__.py
+        continue
+    # remove leading path
+    x = os.path.basename(x)
+    # we globbed on *.py, so we know that x ends with ".py"... let's remove it
+    x = x[:-3]
+    __import__(".".join([__name__, x]))
+
+# clean up our namespace
+del glob
+del os
+del x
