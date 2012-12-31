@@ -15,10 +15,10 @@ version_minor = 0
 version_bugfix = 0
 # this is so we can require specific features
 #
-# FIXME: we can embed actual python lists in here and then run them trough
-#        eval()... or we can just keep this as a space delimited list...
-#features = ["f1", "f2", "f3"]
-features = f1 f2 f3
+# NOTE: core is implied and can be left out.
+#
+#features = f1 f2 f3
+features = 
 
 [info]
 name = foo

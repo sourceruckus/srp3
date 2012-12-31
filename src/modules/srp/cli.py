@@ -1,5 +1,4 @@
-"""
-Module implementing the SRP Command Line Interface
+"""The SRP Command Line Interface.
 """
 
 import argparse

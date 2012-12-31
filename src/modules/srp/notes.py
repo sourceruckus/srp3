@@ -1,5 +1,4 @@
-"""
-Module implementing the SRP NOTES file
+"""The SRP NOTES file.
 """
 
 import collections

@@ -1,5 +1,38 @@
-"""
-Module implementing the SRP Feature API
+"""Module implementing the SRP Feature API.
+
+The SRP Feature API is used to make the package manager as flexible and
+extensible as possible.  This API provides programmers with an easy way to add
+new features without having to rewrite massive blocks of nasty code and
+introduce unseemly regressions (see SRP v2, regrettably).
+
+The basic idea here is so simple it almost sounds funny: a Feature does
+something at a certain time.
+
+Each Feature provides a set of functions to be executed at pre-defined times, or
+stages.  Each Feature's stage function can have pre/post requirements to help
+coordinate what order all the functions get executed in.
+
+The pre-defined stages are:
+
+  create -- Creating a source package from a NOTES file, source tarball, and
+  possibly other files (e.g., patches, extra sources)
+
+  build -- Build the binary package by executing the embedded build script in
+  the NOTES file, tar up the resulting payload.
+
+  install -- Install the package on a system.
+
+  uninstall -- Uninstall the package from a system.
+
+  action -- This stage is special.  It's really a meta-stage of sorts, allowing
+  Features to create their own special pseudo-stages.  These special action
+  stages can be triggered by explicitly requesting them via the --action command
+  line flag.
+
+
+So for example, when a package is being built, all the SRP main program has to
+do is fetch a list of create functions from all the registered Features (sorted
+via their pre/post rules), and execute them one by one.
 """
 
 registered_features = {}
@@ -7,10 +40,11 @@ registered_features = {}
 
 class feature_struct:
     """The primary object used for feature registration.  The name and doc items
-    are the feature's name and short description.  The remaining items are
-    stage_struct objects for each relevant stage."""
+    are the feature's name and short description.  The action item is a list of
+    name, stage_struct pairs.  The remaining items are stage_struct objects for
+    each relevant stage."""
     def __init__(self, name=None, doc=None, create=None, build=None,
-                 install=None, uninstall=None, action=None):
+                 install=None, uninstall=None, action=[]):
         self.name=name
         self.doc=doc
         self.create=create
@@ -32,6 +66,8 @@ class feature_struct:
         return s.format(**self.__dict__)
 
 
+    # FIXME: Do I really need this?  It enforces having a name and doc and at
+    #        least one stage_struct...
     def valid(self):
         """Method used to do validity checking on instances"""
         if not (self.name and self.doc):
