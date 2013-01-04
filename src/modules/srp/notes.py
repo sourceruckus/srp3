@@ -1,6 +1,8 @@
 """The SRP NOTES file.
 """
 
+import srp
+
 import collections
 import configparser
 import re
@@ -52,14 +54,30 @@ class notes:
         self.prereqs.version_minor = int(self.prereqs.version_minor)
         self.prereqs.version_bugfix = int(self.prereqs.version_bugfix)
         self.prereqs.features = self.prereqs.features.split()
-        m = {}
+
+        # prepopulate flags with default features
+        m = dict.fromkeys(srp.features.default_features)
+        for x in m:
+            m[x] = []
         for x in self.options.flags.split():
-            try:
-                k, v = x.split("=")
-                m[k] = v.split(",")
-            except:
-                m[x] = []
+            # handle feature disabling
+            if x.startswith("no_"):
+                try:
+                    m.pop(x[3:])
+                except:
+                    pass
+            else:
+                # handle features w/ arguments
+                try:
+                    k, v = x.split("=")
+                    m[k] = v.split(",")
+                except:
+                    m[x] = []
         self.options.flags = m
+
+        # check for perms section
+        if "perms" in self.sections:
+            self.options.flags["perms"] = []
 
 
     def __str__(self):
