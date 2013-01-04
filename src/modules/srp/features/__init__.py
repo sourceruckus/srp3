@@ -168,12 +168,23 @@ def get_function_list(stage, feature_list=None):
     return retval
 
 
-def get_function_list_deps(f, stage, retval=[]):
-    """Utility function that recursively generates a list of stage_struct object
-    for the specified feature and stage."""
+def get_function_list_deps(f, stage, retval=None):
+    """Utility function that recursively generates a list of stage_struct
+    objects for the specified feature and stage."""
+    if retval == None:
+        retval = []
+
     # if requested feature is unsupported, the following call will raise an
     # exception.
-    x = getattr(registered_features[f], stage)
+    try:
+        x = getattr(registered_features[f], stage)
+    except KeyError:
+        print("requested unsupported feature: {}".format(f))
+        raise
+
+    # feature might not implement a func for this stage
+    if not x:
+        return retval
 
     # if f has already been added, we're done
     if x in retval:
@@ -218,7 +229,61 @@ for x in glob("{}/*.py".format(__path__[0])):
     x = x[:-3]
     __import__(".".join([__name__, x]))
 
+
+# generate action_map
+stage_list = ['create', 'build', 'install', 'uninstall']
+action_map = {}
+for f in registered_features:
+    for a in registered_features[f].action:
+        try:
+            action_map[a[0]].append(a[1])
+        except:
+            action_map[a[0]] = [a[1]]
+
+
+# NOTE: The perms feature will be enabled automatically if there is a perms
+#       section in the NOTES file
+default_features = ['core', 'checksum', 'ldupdate']
+
+def get_stage_map(flags):
+    """Utility function that returns a dict of sorted stage lists.  The flags
+    argument is a list of features read from the NOTES file.
+    """
+    # flesh out our map
+    #
+    # NOTE: We can't use the value arg to dict.fromkeys(), because passing [] in
+    #       makes all the map's keys share pointers to a common list
+    #       object... definately not what we want.
+    #retval = dict.fromkeys(stage_list)
+    #for x in retval:
+    #    retval[x] = []
+    retval = {}
+    for s in stage_list:
+        retval[s] = get_function_list(s, flags)
+
+    return retval
+
+#    for f in flags:
+#        for s in stage_list:
+#            stage = getattr(registered_features[f], s)
+#            if stage:
+#                print("registered_features[{}].{}: {}".format(f, s, stage))
+#                retval[s].append(stage)
+#    return retval
+
+
+stage_map = {'create': [],
+             'build': [],
+             'install': [],
+             'uninstall': [],
+             }
+for f in registered_features:
+    for s in ["create", "build", "install", "uninstall"]:
+        if getattr(registered_features[f], s):
+            stage_map[s].append(getattr(registered_features[f], s))
+
+
 # clean up our namespace
 del glob
 del os
-del x
+del x, f, s, a
