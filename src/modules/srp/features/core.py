@@ -32,4 +32,4 @@ register_feature(feature_struct("core",
                                 build = stage_struct("core", build_func, [], []),
                                 install = stage_struct("core", install_func, [], []),
                                 uninstall = stage_struct("core", uninstall_func, [], []),
-                                action = ("commit", stage_struct("core", commit_func, [], []))))
+                                action = [("commit", stage_struct("core", commit_func, [], []))]))
