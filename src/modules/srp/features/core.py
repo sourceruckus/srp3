@@ -28,6 +28,7 @@ def commit_func():
 
 register_feature(feature_struct("core",
                                 __doc__,
+                                True,
                                 create = stage_struct("core", create_func, [], []),
                                 build = stage_struct("core", build_func, [], []),
                                 install = stage_struct("core", install_func, [], []),

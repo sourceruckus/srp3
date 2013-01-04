@@ -35,29 +35,27 @@ do is fetch a list of create functions from all the registered Features (sorted
 via their pre/post rules), and execute them one by one.
 """
 
-# NOTE: The perms feature will be enabled automatically if there is a perms
-#       section in the NOTES file
-#
-# FIXME: Should default be a flag specified by the feature itself (e.g., via
-#        register_feature)?  Or should we staticly populate the list here?
-default_features = ['core', 'checksum', 'ldupdate']
-
+# These lists/maps are populated via calls to register_feature
+default_features = []
 registered_features = {}
-
-stage_list = ['create', 'build', 'install', 'uninstall']
-
 action_map = {}
+
+# The standard list of stages
+stage_list = ['create', 'build', 'install', 'uninstall']
 
 
 class feature_struct:
     """The primary object used for feature registration.  The name and doc items
-    are the feature's name and short description.  The action item is a list of
-    name, stage_struct pairs.  The remaining items are stage_struct objects for
-    each relevant stage."""
-    def __init__(self, name=None, doc=None, create=None, build=None,
-                 install=None, uninstall=None, action=[]):
+    are the feature's name and short description.  The default item specifies
+    whether this feature should be turned on by default.  The action item is a
+    list of name, stage_struct pairs.  The remaining items are stage_struct
+    objects for each relevant stage."""
+    def __init__(self, name=None, doc=None, default=False,
+                 create=None, build=None, install=None, uninstall=None,
+                 action=[]):
         self.name=name
         self.doc=doc
+        self.default=default
         self.create=create
         self.build=build
         self.install=install
@@ -66,7 +64,7 @@ class feature_struct:
 
 
     def __repr__(self):
-        s = "feature_struct({name!r}, {doc!r}"
+        s = "feature_struct({name!r}, {doc!r}, {default}"
         for x in ["create", "build", "install", "uninstall", "action"]:
             if getattr(self, x, None) != None:
                 # NOTE: We use string += here instead of substitution because
@@ -153,7 +151,19 @@ def register_feature(feature_obj):
     if not feature_obj.valid():
         raise Exception("invalid feature_obj")
 
+    # add the feature to our registered_features dict
     registered_features[feature_obj.name] = feature_obj
+
+    # add any feature-specific actions to our actions_map
+    for a in feature_obj.action:
+        try:
+            action_map[a[0]].append(a[1])
+        except:
+            action_map[a[0]] = [a[1]]
+
+    # add the feature's name to our default list if specified
+    if feature_obj.default:
+        default_features.append(feature_obj.name)
 
 
 def get_function_list(stage, feature_list):
@@ -243,16 +253,7 @@ for x in glob("{}/*.py".format(__path__[0])):
     __import__(".".join([__name__, x]))
 
 
-# generate action_map
-for f in registered_features:
-    for a in registered_features[f].action:
-        try:
-            action_map[a[0]].append(a[1])
-        except:
-            action_map[a[0]] = [a[1]]
-
-
 # clean up our namespace
 del glob
 del os
-del x, f, a
+del x
