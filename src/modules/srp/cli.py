@@ -264,6 +264,10 @@ def do_create(fname):
         n = srp.notes.notes(fobj)
     print(n)
     
+    # FIXME: should we roll up the following check routines into a
+    #        notes.check_reqs method?  probably... seems like something we'll
+    #        want to do for pretty much every mode...
+
     # check for required version
     if version_major < n.prereqs.version_major:
         raise Exception("package requires srp >= {}".format(n.prereqs.version))
@@ -273,11 +277,7 @@ def do_create(fname):
         raise Exception("package requires srp >= {}".format(n.prereqs.version))
 
     # check for required features
-    #
-    # FIXME: why not just treat all features specified in options.flags as the
-    #        required set of features?
-    #missing = n.prereqs.features[:]
-    missing = list(n.options.flags.keys())
+    missing = n.options.features[:]
     for x in srp.features.registered_features:
         try:
             missing.remove(x)
@@ -287,5 +287,5 @@ def do_create(fname):
         raise Exception("package requires missing features: {}".format(missing))
 
     # run through all queued up stage funcs for create
-    m = srp.features.get_stage_map(n.options.flags.keys())
+    m = srp.features.get_stage_map(n.options.features)
     print(m['create'])

@@ -26,7 +26,8 @@ class notes:
         #       parse things w/out having heartburn about embedded scripts,
         #       multi-line options, etc
         buf = bufferfixer(fobj.read())
-        c = configparser.ConfigParser()
+        c = configparser.ConfigParser(comment_prefixes=('#'),
+                                      inline_comment_prefixes=('#'))
         c.read_string(buf)
         
         # now dynamically assign attributes based on what configparser sees
@@ -53,31 +54,34 @@ class notes:
         self.prereqs.version_major = int(self.prereqs.version_major)
         self.prereqs.version_minor = int(self.prereqs.version_minor)
         self.prereqs.version_bugfix = int(self.prereqs.version_bugfix)
-        self.prereqs.features = self.prereqs.features.split()
 
-        # prepopulate flags with default features
-        m = dict.fromkeys(srp.features.default_features)
-        for x in m:
-            m[x] = []
-        for x in self.options.flags.split():
-            # handle feature disabling
+        # prepopulate features with our defaults
+        f = srp.features.default_features[:]
+
+        # parse features from NOTES file
+        for x in self.options.features.split():
             if x.startswith("no_"):
+                # handle feature disabling
                 try:
-                    m.pop(x[3:])
+                    f.remove(x[3:])
                 except:
                     pass
             else:
-                # handle features w/ arguments
-                try:
-                    k, v = x.split("=")
-                    m[k] = v.split(",")
-                except:
-                    m[x] = []
-        self.options.flags = m
+                # handle enables
+                f.append(x)
 
-        # check for perms section
-        if "perms" in self.sections:
-            self.options.flags["perms"] = []
+        # add features for unclaimed sections
+        #
+        # NOTE: This will automatically enable any feature that has a special
+        #       section defined for it in the NOTES file (e.g., perms).
+        #       However, it means that every unclaimed section is assumed to be
+        #       a valid feature name.
+        for s in self.sections:
+            if s not in ['prereqs', 'info', 'options', 'script']:
+                f.append(s)
+        
+        # overwrite the raw value with the parsed list
+        self.options.features = f
 
 
     def __str__(self):

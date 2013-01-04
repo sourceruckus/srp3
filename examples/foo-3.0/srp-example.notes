@@ -9,19 +9,10 @@
 #
 
 [prereqs]
-# these specificy the minimum version of srp required to build this package
+# these specify the minimum version of srp required to build this package
 version_major = 3
 version_minor = 0
 version_bugfix = 0
-# this is so we can require specific features
-#
-# NOTE: core is implied and can be left out.
-#
-# FIXME: why not just treat all features specified in options.flags as the
-#        required set of features?
-#
-#features = f1 f2 f3
-features = 
 
 [info]
 name = foo
@@ -31,9 +22,20 @@ sourcefilename = srp-example-3.0.0.tar.bz2
 description = example package of doom
 
 [options]
-# default is [core, checksum, ldupdate]
-#flags = user=foo:foo,bar:bar ldpath=/opt/flabigaster/lib gtk_icons no_ldupdate
-flags = no_ldupdate
+# NOTE: This list controls which features to enable for this package.  There are
+#       two ways to enable a feature:
+#
+#        1) explicitly specify it here in options.features
+#
+#        2) create a feature-named section for specifying variables (i.e., the
+#           mere presense of a [perms] section causes the perms feature to be
+#           added to the list of required features, even if there's nothing in
+#           the [perms] section).
+#
+# NOTE: This means that any stray sections will cause SRP to expect to find an
+#       associated feature module (i.e., don't make a random [foo] section, or
+#       SRP will say something like "missing required feature: foo").
+features = no_ldupdate #perms users ldpath gtk_icons
 
 # NOTE: Any section that needs to hold a multi-line, preformatted, buffer can be
 #       protected from the INI parser by putting it in a %%BUFFER_BEGIN%% block.
@@ -51,7 +53,6 @@ make -j5 &&
 make DESTDIR=$SRP_ROOT install || exit 1
 %%BUFFER_END%%
 
-# perms feature is enabled automatically if the perms section exists
 [perms]
 %%BUFFER_BEGIN%%
 ^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
@@ -59,3 +60,9 @@ make DESTDIR=$SRP_ROOT install || exit 1
 # file whose ancestor directory matches the regex (ie, /usr/bin,
 # /usr/local/bin, /usr///fffasdf/bin, etc)
 %%BUFFER_END%%
+
+#[users]
+#users = foo:foo bar:bar
+
+#[ldpath]
+#paths = /opt/footastic/lib

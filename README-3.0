@@ -164,7 +164,7 @@ and not get into implementation details.
     action.verify: gen sha of each file, compare with pkg manifest
     action.commit: update pkg manifest
 
-  perms: (should we supply section name as arg? autodetect perms section?)
+  perms:
     install [before core, after user]: update tarinfo via perms section of NOTES file
     action.verify: check perms, issue warning
 
