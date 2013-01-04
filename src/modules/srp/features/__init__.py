@@ -35,7 +35,18 @@ do is fetch a list of create functions from all the registered Features (sorted
 via their pre/post rules), and execute them one by one.
 """
 
+# NOTE: The perms feature will be enabled automatically if there is a perms
+#       section in the NOTES file
+#
+# FIXME: Should default be a flag specified by the feature itself (e.g., via
+#        register_feature)?  Or should we staticly populate the list here?
+default_features = ['core', 'checksum', 'ldupdate']
+
 registered_features = {}
+
+stage_list = ['create', 'build', 'install', 'uninstall']
+
+action_map = {}
 
 
 class feature_struct:
@@ -145,17 +156,11 @@ def register_feature(feature_obj):
     registered_features[feature_obj.name] = feature_obj
 
 
-# FIXME: haven't decided yet how we're really specifying features (i.e., is
-#        registered featuers all the ones supported while feature_list arg is
-#        all the ones specified in the NOTES file?), for now we can override
-#        registered_features by passing in a feature_list
-def get_function_list(stage, feature_list=None):
+def get_function_list(stage, feature_list):
     """Utility function that returns a sorted list of feature stage_struct
     objects for the specified stage.  Each feature's stage_struct object is
     quereied for pre/post requirements and all are added, then the resulting
     list of objects is sorted based on all the pre/post requirements."""
-    if feature_list == None:
-        feature_list = registered_features.keys()
     retval = []
     for f in feature_list:
         # get the list of feature funcs required for f
@@ -204,7 +209,15 @@ def get_function_list_deps(f, stage, retval=None):
     return retval
 
 
+def get_stage_map(flags):
+    """Utility function that returns a dict of sorted stage lists.  The flags
+    argument is a list of features read from the NOTES file.
+    """
+    retval = {}
+    for s in stage_list:
+        retval[s] = get_function_list(s, flags)
 
+    return retval
 
 
 
@@ -231,8 +244,6 @@ for x in glob("{}/*.py".format(__path__[0])):
 
 
 # generate action_map
-stage_list = ['create', 'build', 'install', 'uninstall']
-action_map = {}
 for f in registered_features:
     for a in registered_features[f].action:
         try:
@@ -241,49 +252,7 @@ for f in registered_features:
             action_map[a[0]] = [a[1]]
 
 
-# NOTE: The perms feature will be enabled automatically if there is a perms
-#       section in the NOTES file
-default_features = ['core', 'checksum', 'ldupdate']
-
-def get_stage_map(flags):
-    """Utility function that returns a dict of sorted stage lists.  The flags
-    argument is a list of features read from the NOTES file.
-    """
-    # flesh out our map
-    #
-    # NOTE: We can't use the value arg to dict.fromkeys(), because passing [] in
-    #       makes all the map's keys share pointers to a common list
-    #       object... definately not what we want.
-    #retval = dict.fromkeys(stage_list)
-    #for x in retval:
-    #    retval[x] = []
-    retval = {}
-    for s in stage_list:
-        retval[s] = get_function_list(s, flags)
-
-    return retval
-
-#    for f in flags:
-#        for s in stage_list:
-#            stage = getattr(registered_features[f], s)
-#            if stage:
-#                print("registered_features[{}].{}: {}".format(f, s, stage))
-#                retval[s].append(stage)
-#    return retval
-
-
-stage_map = {'create': [],
-             'build': [],
-             'install': [],
-             'uninstall': [],
-             }
-for f in registered_features:
-    for s in ["create", "build", "install", "uninstall"]:
-        if getattr(registered_features[f], s):
-            stage_map[s].append(getattr(registered_features[f], s))
-
-
 # clean up our namespace
 del glob
 del os
-del x, f, s, a
+del x, f, a
