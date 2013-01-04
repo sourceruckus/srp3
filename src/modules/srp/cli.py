@@ -273,7 +273,11 @@ def do_create(fname):
         raise Exception("package requires srp >= {}".format(n.prereqs.version))
 
     # check for required features
-    missing = n.prereqs.features[:]
+    #
+    # FIXME: why not just treat all features specified in options.flags as the
+    #        required set of features?
+    #missing = n.prereqs.features[:]
+    missing = list(n.options.flags.keys())
     for x in srp.features.registered_features:
         try:
             missing.remove(x)
@@ -283,4 +287,5 @@ def do_create(fname):
         raise Exception("package requires missing features: {}".format(missing))
 
     # run through all queued up stage funcs for create
-    
+    m = srp.features.get_stage_map(n.options.flags.keys())
+    print(m['create'])

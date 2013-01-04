@@ -17,6 +17,9 @@ version_bugfix = 0
 #
 # NOTE: core is implied and can be left out.
 #
+# FIXME: why not just treat all features specified in options.flags as the
+#        required set of features?
+#
 #features = f1 f2 f3
 features = 
 
@@ -28,8 +31,9 @@ sourcefilename = srp-example-3.0.0.tar.bz2
 description = example package of doom
 
 [options]
-# default is [core, checksum, perms]
-flags = user=foo:foo,bar:bar ldpath=/opt/flabigaster/lib gtk_icons
+# default is [core, checksum, ldupdate]
+#flags = user=foo:foo,bar:bar ldpath=/opt/flabigaster/lib gtk_icons no_ldupdate
+flags = no_ldupdate
 
 # NOTE: Any section that needs to hold a multi-line, preformatted, buffer can be
 #       protected from the INI parser by putting it in a %%BUFFER_BEGIN%% block.
@@ -47,6 +51,7 @@ make -j5 &&
 make DESTDIR=$SRP_ROOT install || exit 1
 %%BUFFER_END%%
 
+# perms feature is enabled automatically if the perms section exists
 [perms]
 %%BUFFER_BEGIN%%
 ^/usr\S*/bin$:user=daemon,group=games,mode_set=384,mode_unset=63,recursive=true
