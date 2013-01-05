@@ -21,6 +21,13 @@ revision = 1
 sourcefilename = srp-example-3.0.0.tar.bz2
 description = example package of doom
 
+# list of paths to extra files to include in source package (usually patches or
+# more source tarballs)
+#
+# NOTE: These paths are relative to the location of the NOTES file
+extra = docs/docs1 docs/docs2
+
+
 [options]
 # NOTE: This list controls which features to enable for this package.  There are
 #       two ways to enable a feature:

@@ -194,7 +194,7 @@ def get_function_list_deps(f, stage, retval=None):
     try:
         x = getattr(registered_features[f], stage)
     except KeyError:
-        print("requested unsupported feature: {}".format(f))
+        print("ERROR: requested unsupported feature: {}".format(f))
         raise
 
     # feature might not implement a func for this stage

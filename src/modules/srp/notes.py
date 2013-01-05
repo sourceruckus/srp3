@@ -21,6 +21,7 @@ class notes:
     in the NOTES file being parsed.
     """
     def __init__(self, fobj):
+        self.filename = fobj.name
         # NOTE: We pass the actual buffer read from file through bufferfixer,
         #       which encodes specified sections and allows the configparser to
         #       parse things w/out having heartburn about embedded scripts,

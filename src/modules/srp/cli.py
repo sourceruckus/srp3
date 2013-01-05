@@ -12,7 +12,7 @@ version = "3.0.0-alpha1"
 version_major = 3
 version_minor = 0
 version_bugfix = 0
-build_year = "2012"
+build_year = "2013"
 
 # FIXME: should move some of this to config
 
@@ -22,13 +22,15 @@ desc = """\
 """ % (prog, version, build_year)
 
 epi = """\
-example: srp -vvv --install=strip_debug,strip_docs,strip_man something.i686.brp
+example: srp -v --create=foo.notes
 
-example: srp --build something.srp
+example: srp -vvv --build -p foo.srp
 
-example: srp --query=info,size something
+example: srp --install=strip_debug,strip_docs,strip_man -p foo.i686.brp
 
-example: srp -l "perl*" | srp --action=strip_debug,strip_docs
+example: srp --query=info,size -p foo
+
+example: srp -l "perl*" | srp --action=strip_debug,strip_docs,commit
 """
 
 
@@ -288,4 +290,11 @@ def do_create(fname):
 
     # run through all queued up stage funcs for create
     m = srp.features.get_stage_map(n.options.features)
-    print(m['create'])
+    print("create funcs:", m['create'])
+    for f in m['create']:
+        print("executing:", f)
+        try:
+            f.func(n)
+        except:
+            print("ERROR: failed feature stage function:", f)
+            raise
