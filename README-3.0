@@ -153,7 +153,7 @@ and not get into implementation details.
 
   core:
     create: create tar of NOTES, source, SHA
-    build: run build script to create tar of payload
+    build: run build script, create initial tar of payload
     install: untar payload, install tarinfo in ruckus/installed/pkgname/sha
     uninstall: remove files listed in pkg manifest
     action.commit: update pkg manifest
@@ -165,7 +165,7 @@ and not get into implementation details.
     action.commit: update pkg manifest
 
   perms:
-    install [before core, after user]: update tarinfo via perms section of NOTES file
+    build [after core]: update tarinfo via perms section of NOTES file
     action.verify: check perms, issue warning
 
   user=user:group,user:group,...:
