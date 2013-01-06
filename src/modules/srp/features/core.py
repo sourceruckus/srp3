@@ -15,7 +15,10 @@ from srp.features import *
 def create_func(n):
     """create tar of NOTES, source, SHA"""
     # locate all needed files
-    flist = [n.info.sourcefilename]
+    #
+    # NOTE: We expect these to all be relative to the directory containing
+    #       the notes file.
+    flist = [os.path.basename(n.filename), n.info.sourcefilename]
     try:
         flist.extend(n.info.extra.split())
     except:
@@ -29,42 +32,57 @@ def create_func(n):
     #       we're all done, we'll write the file to disk in the original working
     #       directory
     #
-    # FIXME: the max_size should be configurable... systems that have little RAM
+    # FIXME: The max_size should be configurable... systems that have little RAM
     #        might want to not spool anything, whereas systems with tons might
     #        want to improve performace by using a huge size.
+    #
+    # FIXME: It's not clear from the docs, but reading the tempfile sources
+    #        indicates that max_size=0 (the default) means there is no max
+    #        size (i.e., won't ever rollover automatically).
+    #
+    # NOTE: We add the source file and any extra files specified in the
+    #       NOTES file, the NOTES file itself, and a SHA file containing
+    #       checksums of all added files.
     sha = []
     max_spool=10*2**20
+    # create our tempfile obj
     with tempfile.SpooledTemporaryFile(max_size=max_spool) as pkg:
+        # create a TarFile obj using the tempfile obj
         with tarfile.open(fileobj=pkg, mode="w") as tar:
             for fname in flist:
+                # create an open file object
                 with open(os.path.join(os.path.dirname(n.filename), fname),
                           mode='rb') as f:
+                    # we need to remove all leading path segments so that all
+                    # files end up at the toplevel of the pkg file
                     arcname = os.path.basename(fname)
-                    tar.addfile(tar.gettarinfo(arcname=arcname, fileobj=f))
-                    #tar.add(f, arcname=os.path.basename(fname))
+                    if arcname == os.path.basename(n.filename):
+                        # we also need to rename the notes file inside the
+                        # pkg
+                        arcname = "NOTES"
+                    print("adding {} as {}".format(f.name, arcname))
+                    tar.addfile(tar.gettarinfo(arcname=arcname, fileobj=f),
+                                fileobj=f)
+                    # rewind and generate a SHA entry
                     f.seek(0)
                     sha.append("  ".join((hashlib.sha1(f.read()).hexdigest(),
                                            arcname)))
-            #with tempfile.SpooledTemporaryFile(max_size=max_spool) as f:
+
+            # create the SHA file and add it to the pkg
+            #
+            # NOTE: Can't use SpooledTemporaryFile here because it has to be a
+            #       real file in order for gettarinfo to work properly
             with tempfile.TemporaryFile() as f:
                 f.write("\n".join(sha).encode())
                 f.seek(0)
-                tar.addfile(tar.gettarinfo(arcname="SHA", fileobj=f))
+                tar.addfile(tar.gettarinfo(arcname="SHA", fileobj=f),
+                            fileobj=f)
 
         # copy pkg to pwd
         pkg.seek(0)
-        pkg.rollover()
+        #pkg.rollover()
         with open("foo.srp", "wb") as f:
             f.write(pkg.read())
-
-    # locate source tarball
-    #print(n.info.sourcefilename, n.info.extra.split())
-
-    # grab extra content
-
-    # generate checksums of all files in package
-
-    # write package to disk
 
 
 def build_func():
