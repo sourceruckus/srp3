@@ -8,6 +8,9 @@ import configparser
 import re
 import base64
 
+# FIXME: Should bufferfixer expect str or bytes as it's arg...?  Should we be
+#        opening the NOTES file in binary or text mode?
+
 def encodescript(m):
     return "encoded = True\nbuf = {}".format(base64.b64encode(m.group(1).encode()).decode())
 
@@ -26,7 +29,7 @@ class notes:
         #       which encodes specified sections and allows the configparser to
         #       parse things w/out having heartburn about embedded scripts,
         #       multi-line options, etc
-        buf = bufferfixer(fobj.read())
+        buf = bufferfixer(fobj.read().decode())
         c = configparser.ConfigParser(comment_prefixes=('#'),
                                       inline_comment_prefixes=('#'))
         c.read_string(buf)
