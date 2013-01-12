@@ -5,8 +5,11 @@
 
 # FIXME: srp should add the following things when it creates the brp:
 #
-#        header:blob_compression: none, gz, bz2, lz?
-#
+#        [brp]
+#        blob_compression: none, gz, bz2, lz?
+#	 builder: somebody@somewhere.com
+#        build_host:
+#        build_date:
 
 [prereqs]
 # these specify the minimum version of srp required to build this package

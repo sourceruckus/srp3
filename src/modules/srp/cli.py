@@ -3,6 +3,7 @@
 
 import argparse
 import sys
+import tarfile
 
 import srp
 
@@ -77,7 +78,7 @@ g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
                     --query=size,date_installed).""")
 
 g.add_argument('-b', '--build', metavar="OPTIONS", nargs='?',
-               const="defaults",
+               const=[],
                help="""Build PACKAGE.  Resulting binary package will be
                     written to PWD.  Can optionally be passed a
                     comma-delimited list of FIELDS to tailor the build
@@ -224,11 +225,14 @@ def main():
         for x in get_package_list():
             print("do_uninstall(package=%s, flags=%s)" % (x, args.uninstall.split(',')))
 
-    elif args.build:
+    elif args.build != None:
+        if args.build != []:
+            args.build = args.build.split(',')
         # NOTE: I'm not sure why you would end up specifying packages to
         #       build on stdin... but we might as well support it
         for x in get_package_list():
-            print("do_build(package=%s, flags=%s)" % (x, args.build.split(',')))
+            print("do_build(package={}, flags={})".format(x, args.build))
+            do_build(x, args.build)
 
     elif args.action:
         for x in get_package_list():
@@ -239,7 +243,7 @@ def main():
             print("do_query(package=%s, fields=%s)" % (x, args.query.split(',')))
 
     elif args.create:
-        print("do_create(notes=%s)" % (args.create))
+        print("do_create(notes={})".format(args.create))
         do_create(args.create)
 
     elif args.list != None:
@@ -259,7 +263,6 @@ def main():
 #                    .package/__init__.py (guts of package types)
 #                    .features.py
 #                    .features/somefeature.py
-
 
 def do_create(fname):
     with open(fname) as fobj:
@@ -298,3 +301,31 @@ def do_create(fname):
         except:
             print("ERROR: failed feature stage function:", f)
             raise
+
+
+
+
+def do_build(fname, options):
+    with tarfile.open(fname) as p:
+        # verify that requirements are met
+        fobj = p.extractfile("NOTES")
+        print(fobj)
+        n = srp.notes.notes(fobj)
+        print(n)
+
+        # run through all queued up stage funcs for build
+        m = srp.features.get_stage_map(n.options.features)
+        work = {}
+        print("build funcs:", m['build'])
+        for f in m['build']:
+            print("executing:", f)
+            try:
+                f.func(n, work)
+            except:
+                print("ERROR: failed feature stage function:", f)
+                raise
+
+        # finalize the built brp
+        #
+        # NOTE: This is where we actually add TarInfo objs and their associated
+        #       fobjs to the BLOB, then add the BLOB to the brp archive.

@@ -18,11 +18,18 @@ from srp.features import *
 #
 # FIXME: Hmmm... If we do this at build time, it has to come after
 #        core... otherwise we haven't run the build script yet... but core
-#        will have already added all the file to the archive... then what?
+#        will have already added all the files to the archive... then what?
 #
 #        We could have core create a SpooledTempFile as the BLOB, then have
 #        the perms build method readd each member to a new SpooledTempFile
 #        w/ forged TarInfos, then only write the final one to disk?
+#
+# FIXME: Well, there's really no need to have core's build func actually create
+#        the tar.  We could have core's build func just run the script and
+#        populate the payload dir, but have some other final step create the
+#        tarball.  We could even create a TarFile object and iterate over all
+#        the files creating TarInfo objects, but not actually add any files to
+#        the archive until the very very end...
 #
 # NOTE: There's no interdependency with user feature here because we can
 #       forge the TarInfo with whatever we like.  The system doesn't
@@ -30,9 +37,10 @@ from srp.features import *
 #
 # FIXME: I think the above is true, but TarInfo has a uid and uname
 #        field.... what if they don't match up?  are they both required?
-def build_func():
+def build_func(p, brp):
     """update tarinfo via perms section of NOTES file"""
-    pass
+    print(brp)
+
 
 def verify_func():
     """check perms, issue warning"""
@@ -40,5 +48,5 @@ def verify_func():
 
 register_feature(feature_struct("perms",
                                 __doc__,
-                                build = stage_struct("perms", build_func, [], ["core"]),
+                                build = stage_struct("perms", build_func, ["core"], []),
                                 action = [("verify", stage_struct("perms", verify_func, [], []))]))

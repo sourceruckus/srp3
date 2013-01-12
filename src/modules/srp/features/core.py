@@ -87,9 +87,29 @@ def create_func(n):
             f.write(pkg.read())
 
 
-def build_func():
-    """run build script to create tar of payload"""
-    pass
+def build_func(p, brp):
+    """run build script to populate payload dir, then create TarInfo objects for
+    all files"""
+    # create tmp dir
+    brp['foo'] = "hello"
+
+    # extract source tarball
+
+    # run build script
+
+    # create global BLOB objects
+    #
+    # NOTE: The global TarFile object and list of TarInfo objects are created
+    #       now, but nothing is added to the archive yet.  This is to allow
+    #       other features a chance to tweak things.  At the very end (i.e.,
+    #       when all other feature functions have been executed), all the
+    #       TarInfo objects (and their associated file objects) will be added to
+    #       the archive.
+
+    # append brp section to NOTES file in mem
+
+    # add NOTES file to toplevel pkg archive (the brp)
+
 
 def install_func():
     """untar payload, install tarinfo in ruckus/installed/pkgname/sha"""
