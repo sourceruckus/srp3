@@ -80,8 +80,10 @@ def create_func(n):
 
         # copy pkg to pwd
         pkg.seek(0)
-        #pkg.rollover()
-        with open("foo.srp", "wb") as f:
+        pname = "{}-{}-{}.srp".format(n.info.name, n.info.version,
+                                      n.info.revision)
+        print(pname)
+        with open(pname, "wb") as f:
             f.write(pkg.read())
 
 
