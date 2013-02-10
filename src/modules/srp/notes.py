@@ -8,8 +8,8 @@ import configparser
 import re
 import base64
 
-# FIXME: Should bufferfixer expect str or bytes as it's arg...?  Should we be
-#        opening the NOTES file in binary or text mode?
+# NOTE: This is a bit hairy because bufferfixer expects a str and returns a
+#       str, but the base64 methods operates on bytes...
 
 def encodescript(m):
     return "encoded = True\nbuf = {}".format(base64.b64encode(m.group(1).encode()).decode())
@@ -22,8 +22,23 @@ class notes:
     """Class representing a NOTES file.  This class is designed very
     intentionally to do as much as possible dynamically based on what's actually
     in the NOTES file being parsed.
+
+    NOTE: fobj must be opened in binary mode
     """
     def __init__(self, fobj):
+        # check for open mode
+        #
+        # NOTE: We do this here so that we can assume the file has been
+        #       opened in binary mode from here on out.  We chose to force
+        #       binary (as apposed to text) mode simply because that's what
+        #       you get when you extractfile from tarfile.
+        #
+        # NOTE: We can't just check fobj.mode, because file-like-objects
+        #       returned from tarfile.extractfile have mode of 'r' (at least
+        #       w/ v3.2.2), but read returns bytes (as apposed to str).
+        if type(fobj.read(0)) != bytes:
+            raise Exception("{}(fobj): fobj must be opened in binary mode".format(self.__class__.__name__))
+
         self.filename = fobj.name
         # NOTE: We pass the actual buffer read from file through bufferfixer,
         #       which encodes specified sections and allows the configparser to

@@ -265,7 +265,7 @@ def main():
 #                    .features/somefeature.py
 
 def do_create(fname):
-    with open(fname) as fobj:
+    with open(fname, 'rb') as fobj:
         n = srp.notes.notes(fobj)
     print(n)
     
