@@ -11,10 +11,10 @@ NOTE: This is the only appropriate way to set file ownership.  Using chown in
 
 from srp.features import *
 
-# FIXME: We might want this to be done at build time... At build time, we
-#        could update the TarInfo object prior to adding the file to the
-#        archive.  If we do it at install time, we'll have to extract and
-#        then change perms afterwards.
+# NOTE: We want this to be done at build time... At build time, we could
+#       update the TarInfo object prior to adding the file to the archive.
+#       If we do it at install time, we'll have to extract and then change
+#       perms afterwards.
 #
 # FIXME: Hmmm... If we do this at build time, it has to come after
 #        core... otherwise we haven't run the build script yet... but core
@@ -37,9 +37,9 @@ from srp.features import *
 #
 # FIXME: I think the above is true, but TarInfo has a uid and uname
 #        field.... what if they don't match up?  are they both required?
-def build_func(p, brp):
+def build_func(work):
     """update tarinfo via perms section of NOTES file"""
-    print(brp)
+    print(work)
 
 
 def verify_func():

@@ -8,6 +8,16 @@ import configparser
 import re
 import base64
 
+# FIXME: we should implement a v2->v3 translator here.  it should translate
+#        the following variables in the build script:
+#
+#        SRP_ROOT/../package -> PACKAGE_DIR
+#
+#        SRP_ROOT -> PAYLOAD_DIR
+#
+#        it should also issue warnings about SRP_ROOT being deprecated.
+#
+
 # NOTE: This is a bit hairy because bufferfixer expects a str and returns a
 #       str, but the base64 methods operates on bytes...
 

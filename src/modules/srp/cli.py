@@ -313,14 +313,29 @@ def do_build(fname, options):
         n = srp.notes.notes(fobj)
         print(n)
 
+        # FIXME: should the core feature func untar the srp in a tmp dir? or
+        #        should we do that here and pass tmpdir in via our work
+        #        map...?  i think that's the only reason any of the build
+        #        funcs would need the tarfile instance...  might just boil
+        #        down to how determined i am to make the feature funcs do as
+        #        much of the work as possible...
+        #
+        #        it might also come down to duplicating code all over the
+        #        place... chances are, there's a bunch of places where we'll
+        #        need to create the tmpdir and extract a package's
+        #        files... in which case we'll rip that out of the core
+        #        feature's build_func and put it somewhere else.
+
         # run through all queued up stage funcs for build
         m = srp.features.get_stage_map(n.options.features)
         work = {}
+        work['tar'] = p
+        work['n'] = n
         print("build funcs:", m['build'])
         for f in m['build']:
             print("executing:", f)
             try:
-                f.func(n, work)
+                f.func(work)
             except:
                 print("ERROR: failed feature stage function:", f)
                 raise

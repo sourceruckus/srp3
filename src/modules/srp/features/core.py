@@ -7,6 +7,8 @@ This feature module implements the core functionality of the package manager
 import hashlib
 import io
 import os
+import stat
+import subprocess
 import tarfile
 import tempfile
 
@@ -87,15 +89,72 @@ def create_func(n):
             f.write(pkg.read())
 
 
-def build_func(p, brp):
+def build_func(work):
     """run build script to populate payload dir, then create TarInfo objects for
     all files"""
-    # create tmp dir
-    brp['foo'] = "hello"
+    # create ruckus dir in tmp
+    work['dir'] = tempfile.mkdtemp(prefix="srp-")
+
+    # create ruckus dir tree
+    for x in ["package", "build", "tmp"]:
+        os.makedirs(work['dir'] + "/" + x)
+
+    # extract package contents
+    #
+    # NOTE: This is needed so that build scripts can access other misc files
+    #       they've included in the srp (e.g., apply a patch, install an
+    #       externally maintained init script)
+    work['tar'].extractall(work['dir'] + "/package")
 
     # extract source tarball
+    t = tarfile.open(work['dir'] + "/package/" + work['n'].info.sourcefilename)
+    t.extractall(work['dir'] + "/build")
+    sourcedir=
+
+    # create build script
+    #
+    # FIXME: do i really need to create an executable script file?  or can i
+    #        just somehow spawn a subprocess using the contents of the buf?
+    with open(work['dir'] + "/build/srp_go", 'w') as f:
+        f.write(work['n'].script.buf)
+        os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # run build script
+    #
+    # FIXME: we need to standardize and document what variables are exposed
+    #        to build scripts.  v2 just added RUCKUS_DIR.  i think we should
+    #        add the following:
+    #
+    #        SRP_ROOT: The tmp payload dir (just like in v2). This is
+    #            DEPRECATED (to go away in 3.1?) and is just here for
+    #            backwards compatibility with v2 build scripts (it's used to
+    #            get at misc package files SRP_ROOT/../package)
+    #
+    #        PACKAGE_DIR: The package dir (where the srp got extracted).
+    #
+    #        BUILD_DIR: Parent dir of the extracted source tarball.
+    #
+    #        PAYLOAD_DIR: The tmp payload dir (was called SRP_ROOT in v2).
+    #            This is the preferred way to refer to the payload dir.
+    #            SRP_ROOT is deprecated.
+    #
+    # FIXME: the v2 code is really bad at keeping output synchronized when
+    #        redirecting stdout to a logfile (i.e., output coming directly
+    #        from srp and output coming from subprocesses do not apear in
+    #        the same order in the logfile that they would have w/out
+    #        redirection...).  This has always driven me nuts, but i don't
+    #        know how to fix it.  perhaps we should play with different
+    #        invocations here.  I'm pretty sure that the problem could be
+    #        avoided by returning the output from the subprocess to the
+    #        parent process and then printing it... but that will lead to no
+    #        output from the build until it's all finished, then spamming it
+    #        all to the screen...
+    new_env = dict(os.environ)
+    new_env['SRP_ROOT'] = work['dir']+"/tmp"
+    new_env['PACKAGE_DIR'] = work['dir']+"/package"
+    new_env['BUILD_DIR'] = work['dir']+"/build"
+    new_env['PAYLOAD_DIR'] = work['dir']+"/tmp"
+    subprocess.check_call(["./srp_go"], cwd=work['dir']+'/build/'+work['n'].info., env=new_env)
 
     # create global BLOB objects
     #
