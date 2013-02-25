@@ -59,7 +59,8 @@ features = no_ldupdate #perms users ldpath gtk_icons
 [script]
 %%BUFFER_BEGIN%%
 #!/bin/bash
-make -j5 &&
+env &&
+./configure && make -j5 &&
 make DESTDIR=$SRP_ROOT install || exit 1
 %%BUFFER_END%%
 
