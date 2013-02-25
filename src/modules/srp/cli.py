@@ -4,6 +4,7 @@
 import argparse
 import sys
 import tarfile
+import tempfile
 
 import srp
 
@@ -326,11 +327,29 @@ def do_build(fname, options):
         #        files... in which case we'll rip that out of the core
         #        feature's build_func and put it somewhere else.
 
+        # prep our shared work namespace
+        #
+        # NOTE: This dict gets passed into all the stage funcs (i.e., it's
+        #       how they can all share data)
+        work = {}
+        work['srp'] = p
+        work['notes'] = n
+
+        # create the toplevel brp archive
+        #
+        # NOTE: This is implemented using a ram-backed temporary file as the
+        #       fileobj for a tarfile.  When the fobj is closed it's
+        #       contents are lost, so we'll copy the data to our final
+        #       destination directory when we're all finished.
+        #
+        # FIXME: tweak the max_size argument
+        brp_fobj = tempfile.SpooledTemporaryFile()
+        brp = tarfile.open(fileobj=brp_fobj, mode="w")
+        work['brp'] = brp
+
         # run through all queued up stage funcs for build
         m = srp.features.get_stage_map(n.options.features)
-        work = {}
-        work['tar'] = p
-        work['n'] = n
+ 
         print("build funcs:", m['build'])
         for f in m['build']:
             print("executing:", f)
@@ -344,3 +363,6 @@ def do_build(fname, options):
         #
         # NOTE: This is where we actually add TarInfo objs and their associated
         #       fobjs to the BLOB, then add the BLOB to the brp archive.
+        
+        # add NOTES file to toplevel pkg archive (the brp)
+

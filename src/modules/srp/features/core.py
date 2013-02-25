@@ -104,19 +104,19 @@ def build_func(work):
     # NOTE: This is needed so that build scripts can access other misc files
     #       they've included in the srp (e.g., apply a patch, install an
     #       externally maintained init script)
-    work['tar'].extractall(work['dir'] + "/package")
+    work['srp'].extractall(work['dir'] + "/package")
 
     # extract source tarball
-    t = tarfile.open(work['dir'] + "/package/" + work['n'].info.sourcefilename)
+    t = tarfile.open(work['dir'] + "/package/" + work['notes'].info.sourcefilename)
     t.extractall(work['dir'] + "/build")
-    sourcedir=
+    sourcedir=t.getnames()[0]
 
     # create build script
     #
     # FIXME: do i really need to create an executable script file?  or can i
     #        just somehow spawn a subprocess using the contents of the buf?
     with open(work['dir'] + "/build/srp_go", 'w') as f:
-        f.write(work['n'].script.buf)
+        f.write(work['notes'].script.buf)
         os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # run build script
@@ -154,20 +154,36 @@ def build_func(work):
     new_env['PACKAGE_DIR'] = work['dir']+"/package"
     new_env['BUILD_DIR'] = work['dir']+"/build"
     new_env['PAYLOAD_DIR'] = work['dir']+"/tmp"
-    subprocess.check_call(["./srp_go"], cwd=work['dir']+'/build/'+work['n'].info., env=new_env)
+    subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/'+sourcedir, env=new_env)
 
-    # create global BLOB objects
+    # create manifest
     #
-    # NOTE: The global TarFile object and list of TarInfo objects are created
-    #       now, but nothing is added to the archive yet.  This is to allow
-    #       other features a chance to tweak things.  At the very end (i.e.,
-    #       when all other feature functions have been executed), all the
-    #       TarInfo objects (and their associated file objects) will be added to
-    #       the archive.
+    # NOTE: This is a list of all the files and associated meta-data that
+    #       will be included in the package upon completion.  The core of
+    #       each file's data is a TarInfo object.  This makes tons of sense
+    #       because we're using tarfile already and TarInfo tracks all the
+    #       core meta-data we need.  Other features can add other items
+    #       (e.b., checksum) to each file's entry as needed.
+    #
+    # NOTE: Keep in mind, the TarInfo objects are created now, but nothing
+    #       is added to an archive yet.  This is to allow other features a
+    #       chance to tweak things (e.g., permissions, ownership).  At the
+    #       very end (i.e., when all other feature functions have been
+    #       executed), all the TarInfo objects (and their associated file
+    #       objects) will be added to the archive.
+    work['manifest'] = []
+    for root, dirs, files in os.walk(new_env['PAYLOAD_DIR']):
+        tmp = dirs[:]
+        tmp.extend(files)
+        for x in tmp:
+            realname = os.path.join(root, x)
+            arcname = os.path.join(root, x).split(new_env['PAYLOAD_DIR'])[-1]
+            x = {'tinfo': work['brp'].gettarinfo(realname, arcname)}
+            work['manifest'].append(x)
+            print(work['manifest'][-1])
 
     # append brp section to NOTES file in mem
 
-    # add NOTES file to toplevel pkg archive (the brp)
 
 
 def install_func():
