@@ -7,10 +7,13 @@ This feature module implements the core functionality of the package manager
 import hashlib
 import io
 import os
+import pwd
+import socket
 import stat
 import subprocess
 import tarfile
 import tempfile
+import time
 
 from srp.features import *
 
@@ -182,8 +185,41 @@ def build_func(work):
             work['manifest'].append(x)
             print(work['manifest'][-1])
 
-    # append brp section to NOTES file in mem
+    # append to brp section of NOTES file
+    #
+    # FIXME: hmmm... i might have to rethink using namedtuples for NOTES'
+    #        data... if i need to append to it here (and i do), and then
+    #        write it back out (which i do), i probably want to keep the
+    #        parser around.  and if i'm going to keep the parser around
+    #        anyway, why not just use it for all the data all the time?
+    #
+    #        well, i could update the parser as i go along (inside the notes
+    #        constructor, default expansions, etc), but still access the
+    #        data via the exposed struct (which should be much
+    #        faster)... the question really is, is it a big enough speed
+    #        improvement to justify the extra complexity.  it's not going to
+    #        be a mem improvement, unless i ditch the parser after
+    #        construction...
+    #
+    #        it might not actually be that hard to iterate through our named
+    #        tuples and spit the data back into a new ConfigParser instance
+    #        when we want to write back to file... but we will have to
+    #        decide how we want to go about appending to the data while
+    #        we're working here... keeping the parser around just for that
+    #        seems silly.  maybe we just add a appendage dict for new data
+    #        and serialize it all into a new ConfigParser when we're done.
+    n = work['notes']
 
+    # FIXME: should have a .srprc file to specify a full name (e.g., 'Joe
+    #        Bloe <bloe@mail.com>'), and fallback to user id if it's not set
+    n.parser['brp']['builder'] = pwd.getpwuid(os.getuid()).pw_gecos
+
+    # FIXME: this should probably be a bit more complicated...
+    n.parser['brp']['build_host'] = socket.gethostname()
+
+    # FIXME: should i store seconds since epoch, struct_time, or a human
+    #        readable string here...?
+    n.parser['brp']['build_date'] = time.asctime()
 
 
 def install_func():

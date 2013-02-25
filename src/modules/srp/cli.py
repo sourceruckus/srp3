@@ -333,6 +333,9 @@ def do_build(fname, options):
         #       how they can all share data)
         work = {}
         work['srp'] = p
+
+        # append brp section header to NOTES file
+        n.parser['brp'] = {}
         work['notes'] = n
 
         # create the toplevel brp archive
@@ -364,5 +367,9 @@ def do_build(fname, options):
         # NOTE: This is where we actually add TarInfo objs and their associated
         #       fobjs to the BLOB, then add the BLOB to the brp archive.
         
+        # add items to NOTES file (e.g., blob_compression)
+        print(n)
+        print(n.parser)
+
         # add NOTES file to toplevel pkg archive (the brp)
 

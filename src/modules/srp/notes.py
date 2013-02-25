@@ -64,6 +64,13 @@ class notes:
         # NOTE: This means we can access things as notes.info.version as apposed
         #       to keeping the config parser around and getting at things via
         #       notes.config['info']['version']
+        #
+        # NOTE: This isn't just for aesthetics.  It should be faster and
+        #       less memory intensive to use this struct-ish data model than
+        #       keeping the config parser around and accessing things
+        #       through it directly all the time.  And we can type the
+        #       values (e.g., notes.prereqs.version_major is an int, but
+        #       notes.config['prereqs']['version_major'] is a string
         self.sections = {}
         for s in c.keys():
             if s == "DEFAULT":
@@ -111,6 +118,8 @@ class notes:
         
         # overwrite the raw value with the parsed list
         self.options.features = f
+
+        self.parser = c
 
 
     def __str__(self):
