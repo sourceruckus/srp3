@@ -24,7 +24,7 @@ import base64
 def encodescript(m):
     return "encoded = True\nbuf = {}".format(base64.b64encode(m.group(1).encode()).decode())
 
-def bufferfixer(buf):
+def bufferencode(buf):
     return re.sub("^%%BUFFER_BEGIN%%\n(.*?)\n%%BUFFER_END%%\n", encodescript, buf, flags=re.DOTALL|re.MULTILINE)
 
 
@@ -50,11 +50,11 @@ class notes:
             raise Exception("{}(fobj): fobj must be opened in binary mode".format(self.__class__.__name__))
 
         self.filename = fobj.name
-        # NOTE: We pass the actual buffer read from file through bufferfixer,
+        # NOTE: We pass the actual buffer read from file through buffencode,
         #       which encodes specified sections and allows the configparser to
         #       parse things w/out having heartburn about embedded scripts,
         #       multi-line options, etc
-        buf = bufferfixer(fobj.read().decode())
+        buf = bufferencode(fobj.read().decode())
         c = configparser.ConfigParser(comment_prefixes=('#'),
                                       inline_comment_prefixes=('#'))
         c.read_string(buf)
@@ -119,7 +119,7 @@ class notes:
         # overwrite the raw value with the parsed list
         self.options.features = f
 
-        self.parser = c
+        self.additions = {}
 
 
     def __str__(self):
@@ -130,4 +130,31 @@ class notes:
                     ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(getattr(getattr(self, s), k))
                 else:
                     ret += "[{}] {} = {}\n".format(s, k, getattr(getattr(self, s), k))
+        for s in self.additions:
+            for k in self.additions[s]:
+                ret += "[{}] {} = {}\n".format(s, k, self.additions[s][k])
         return ret.strip()
+
+
+    def write(self, fobj):
+        # we accomplish this by re-populating a new configparser instance
+        # with all our data (namedtuples and items from self.additions),
+        # then have the configparser write to a file object
+        c = configparser.ConfigParser()
+
+        # our namedtuple data originally read from the NOTES file
+        for s in self.sections:
+            c[s] = {}
+            for k in self.sections[s]:
+                if getattr(getattr(self, s), "encoded", False) and k == "buf":
+                    c[s][k] = base64.b64encode(getattr(getattr(self, s), k).encode()).decode()
+                else:
+                    c[s][k] = str(getattr(getattr(self, s), k))
+
+        # now add items from self.additions
+        for s in self.additions:
+            c[s] = {}
+            for k in self.additions[s]:
+                c[s][k] = self.additions[s][k]
+
+        c.write(fobj)
