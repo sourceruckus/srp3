@@ -212,14 +212,14 @@ def build_func(work):
 
     # FIXME: should have a .srprc file to specify a full name (e.g., 'Joe
     #        Bloe <bloe@mail.com>'), and fallback to user id if it's not set
-    n.parser['brp']['builder'] = pwd.getpwuid(os.getuid()).pw_gecos
+    n.additions['brp']['builder'] = pwd.getpwuid(os.getuid()).pw_gecos
 
     # FIXME: this should probably be a bit more complicated...
-    n.parser['brp']['build_host'] = socket.gethostname()
+    n.additions['brp']['build_host'] = socket.gethostname()
 
     # FIXME: should i store seconds since epoch, struct_time, or a human
     #        readable string here...?
-    n.parser['brp']['build_date'] = time.asctime()
+    n.additions['brp']['build_date'] = time.asctime()
 
 
 def install_func():

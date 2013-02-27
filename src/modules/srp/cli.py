@@ -335,7 +335,7 @@ def do_build(fname, options):
         work['srp'] = p
 
         # append brp section header to NOTES file
-        n.parser['brp'] = {}
+        n.additions['brp'] = {}
         work['notes'] = n
 
         # create the toplevel brp archive
@@ -368,8 +368,13 @@ def do_build(fname, options):
         #       fobjs to the BLOB, then add the BLOB to the brp archive.
         
         # add items to NOTES file (e.g., blob_compression)
+        #
+        # FIXME: This should be configurable globally and also via the
+        #        command line when building.
+        n.additions['brp']['blob_compression'] = 'bz2'
         print(n)
-        print(n.parser)
 
         # add NOTES file to toplevel pkg archive (the brp)
+        with open("/tmp/FOOOOO", 'w') as fobj:
+            n.write(fobj)
 

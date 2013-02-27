@@ -6,7 +6,7 @@
 # FIXME: srp should add the following things when it creates the brp:
 #
 #        [brp]
-#        blob_compression: none, gz, bz2, lz?
+#        blob_compression: none, gz, bz2, xz?
 #	 builder: somebody@somewhere.com
 #        build_host:
 #        build_date:
