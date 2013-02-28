@@ -11,25 +11,121 @@ NOTE: This is the only appropriate way to set file ownership.  Using chown in
 
 from srp.features import *
 
+import os
+import re
+
+
+class perms(list):
+    """ This class defines a special list that initializes itself from a
+    decoded perms buffer.  It provides a [] method that returns a list of
+    rules that match the specified file (via regexp).
+
+    file_regex:user=,group=,mode=,mode_set=,mode_unset=,...recursive=true
+
+    If file_regex is a directory and 'recursive' option is specified,
+    recursively apply all settings.
+
+    Instead of just setting mode, mode_set and mode_unset are availibe as
+    well.  So
+
+    /var/named:user=named,group=named,mode_set=384,mode_unset=63,recursive=true
+
+    will set all files under /var/named (including /var/named) to
+    named:named, set S_IRUSR|S_IWUSR, and unset S_IRWXG|S_IRWXO.
+
+    NOTE: This is implemented as a list, not a map, so we can ensure that
+          rules are applied in the order they're defined...  We won't ever
+          be indexing into a specific key anway, since we allow regex for
+          key.
+"""
+# this is accomplished internally like this:
+# os.chmod(filename, os.stat(filename)[stat.ST_MODE] | mode_set)
+# os.chmod(filename, os.stat(filename)[stat.ST_MODE] & ~mode_unset)
+#
+    def __init__(self, buf):
+        list.__init__(self)
+
+        lines = buf.split('\n')
+        
+        for line in lines:
+            # remove comments
+            line = line.split("#")[0].strip()
+            if not line:
+                continue
+
+            # split on : but keep in mind that regex can have ':' in
+            # it.
+            line = line.split(":")
+            options = line[-1]
+            pattern = ":".join(line[:-1])
+
+            # split options on ,
+            options = options.split(",")
+
+            # create options dict
+            options_dict = {}
+            for x in options:
+                k, v = x.split("=")
+                options_dict[k] = v
+
+            # make sure our flag options exist with default values
+            for flag, value in [('recursive', 'false')]:
+                try:
+                    # this will lowercase-ize the flag value if it was
+                    # specified so we don't have to check multiple
+                    # cases later on
+                    options_dict[flag] = options_dict[flag].lower()
+                except:
+                    options_dict[flag] = value
+
+            self.append({'regex': re.compile(pattern), 'options': options_dict})
+
+
+    def __getitem__(self, fname):
+        """
+        unlike most __getitem__ methods, this one returns a list of
+        items instead of a single item.  as such, it returns [] if
+        there are no matching items istead of raising an exception.
+
+        NOTE: if passed an int, the list.__getitem__ method is called
+              to allow for simple indexing.
+        """
+        # if we're simply trying to index into the list, call the list
+        # method to do so
+        if isinstance(fname, int):
+            return list.__getitem__(self, fname)
+
+        retval = []
+        for x in self:
+            if x['options']['recursive'] != "false":
+                # we have to try matching on fname and each of it's parent dirs
+                sep = os.path.sep
+                y = fname.split(sep)
+                for i in range(len(y)):
+                    subname = sep.join(y[:len(y)-i])
+                    if not subname:
+                        continue
+                    if x['regex'].search(subname):
+                        retval.append(x)
+                        break
+
+            elif x['regex'].search(fname):
+                retval.append(x)
+
+        return retval
+
+
 # NOTE: We want this to be done at build time... At build time, we could
 #       update the TarInfo object prior to adding the file to the archive.
 #       If we do it at install time, we'll have to extract and then change
 #       perms afterwards.
 #
-# FIXME: Hmmm... If we do this at build time, it has to come after
-#        core... otherwise we haven't run the build script yet... but core
-#        will have already added all the files to the archive... then what?
-#
-#        We could have core create a SpooledTempFile as the BLOB, then have
-#        the perms build method readd each member to a new SpooledTempFile
-#        w/ forged TarInfos, then only write the final one to disk?
-#
-# FIXME: Well, there's really no need to have core's build func actually create
-#        the tar.  We could have core's build func just run the script and
-#        populate the payload dir, but have some other final step create the
-#        tarball.  We could even create a TarFile object and iterate over all
-#        the files creating TarInfo objects, but not actually add any files to
-#        the archive until the very very end...
+# NOTE: The core build_func does NOT actually add files to the brp, it just
+#       runs the build script and make a first pass at the package manifest.
+#       This gives us a chance to swoop in here and change perms in the
+#       TarInfo objects in work['manifest'] prior to the toplevel program
+#       finalizing the brp (at which point, files are actually added to the
+#       BLOB archive).
 #
 # NOTE: There's no interdependency with user feature here because we can
 #       forge the TarInfo with whatever we like.  The system doesn't
@@ -39,7 +135,23 @@ from srp.features import *
 #        field.... what if they don't match up?  are they both required?
 def build_func(work):
     """update tarinfo via perms section of NOTES file"""
-    print(work)
+    print(work.keys())
+    print(work['notes'].perms.buf)
+    p = perms(work['notes'].perms.buf)
+    print(p)
+    print(p['/usr/local/bin/foo'])
+    print(p['/usr/share/asdf'])
+
+    for root, dirs, files in os.walk(work['dir']+"/tmp"):
+        tmp = dirs[:]
+        tmp.extend(files)
+        for x in tmp:
+            realname = os.path.join(root, x)
+            arcname = os.path.join(root, x).split(work['dir']+"/tmp")[-1]
+            if p[arcname]:
+                print("match:", arcname, ":", p[arcname])
+                x = work['manifest'][arcname]['tinfo']
+                print(x)
 
 
 def verify_func():
