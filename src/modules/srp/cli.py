@@ -372,7 +372,7 @@ def do_build(fname, options):
         # FIXME: This should be configurable globally and also via the
         #        command line when building.
         n.additions['brp']['blob_compression'] = 'bz2'
-        print(n)
+        #print(n)
 
         # add NOTES file to toplevel pkg archive (the brp)
         with open("/tmp/FOOOOO", 'w') as fobj:

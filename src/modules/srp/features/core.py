@@ -161,7 +161,7 @@ def build_func(work):
 
     # create manifest
     #
-    # NOTE: This is a list of all the files and associated meta-data that
+    # NOTE: This is a map of all the files and associated meta-data that
     #       will be included in the package upon completion.  The core of
     #       each file's data is a TarInfo object.  This makes tons of sense
     #       because we're using tarfile already and TarInfo tracks all the
@@ -174,7 +174,7 @@ def build_func(work):
     #       very end (i.e., when all other feature functions have been
     #       executed), all the TarInfo objects (and their associated file
     #       objects) will be added to the archive.
-    work['manifest'] = []
+    work['manifest'] = {}
     for root, dirs, files in os.walk(new_env['PAYLOAD_DIR']):
         tmp = dirs[:]
         tmp.extend(files)
@@ -182,8 +182,8 @@ def build_func(work):
             realname = os.path.join(root, x)
             arcname = os.path.join(root, x).split(new_env['PAYLOAD_DIR'])[-1]
             x = {'tinfo': work['brp'].gettarinfo(realname, arcname)}
-            work['manifest'].append(x)
-            print(work['manifest'][-1])
+            work['manifest'][arcname] = x
+            print(work['manifest'][arcname])
 
     # append to brp section of NOTES file
     #
