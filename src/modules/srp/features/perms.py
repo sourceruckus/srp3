@@ -143,6 +143,8 @@ def build_func(work):
         tmp.extend(files)
         for x in tmp:
             realname = os.path.join(root, x)
+            if os.path.islink(realname):
+                continue
             arcname = os.path.join(root, x).split(work['dir']+"/tmp")[-1]
             if not p[arcname]:
                 continue
@@ -166,13 +168,13 @@ def build_func(work):
                         x.gname = rule['options']['group']
 
                 if 'mode' in rule['options']:
-                    x.mode = rule['options']
+                    x.mode = int(rule['options']['mode'], 8)
 
                 if 'mode_set' in rule['options']:
-                    x.mode = x.mode | int(rule['options']['mode_set'])
+                    x.mode = x.mode | int(rule['options']['mode_set'], 8)
 
                 if 'mode_unset' in rule['options']:
-                    x.mode = x.mode & ~int(rule['options']['mode_unset'])
+                    x.mode = x.mode & ~int(rule['options']['mode_unset'], 8)
 
             print(x.mode)
 
