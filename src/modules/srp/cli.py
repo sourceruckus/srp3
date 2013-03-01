@@ -2,6 +2,7 @@
 """
 
 import argparse
+import os
 import sys
 import tarfile
 import tempfile
@@ -367,15 +368,37 @@ def do_build(fname, options):
         # NOTE: This is where we actually add TarInfo objs and their associated
         #       fobjs to the BLOB, then add the BLOB to the brp archive.
         print(work['manifest']['/usr/local/bin/foo']['tinfo'].mode)
+        print(work)
+        flist = list(work['manifest'].keys())
+        flist.sort()
+        for x in flist:
+            realname = work['dir']+'/tmp/'+x
+            tinfo = work['manifest'][x]['tinfo']
+            if os.path.islink(realname) or os.path.isdir(realname):
+                work['brp'].addfile(tinfo)
+            else:
+                print(realname)
+                print(tinfo)
+                work['brp'].addfile(tinfo, open(realname, 'rb'))
 
         # add items to NOTES file (e.g., blob_compression)
         #
         # FIXME: This should be configurable globally and also via the
         #        command line when building.
         n.additions['brp']['blob_compression'] = 'bz2'
-        #print(n)
 
         # add NOTES file to toplevel pkg archive (the brp)
         with open("/tmp/FOOOOO", 'w') as fobj:
             n.write(fobj)
 
+        brp.close()
+
+        # copy brp to pwd
+        #
+        # FIXME: we need to detect march here...
+        brp_fobj.seek(0)
+        pname = "{}-{}-{}.{}.brp".format(n.info.name, n.info.version,
+                                         n.info.revision, 'i686')
+        print(pname)
+        with open(pname, "wb") as f:
+            f.write(brp_fobj.read())
