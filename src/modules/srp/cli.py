@@ -366,7 +366,8 @@ def do_build(fname, options):
         #
         # NOTE: This is where we actually add TarInfo objs and their associated
         #       fobjs to the BLOB, then add the BLOB to the brp archive.
-        
+        print(work['manifest']['/usr/local/bin/foo']['tinfo'].mode)
+
         # add items to NOTES file (e.g., blob_compression)
         #
         # FIXME: This should be configurable globally and also via the

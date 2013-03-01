@@ -37,11 +37,7 @@ class perms(list):
           rules are applied in the order they're defined...  We won't ever
           be indexing into a specific key anway, since we allow regex for
           key.
-"""
-# this is accomplished internally like this:
-# os.chmod(filename, os.stat(filename)[stat.ST_MODE] | mode_set)
-# os.chmod(filename, os.stat(filename)[stat.ST_MODE] & ~mode_unset)
-#
+    """
     def __init__(self, buf):
         list.__init__(self)
 
@@ -148,10 +144,37 @@ def build_func(work):
         for x in tmp:
             realname = os.path.join(root, x)
             arcname = os.path.join(root, x).split(work['dir']+"/tmp")[-1]
-            if p[arcname]:
-                print("match:", arcname, ":", p[arcname])
-                x = work['manifest'][arcname]['tinfo']
-                print(x)
+            if not p[arcname]:
+                continue
+
+            print("match:", arcname, ":", p[arcname])
+            x = work['manifest'][arcname]['tinfo']
+            print(x.mode)
+
+            for rule in p[arcname]:
+
+                if 'user' in rule['options']:
+                    try:
+                        x.uid = int(rule['options']['user'])
+                    except:
+                        x.uname = rule['options']['user']
+
+                if 'group' in rule['options']:
+                    try:
+                        x.gid = int(rule['options']['group'])
+                    except:
+                        x.gname = rule['options']['group']
+
+                if 'mode' in rule['options']:
+                    x.mode = rule['options']
+
+                if 'mode_set' in rule['options']:
+                    x.mode = x.mode | int(rule['options']['mode_set'])
+
+                if 'mode_unset' in rule['options']:
+                    x.mode = x.mode & ~int(rule['options']['mode_unset'])
+
+            print(x.mode)
 
 
 def verify_func():
