@@ -1,8 +1,12 @@
 """The SRP Command Line Interface.
 """
 
+# FIXME: waaaaay too much stuff has ended up in this cli module.  once it's
+#        been moved to a different module, audit the import statements
 import argparse
 import os
+import platform
+import stat
 import sys
 import tarfile
 import tempfile
@@ -363,42 +367,87 @@ def do_build(fname, options):
                 print("ERROR: failed feature stage function:", f)
                 raise
 
-        # finalize the built brp
+        # populate the BLOB archive
         #
         # NOTE: This is where we actually add TarInfo objs and their associated
         #       fobjs to the BLOB, then add the BLOB to the brp archive.
-        print(work['manifest']['/usr/local/bin/foo']['tinfo'].mode)
-        print(work)
+        #
+        # NOTE: This is implemented using a ram-backed temporary file as the
+        #       fileobj for a tarfile.  When the fobj is closed it's
+        #       contents are lost, but that's fine because we will have
+        #       already added it to the toplevel brp archive.
+        #
+        # FIXME: tweak the max_size argument
+        #
+        # FIXME: compression should be configurable globally and also via
+        #        the command line when building.
+        blob_fobj = tempfile.SpooledTemporaryFile()
+        comp = 'bz2'
+        blob = tarfile.open(fileobj=blob_fobj, mode="w:"+comp)
+
         flist = list(work['manifest'].keys())
         flist.sort()
         for x in flist:
             realname = work['dir']+'/tmp/'+x
             tinfo = work['manifest'][x]['tinfo']
             if os.path.islink(realname) or os.path.isdir(realname):
-                work['brp'].addfile(tinfo)
+                blob.addfile(tinfo)
             else:
                 print(realname)
                 print(tinfo)
-                work['brp'].addfile(tinfo, open(realname, 'rb'))
+                blob.addfile(tinfo, open(realname, 'rb'))
 
+        blob.close()
+        
         # add items to NOTES file (e.g., blob_compression)
-        #
-        # FIXME: This should be configurable globally and also via the
-        #        command line when building.
-        n.additions['brp']['blob_compression'] = 'bz2'
+        n.additions['brp']['blob_compression'] = comp
 
         # add NOTES file to toplevel pkg archive (the brp)
-        with open("/tmp/FOOOOO", 'w') as fobj:
-            n.write(fobj)
+        #
+        # FIXME: tweak the max_size argument
+        n_fobj = tempfile.SpooledTemporaryFile()
+        n.write(n_fobj)
+        n_fobj.seek(0)
+        # FIXME: perhaps write a method to build TarInfo from fobj.  can't
+        #        use gettarinfo on a SpooledTemporaryFile, so we have to do
+        #        an fstat and populate by hand
+        n_tinfo = tarfile.TarInfo("NOTES")
+        n_stat = os.fstat(n_fobj.fileno())
+        n_tinfo.size = n_stat.st_size
+        n_tinfo.mtime = n_stat.st_mtime
+        n_tinfo.mode = n_stat.st_mode
+        n_tinfo.uid = n_stat.st_uid
+        n_tinfo.gid = n_stat.st_gid
+        n_tinfo.type = tarfile.REGTYPE
 
+        brp.addfile(n_tinfo, n_fobj)
+        n_fobj.close()
+
+        # add BLOB file to toplevel pkg archive
+        blob_fobj.seek(0)
+        # FIXME: se previous note about making a method for this
+        blob_tinfo = tarfile.TarInfo("BLOB.tar."+comp)
+        blob_stat = os.fstat(blob_fobj.fileno())
+        blob_tinfo.size = blob_stat.st_size
+        blob_tinfo.mtime = blob_stat.st_mtime
+        blob_tinfo.mode = blob_stat.st_mode
+        blob_tinfo.uid = blob_stat.st_uid
+        blob_tinfo.gid = blob_stat.st_gid
+        blob_tinfo.type = tarfile.REGTYPE
+
+        brp.addfile(blob_tinfo, blob_fobj)
+        blob_fobj.close()
+
+        # close the toplevel brp archive
         brp.close()
 
         # copy brp to pwd
-        #
-        # FIXME: we need to detect march here...
         brp_fobj.seek(0)
+        mach = platform.machine()
+        if not mach:
+            mach = "unknown"
         pname = "{}-{}-{}.{}.brp".format(n.info.name, n.info.version,
-                                         n.info.revision, 'i686')
+                                         n.info.revision, mach)
         print(pname)
         with open(pname, "wb") as f:
             f.write(brp_fobj.read())
