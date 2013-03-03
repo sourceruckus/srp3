@@ -11,6 +11,14 @@ AC_PROG_INSTALL
 AC_PROG_MKDIR_P
 AC_PROG_LN_S
 
+# NOTE: It would appear that libreadline.so has undefined references unless
+#       you also link against libncurses.  I think that means that
+#       libreadline itself should be linked against libncurses, but
+#       whatever.
+AC_CHECK_LIB(ncurses, main, [], AC_MSG_FAILURE(ncurses test failed))
+AC_CHECK_LIB([readline], [main], [], [AC_MSG_FAILURE([readline test failed])], [-lncurses])
+
+
 AC_CONFIG_FILES([Makefile \
 		 src/Makefile \
 		 docs/Makefile \

@@ -145,7 +145,7 @@ and not get into implementation details.
   a separate checksum feature and a perms feature to replace the old
   SRP_OWNEROVERRIDE flag.
 
-  defaults = [core,checksum,ldupdate,perms?]
+  defaults = [core,checksum,ldupdate,deps]
 
   Should we dynamically gen no_* flags that strip the associated flag from a
   package's list of flags?
@@ -167,6 +167,10 @@ and not get into implementation details.
   perms:
     build [after core]: update tarinfo via perms section of NOTES file
     action.verify: check perms, issue warning
+
+  deps:
+    build [after core]: build list of needed libs by files in the payload
+    install [before core]: verify all libs present on host system
 
   user=user:group,user:group,...:
     install [before core]: create group and/or user accounts
