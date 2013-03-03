@@ -7,6 +7,7 @@ import collections
 import configparser
 import re
 import base64
+import tempfile
 
 # FIXME: we should implement a v2->v3 translator here.  it should translate
 #        the following variables in the build script:
@@ -157,4 +158,17 @@ class notes:
             for k in self.additions[s]:
                 c[s][k] = self.additions[s][k]
 
-        c.write(fobj)
+        # fix fobj mode
+        #
+        # NOTE: ConfigParser.write requires a fobj that was opened in txt
+        #       mode, but everywhere else we (or other python objects) are
+        #       forcing binary mode.  I'm working around this by writing
+        #       config to a temp txt file, then read/writing into the passed
+        #       in binary mode fobj.
+        #
+        # FIXME: max_size should be common w/ all our other
+        #        SpooledTemporaryFile instances.
+        with tempfile.SpooledTemporaryFile(mode="w+") as wtf:
+            c.write(wtf)
+            wtf.seek(0)
+            fobj.write(wtf.read().encode())
