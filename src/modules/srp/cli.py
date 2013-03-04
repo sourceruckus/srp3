@@ -14,19 +14,10 @@ import tempfile
 import srp
 
 
-prog = "The Source Ruckus Packager"
-version = "3.0.0-alpha1"
-version_major = 3
-version_minor = 0
-version_bugfix = 0
-build_year = "2013"
-
-# FIXME: should move some of this to config
-
 desc = """\
-%s, version %s
-(C) 2001-%s Michael D Labriola <michael.d.labriola@gmail.com>
-""" % (prog, version, build_year)
+{}, version {}
+(C) 2001-{} Michael D Labriola <michael.d.labriola@gmail.com>
+""".format(srp.config.prog, srp.config.version, srp.config.build_year)
 
 epi = """\
 example: srp -v --create=foo.notes
@@ -137,7 +128,7 @@ g.add_argument('-I', '--init', action='store_true',
                help="Initialize metadata.")
 
 g.add_argument('-V', '--version', action='version',
-               version="%s version %s" % (prog, version))
+               version="{} version {}".format(srp.config.prog, srp.config.version))
 
 
 # the following options are independent of the exclusive group (at least as
@@ -221,15 +212,15 @@ def main():
     # FIXME: we should error out if metadata has not yet been initialized
     #        (unless args.init is set, obviously)
 
-    print("do_init_output(level=%d)" % args.verbose)
+    print("do_init_output(level={})".format(args.verbose))
 
     if args.install:
         for x in get_package_list():
-            print("do_install(package=%s, flags=%s)" % (x, args.install.split(',')))
+            print("do_install(package={}, flags={})".format(x, args.install))
 
     elif args.uninstall:
         for x in get_package_list():
-            print("do_uninstall(package=%s, flags=%s)" % (x, args.uninstall.split(',')))
+            print("do_uninstall(package={}, flags={})".format(x, args.uninstall))
 
     elif args.build != None:
         if args.build != []:
@@ -242,11 +233,11 @@ def main():
 
     elif args.action:
         for x in get_package_list():
-            print("do_action(package=%s, actions=%s)" % (x, args.action.split(',')))
+            print("do_action(package={}, actions={})".format(x, args.action))
 
     elif args.query:
         for x in get_package_list():
-            print("do_query(package=%s, fields=%s)" % (x, args.query.split(',')))
+            print("do_query(package={}, fields={})".format(x, args.query))
 
     elif args.create:
         print("do_create(notes={})".format(args.create))
@@ -255,7 +246,7 @@ def main():
     elif args.list != None:
         if not args.list:
             args.list = ["*"]
-        print("do_list(pattern='%s')" % (args.list))
+        print("do_list(pattern='{}')".format(args.list))
 
     elif args.init:
         print("do_init_metadata()")
