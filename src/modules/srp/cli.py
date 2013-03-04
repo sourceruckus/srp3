@@ -217,6 +217,7 @@ def main():
     if args.install:
         for x in get_package_list():
             print("do_install(package={}, flags={})".format(x, args.install))
+            do_install(x, args.install)
 
     elif args.uninstall:
         for x in get_package_list():
@@ -417,3 +418,11 @@ def do_build(fname, options):
         print(pname)
         with open(pname, "wb") as f:
             f.write(brp_fobj.read())
+
+
+def do_install(fname, options):
+    with tarfile.open(fname) as p:
+        # verify that requirements are met
+        fobj = p.extractfile("NOTES")
+        n = srp.notes.notes(fobj)
+        print(n)
