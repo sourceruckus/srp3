@@ -96,31 +96,42 @@ class notes:
         f = srp.features.default_features[:]
 
         # parse features from NOTES file
-        for x in self.options.features.split():
-            if x.startswith("no_"):
-                # handle feature disabling
-                try:
-                    f.remove(x[3:])
-                except:
-                    pass
-            else:
-                # handle enables
-                f.append(x)
-
-        # add features for unclaimed sections
         #
-        # NOTE: This will automatically enable any feature that has a special
-        #       section defined for it in the NOTES file (e.g., perms).
-        #       However, it means that every unclaimed section is assumed to be
-        #       a valid feature name.
-        for s in self.sections:
-            if s not in ['prereqs', 'info', 'options', 'script']:
-                f.append(s)
-        
-        # overwrite the raw value with the parsed list
-        self.options.features = f
+        # NOTE: We ONLY want to tweak features if this NOTES file hasn't
+        #       already been run through srp (i.e., it's not coming from a
+        #       brp archive)
+        if 'brp' not in self.sections:
+            for x in self.options.features.split():
+                if x.startswith("no_"):
+                    # handle feature disabling
+                    try:
+                        f.remove(x[3:])
+                    except:
+                        pass
+                else:
+                    # handle enables
+                    f.append(x)
+
+            # add features for unclaimed sections
+            #
+            # NOTE: This will automatically enable any feature that has a
+            #       special section defined for it in the NOTES file (e.g.,
+            #       perms).  However, it means that every unclaimed section
+            #       is assumed to be a valid feature name.
+            for s in self.sections:
+                if s not in ['prereqs', 'info', 'options', 'script', 'brp']:
+                    f.append(s)
+
+            # overwrite the raw value with the parsed list
+            #
+            # NOTE: We flatten this back out into a string to make life
+            #       easier later on when we write via ConfigParser
+            self.options.features = " ".join(f)
 
         self.additions = {}
+
+        # check package requirements
+        self.check()
 
 
     def __str__(self):
@@ -172,3 +183,25 @@ class notes:
             c.write(wtf)
             wtf.seek(0)
             fobj.write(wtf.read().encode())
+
+
+    def check(self):
+        # check for required version
+        if srp.config.version_major < self.prereqs.version_major:
+            raise Exception("package requires srp >= {}".format(self.prereqs.version))
+        elif srp.config.version_minor < self.prereqs.version_minor:
+            raise Exception("package requires srp >= {}".format(self.prereqs.version))
+        elif srp.config.version_bugfix < self.prereqs.version_bugfix:
+            raise Exception("package requires srp >= {}".format(self.prereqs.version))
+
+        # check for required features
+        missing = self.options.features.split()
+        print(missing)
+        print(srp.features.registered_features)
+        for x in srp.features.registered_features:
+            try:
+                missing.remove(x)
+            except:
+                pass
+        if missing:
+            raise Exception("package requires missing features: {}".format(missing))

@@ -264,29 +264,6 @@ def main():
 def do_create(fname):
     with open(fname, 'rb') as fobj:
         n = srp.notes.notes(fobj)
-    print(n)
-    
-    # FIXME: should we roll up the following check routines into a
-    #        notes.check_reqs method?  probably... seems like something we'll
-    #        want to do for pretty much every mode...
-
-    # check for required version
-    if version_major < n.prereqs.version_major:
-        raise Exception("package requires srp >= {}".format(n.prereqs.version))
-    elif version_minor < n.prereqs.version_minor:
-        raise Exception("package requires srp >= {}".format(n.prereqs.version))
-    elif version_bugfix < n.prereqs.version_bugfix:
-        raise Exception("package requires srp >= {}".format(n.prereqs.version))
-
-    # check for required features
-    missing = n.options.features[:]
-    for x in srp.features.registered_features:
-        try:
-            missing.remove(x)
-        except:
-            pass
-    if missing:
-        raise Exception("package requires missing features: {}".format(missing))
 
     # run through all queued up stage funcs for create
     m = srp.features.get_stage_map(n.options.features)
@@ -304,9 +281,7 @@ def do_create(fname):
 
 def do_build(fname, options):
     with tarfile.open(fname) as p:
-        # verify that requirements are met
         fobj = p.extractfile("NOTES")
-        #print(fobj)
         n = srp.notes.notes(fobj)
         #print(n)
 
@@ -347,7 +322,7 @@ def do_build(fname, options):
         work['brp'] = brp
 
         # run through all queued up stage funcs for build
-        m = srp.features.get_stage_map(n.options.features)
+        m = srp.features.get_stage_map(n.options.features.split())
  
         print("build funcs:", m['build'])
         for f in m['build']:
