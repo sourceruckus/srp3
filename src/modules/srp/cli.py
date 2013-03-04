@@ -267,7 +267,7 @@ def do_create(fname):
         n = srp.notes.notes(fobj)
 
     # run through all queued up stage funcs for create
-    m = srp.features.get_stage_map(n.options.features)
+    m = srp.features.get_stage_map(n.options.features.split())
     print("create funcs:", m['create'])
     for f in m['create']:
         print("executing:", f)

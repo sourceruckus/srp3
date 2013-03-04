@@ -196,8 +196,8 @@ class notes:
 
         # check for required features
         missing = self.options.features.split()
-        print(missing)
-        print(srp.features.registered_features)
+        #print(missing)
+        #print(srp.features.registered_features)
         for x in srp.features.registered_features:
             try:
                 missing.remove(x)
