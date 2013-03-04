@@ -59,7 +59,6 @@ features = no_ldupdate #perms users ldpath gtk_icons
 [script]
 %%BUFFER_BEGIN%%
 #!/bin/bash
-env &&
 ./configure && make -j5 &&
 make DESTDIR=$PAYLOAD_DIR install || exit 1
 
