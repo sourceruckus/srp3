@@ -131,12 +131,12 @@ class perms(list):
 #        field.... what if they don't match up?  are they both required?
 def build_func(work):
     """update tarinfo via perms section of NOTES file"""
-    print(work.keys())
-    print(work['notes'].perms.buf)
+    #print(work.keys())
+    #print(work['notes'].perms.buf)
     p = perms(work['notes'].perms.buf)
-    print(p)
-    print(p['/usr/local/bin/foo'])
-    print(p['/usr/share/asdf'])
+    #print(p)
+    #print(p['/usr/local/bin/foo'])
+    #print(p['/usr/share/asdf'])
 
     for root, dirs, files in os.walk(work['dir']+"/tmp"):
         tmp = dirs[:]
@@ -149,9 +149,9 @@ def build_func(work):
             if not p[arcname]:
                 continue
 
-            print("match:", arcname, ":", p[arcname])
+            #print("match:", arcname, ":", p[arcname])
             x = work['manifest'][arcname]['tinfo']
-            print(x.mode)
+            #print(x.mode)
 
             for rule in p[arcname]:
 
@@ -176,7 +176,7 @@ def build_func(work):
                 if 'mode_unset' in rule['options']:
                     x.mode = x.mode & ~int(rule['options']['mode_unset'], 8)
 
-            print(x.mode)
+            #print(x.mode)
 
 
 def verify_func():

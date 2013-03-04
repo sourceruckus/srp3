@@ -29,7 +29,7 @@ def create_func(n):
     except:
         pass
 
-    print(flist)
+    #print(flist)
 
     # create tarball
     #
@@ -65,7 +65,7 @@ def create_func(n):
                         # we also need to rename the notes file inside the
                         # pkg
                         arcname = "NOTES"
-                    print("adding {} as {}".format(f.name, arcname))
+                    #print("adding {} as {}".format(f.name, arcname))
                     tar.addfile(tar.gettarinfo(arcname=arcname, fileobj=f),
                                 fileobj=f)
                     # rewind and generate a SHA entry
@@ -183,7 +183,7 @@ def build_func(work):
             arcname = os.path.join(root, x).split(new_env['PAYLOAD_DIR'])[-1]
             x = {'tinfo': work['brp'].gettarinfo(realname, arcname)}
             work['manifest'][arcname] = x
-            print(work['manifest'][arcname])
+            #print(work['manifest'][arcname])
 
     # append to brp section of NOTES file
     #

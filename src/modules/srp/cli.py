@@ -315,9 +315,9 @@ def do_build(fname, options):
     with tarfile.open(fname) as p:
         # verify that requirements are met
         fobj = p.extractfile("NOTES")
-        print(fobj)
+        #print(fobj)
         n = srp.notes.notes(fobj)
-        print(n)
+        #print(n)
 
         # FIXME: should the core feature func untar the srp in a tmp dir? or
         #        should we do that here and pass tmpdir in via our work
@@ -393,8 +393,8 @@ def do_build(fname, options):
             if os.path.islink(realname) or os.path.isdir(realname):
                 blob.addfile(tinfo)
             else:
-                print(realname)
-                print(tinfo)
+                #print(realname)
+                #print(tinfo)
                 blob.addfile(tinfo, open(realname, 'rb'))
 
         blob.close()
