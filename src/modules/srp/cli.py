@@ -215,6 +215,8 @@ def main():
     print("do_init_output(level={})".format(args.verbose))
 
     if args.install:
+        if args.install != []:
+            args.install = args.install.split(',')
         for x in get_package_list():
             print("do_install(package={}, flags={})".format(x, args.install))
             do_install(x, args.install)
@@ -426,3 +428,25 @@ def do_install(fname, options):
         fobj = p.extractfile("NOTES")
         n = srp.notes.notes(fobj)
         print(n)
+
+        # prep our shared work namespace
+        #
+        # NOTE: This dict gets passed into all the stage funcs (i.e., it's
+        #       how they can all share data)
+        work = {}
+        work['brp'] = p
+
+        work['notes'] = n
+
+        # run through install funcs
+        m = srp.features.get_stage_map(n.options.features.split())
+ 
+        print("install funcs:", m['install'])
+        for f in m['install']:
+            print("executing:", f)
+            try:
+                f.func(work)
+            except:
+                print("ERROR: failed feature stage function:", f)
+                raise
+
