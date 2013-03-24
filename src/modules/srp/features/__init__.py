@@ -117,31 +117,64 @@ class stage_struct:
     def __lt__(self, other):
         """The less than method is implemented so we can sort a list of
         instances propperly using our pre_reqs and post_reqs feature lists."""
+
+        # update pre_reqs and post_reqs for both self and other
+        #
+        # NOTE: This is done to remove special characters from feature names
+        #       for sorting purposes.  For example, a leading ? (e.g.,
+        #       ?checksum) indicates that the named features is a required
+        #       sort rule IF THE FEATURE HAS EXPLICITLY BEEN ENABLED BY
+        #       SOMETHING ELSE (i.e., it's there for sorting, but doesn't
+        #       recursively get enabled as a feature).
+        pre_reqs = []
+        for x in self.pre_reqs:
+            if x[0] == "?":
+                pre_reqs.append(x[1:])
+            else:
+                pre_reqs.append(x)
+
+        post_reqs = []
+        for x in self.post_reqs:
+            if x[0] == "?":
+                post_reqs.append(x[1:])
+            else:
+                post_reqs.append(x)
+
+        for x in other.pre_reqs[:]:
+            if x[0] == "?":
+                other.pre_reqs.remove(x)
+                other.pre_reqs.append(x[1:])
+
+        for x in other.post_reqs[:]:
+            if x[0] == "?":
+                other.post_reqs.remove(x)
+                other.post_reqs.append(x[1:])
+
         # does self need to come before other
         if self.name in other.pre_reqs:
             # either true or error
-            if other.name in self.pre_reqs or self.name in other.post_reqs:
+            if other.name in pre_reqs or self.name in other.post_reqs:
                 raise Exception("circular pre_req dependencies")
             return True
         
         # does other need to come before self
-        if other.name in self.pre_reqs:
+        if other.name in pre_reqs:
             # false or error
-            if self.name in other.pre_reqs or other.name in self.post_reqs:
+            if self.name in other.pre_reqs or other.name in post_reqs:
                 raise Exception("circular other pre_req dependencies")
             return False
         
         # does self need to come after other
         if self.name in other.post_reqs:
             # either false or error
-            if other.name in self.post_reqs or self.name in other.pre_reqs:
+            if other.name in post_reqs or self.name in other.pre_reqs:
                 raise Exception("circular other post_req dependencies")
             return False
         
         # does other need to come after self
-        if other.name in self.post_reqs:
+        if other.name in post_reqs:
             # either true or error
-            if self.name in other.post_reqs or other.name in self.pre_reqs:
+            if self.name in other.post_reqs or other.name in pre_reqs:
                 raise Exception("circular post_req dependencies")
             return True
 
@@ -207,11 +240,13 @@ def get_function_list_deps(f, stage, retval=None):
 
     # add all f's pre funcs
     for d in x.pre_reqs:
-        get_function_list_deps(d, stage, retval)
+        if not d.startswith("?"):
+            get_function_list_deps(d, stage, retval)
 
     # add all f's post funcs
     for d in x.post_reqs:
-        get_function_list_deps(d, stage, retval)
+        if not d.startswith("?"):
+            get_function_list_deps(d, stage, retval)
 
     # add f
     retval.append(x)
