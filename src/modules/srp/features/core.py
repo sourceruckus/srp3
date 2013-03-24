@@ -222,7 +222,7 @@ def build_func(work):
     n.additions['brp']['build_date'] = time.asctime()
 
 
-def install_func():
+def install_func(work):
     """untar payload, install tarinfo in ruckus/installed/pkgname/sha"""
     pass
 

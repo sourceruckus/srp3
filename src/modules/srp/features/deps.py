@@ -57,7 +57,7 @@ def build_func(work):
     work['notes'].additions['brp']['deps'] = " ".join(deps)
 
 
-def install_func():
+def install_func(work):
     """check system for required libs"""
     # FIXME: libreadline stupidly has unresolved symbols unless you link it
     #        with libncurses (or libtermcap, if memory serves).  so,

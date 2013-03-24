@@ -6,7 +6,7 @@ verify files on demand after installation.
 
 from srp.features import *
 
-def install_func():
+def install_func(work):
     """gen sha of each file, update pkg manifest"""
     pass
 
@@ -25,7 +25,7 @@ def commit_func():
 register_feature(feature_struct("checksum",
                                 __doc__,
                                 True,
-                                install = stage_struct("checksum", install_func, [], ["core"]),
+                                install = stage_struct("checksum", install_func, ["core"], []),
                                 uninstall = stage_struct("checksum", uninstall_func, [], ["core"]),
                                 action = [("commit", stage_struct("checksum", commit_func, [], [])),
                                           ("verify", stage_struct("checksum", verify_func, [], []))]))
