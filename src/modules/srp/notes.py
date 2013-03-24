@@ -205,3 +205,19 @@ class notes:
                 pass
         if missing:
             raise Exception("package requires missing features: {}".format(missing))
+
+
+    def update(self, options):
+        features = self.options.features.split()
+        print(features)
+        for o in options:
+            if o.startswith("no_"):
+                try:
+                    features.remove(o[3:])
+                except:
+                    # wasn't enabled to begin with
+                    pass
+            else:
+                features.append(o)
+
+        self.options.features = " ".join(features)

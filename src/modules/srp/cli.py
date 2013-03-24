@@ -427,6 +427,9 @@ def do_install(fname, options):
         # verify that requirements are met
         fobj = p.extractfile("NOTES")
         n = srp.notes.notes(fobj)
+
+        # update notes fields with optional command line flags
+        n.update(options)
         print(n)
 
         # prep our shared work namespace
