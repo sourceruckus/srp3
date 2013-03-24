@@ -159,7 +159,7 @@ and not get into implementation details.
     action.commit: update pkg manifest
 
   checksum:
-    install [before core]: gen sha of each file, update pkg manifest
+    install [after core]: gen sha of each file, update pkg manifest
     uninstall [before core]: verify, issue warning
     action.verify: gen sha of each file, compare with pkg manifest
     action.commit: update pkg manifest
@@ -214,7 +214,7 @@ and not get into implementation details.
     action.repair: rerun install using blob and manifset
 
   strip_debug:
-    install [before core, before checksum]: strip debug symbols from all files
+    install [after core, before checksum]: strip debug symbols from all files
     action.strip_debug: strip debug symbols from all files
 
   strip_docs:
