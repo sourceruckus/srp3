@@ -224,7 +224,60 @@ def build_func(work):
 
 def install_func(work):
     """untar payload, install tarinfo in ruckus/installed/pkgname/sha"""
-    pass
+    # NOTE: In order to test this (and later on, to test new packages) as an
+    #       unprivileged, we need to have to have some sort of fake root
+    #       option (e.g., the old SRP_ROOT_PREFIX trick).
+    #
+    #       I'm waffling between using a DESTDIR environment variable
+    #       (because that's what autotools and tons of other Makefiles use)
+    #       and adding a --root command line arg (because that's what RPM
+    #       does and it's easier to document)
+    #
+    # FIXME: For now, it's DESTDIR.  Perhaps revisit this later...
+    try:
+        DESTDIR = os.environ["DESTDIR"]
+    except:
+        DESTDIR = "/"
+
+    # NOTE: We intentionally just named our BLOB file w/out a compression
+    #       extension because the tarfile module can autodetect it, which
+    #       make life easy.
+    #
+    # NOTE: The only problem with this, is that we have to check for
+    #       unsupported blob_compression before we start this or we could
+    #       erroneously report a corrupted BLOB file to the user.
+    #
+    #       The blob_compression algo is recored in the NOTES file's brp
+    #       section and is checked prior to running any stage funcs.
+    blob = tarfile.open(fileobj=work['brp'].extractfile("BLOB"))
+
+    # install the files
+    #
+    # NOTE: Instead of iterating over all the files in our BLOB, We do this
+    #       by simply calling the extractall method.
+    #
+    # NOTE: We want to ensure that nobody malicously makes a package that
+    #       installs files in the wrong places, so we check to make sure all
+    #       files use relative path names (i.e., paths starting with / or
+    #       .. would break DESTDIR usage).  This borders on severe paranoia,
+    #       but... hey, who said that?
+    for x in blob.getnames():
+        badness = None
+        if x.startswith("/"):
+            badness = "starts with '/'"
+        elif x.startswith(".."):
+            badness = "starts with '..'"
+        if badness:
+            raise Exceptoin("potentially unsafe BLOB: at least one file "+badness)
+    # now actually extract it
+    blob.extractall(DESTDIR)
+
+    # install tarinfo in ruckus/installed/pkgname/sha
+    #
+    # FIXME: Should we have added a SHA to the brp?  Probably...
+    #
+    # FIXME: How should we do this?  pickle a list of tarinfos?  shelve?
+
 
 def uninstall_func():
     """remove files listed in pkg manifest"""
