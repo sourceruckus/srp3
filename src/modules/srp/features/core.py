@@ -48,7 +48,11 @@ def create_func(n):
     # NOTE: We add the source file and any extra files specified in the
     #       NOTES file, the NOTES file itself, and a SHA file containing
     #       checksums of all added files.
-    sha = []
+    #
+    # FIXME: perhaps instead of a SHA file with a line per file we should
+    #        concatenate all files into a single stream and just have the
+    #        SHA be a single checksum
+    sha = hashlib.new("sha1")
     max_spool=10*2**20
     # create our tempfile obj
     with tempfile.SpooledTemporaryFile(max_size=max_spool) as pkg:
@@ -70,15 +74,14 @@ def create_func(n):
                                 fileobj=f)
                     # rewind and generate a SHA entry
                     f.seek(0)
-                    sha.append("  ".join((hashlib.sha1(f.read()).hexdigest(),
-                                           arcname)))
+                    sha.update(f.read())
 
             # create the SHA file and add it to the pkg
             #
             # NOTE: Can't use SpooledTemporaryFile here because it has to be a
             #       real file in order for gettarinfo to work properly
             with tempfile.TemporaryFile() as f:
-                f.write("\n".join(sha).encode())
+                f.write(sha.hexdigest())
                 f.seek(0)
                 tar.addfile(tar.gettarinfo(arcname="SHA", fileobj=f),
                             fileobj=f)

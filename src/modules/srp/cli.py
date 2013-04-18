@@ -284,8 +284,16 @@ def do_create(fname):
             raise
 
 
+def verify_sha(tar):
+    sha = hashlib.new("sha1")
+    for f in tar:
+        if f.name != "SHA":
+            sha.update(tar.extractfile(f).read())
+    if sha.hexdigest() != tar.extracfile("SHA").read():
+        raise Exception("SHA doesn't match.  Corrupted archive?")
 
 
+# FIXME: did i forget to verify SHA in here?
 def do_build(fname, options):
     with tarfile.open(fname) as p:
         fobj = p.extractfile("NOTES")
