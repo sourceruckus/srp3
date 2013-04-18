@@ -45,7 +45,7 @@ g.add_argument('-c', '--create', metavar="NOTES",
                help="""Create a source package from an SRP NOTES file.""")
 
 g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
-               const="defaults",
+               const=[],
                help="""Install the provided PACKAGE(s).  If a different
                     version of PACKAGE is already installed, it will be
                     upgraded unless --no-upgrade is set.  Note that upgrade
@@ -58,7 +58,7 @@ g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
                     --install=no_upgrade,strip_debug).""")
 
 g.add_argument('-u', '--uninstall', metavar="OPTIONS", nargs='?',
-               const="defaults",
+               const=[],
                help="""Uninstall the provided PACKAGE(s).  If PACKAGE isn't
                     installed, this will quietly return successfully (well,
                     it DID get uninstalled at some point).  Can optionally
@@ -67,7 +67,7 @@ g.add_argument('-u', '--uninstall', metavar="OPTIONS", nargs='?',
                     --uninstall=no_leftovers).""")
 
 g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
-               const="defaults",
+               const=[],
                help="""Query PACKAGE(s).  Print all the information
                     associated with the specified PACKAGE(S).  Can
                     optionally be passed a comma-delimited list of FIELDS to
@@ -214,14 +214,16 @@ def main():
 
     print("do_init_output(level={})".format(args.verbose))
 
-    if args.install:
+    if args.install != None:
         if args.install != []:
             args.install = args.install.split(',')
         for x in get_package_list():
             print("do_install(package={}, flags={})".format(x, args.install))
             do_install(x, args.install)
 
-    elif args.uninstall:
+    elif args.uninstall != None:
+        if args.uninstall != []:
+            args.uninstall = args.uninstall.split(',')
         for x in get_package_list():
             print("do_uninstall(package={}, flags={})".format(x, args.uninstall))
 
@@ -238,7 +240,9 @@ def main():
         for x in get_package_list():
             print("do_action(package={}, actions={})".format(x, args.action))
 
-    elif args.query:
+    elif args.query != None:
+        if args.query != []:
+            args.query = args.query.split(',')
         for x in get_package_list():
             print("do_query(package={}, fields={})".format(x, args.query))
 
@@ -394,8 +398,8 @@ def do_build(fname, options):
 
         # add BLOB file to toplevel pkg archive
         blob_fobj.seek(0)
-        # FIXME: se previous note about making a method for this
-        blob_tinfo = tarfile.TarInfo("BLOB.tar."+comp)
+        # FIXME: see previous note about making a method for this
+        blob_tinfo = tarfile.TarInfo("BLOB")
         blob_stat = os.fstat(blob_fobj.fileno())
         blob_tinfo.size = blob_stat.st_size
         blob_tinfo.mtime = blob_stat.st_mtime
