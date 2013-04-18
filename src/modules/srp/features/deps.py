@@ -10,6 +10,7 @@ NOTE: This is probably not as portable as it could/should be...
 
 from srp.features import *
 
+import ctypes
 import os
 import subprocess
 
@@ -78,7 +79,20 @@ def install_func(work):
     #
     #        OSError: libasdf.so.5: cannot open shared object file: No such
     #        file or directory
-    pass
+    n = work['notes']
+    deps = n.brp.deps.split()
+    # NOTE: We iterate all the way through so that the user can see ALL the
+    #       missing libs as apposed to just the first one
+    missing = []
+    for d in deps:
+        try:
+            ctypes.cdll.LoadLibrary(d)
+        except:
+            missing.append(d)
+    
+    if missing:
+        raise Exception("missing required libraries:\n  --> " + "\n  --> ".join(missing))
+
 
 
 register_feature(feature_struct("deps",
