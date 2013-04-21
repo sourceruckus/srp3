@@ -46,12 +46,9 @@ def create_func(n):
     #        size (i.e., won't ever rollover automatically).
     #
     # NOTE: We add the source file and any extra files specified in the
-    #       NOTES file, the NOTES file itself, and a SHA file containing
-    #       checksums of all added files.
-    #
-    # FIXME: perhaps instead of a SHA file with a line per file we should
-    #        concatenate all files into a single stream and just have the
-    #        SHA be a single checksum
+    #       NOTES file, the NOTES file itself, and a SHA file containing a
+    #       single checksum of the archive (all files concatenated together
+    #       into a single stream).
     sha = hashlib.new("sha1")
     max_spool=10*2**20
     # create our tempfile obj
@@ -81,7 +78,7 @@ def create_func(n):
             # NOTE: Can't use SpooledTemporaryFile here because it has to be a
             #       real file in order for gettarinfo to work properly
             with tempfile.TemporaryFile() as f:
-                f.write(sha.hexdigest())
+                f.write(sha.hexdigest().encode())
                 f.seek(0)
                 tar.addfile(tar.gettarinfo(arcname="SHA", fileobj=f),
                             fileobj=f)
@@ -276,8 +273,6 @@ def install_func(work):
     blob.extractall(DESTDIR)
 
     # install tarinfo in ruckus/installed/pkgname/sha
-    #
-    # FIXME: Should we have added a SHA to the brp?  Probably...
     #
     # FIXME: How should we do this?  pickle a list of tarinfos?  shelve?
 

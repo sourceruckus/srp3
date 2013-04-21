@@ -4,6 +4,7 @@
 # FIXME: waaaaay too much stuff has ended up in this cli module.  once it's
 #        been moved to a different module, audit the import statements
 import argparse
+import hashlib
 import os
 import platform
 import stat
@@ -289,13 +290,17 @@ def verify_sha(tar):
     for f in tar:
         if f.name != "SHA":
             sha.update(tar.extractfile(f).read())
-    if sha.hexdigest() != tar.extracfile("SHA").read():
+    x = sha.hexdigest().encode()
+    y = tar.extractfile("SHA").read()
+    if x != y:
         raise Exception("SHA doesn't match.  Corrupted archive?")
 
 
-# FIXME: did i forget to verify SHA in here?
 def do_build(fname, options):
     with tarfile.open(fname) as p:
+        # verify SHA
+        verify_sha(p)
+        # verify that requirements are met
         fobj = p.extractfile("NOTES")
         n = srp.notes.notes(fobj)
         #print(n)
@@ -335,6 +340,7 @@ def do_build(fname, options):
         brp_fobj = tempfile.SpooledTemporaryFile()
         brp = tarfile.open(fileobj=brp_fobj, mode="w")
         work['brp'] = brp
+        sha = hashlib.new("sha1")
 
         # run through all queued up stage funcs for build
         m = srp.features.get_stage_map(n.options.features.split())
@@ -402,6 +408,9 @@ def do_build(fname, options):
         n_tinfo.type = tarfile.REGTYPE
 
         brp.addfile(n_tinfo, n_fobj)
+        # rewind and generate a SHA entry
+        n_fobj.seek(0)
+        sha.update(n_fobj.read())
         n_fobj.close()
 
         # add BLOB file to toplevel pkg archive
@@ -417,7 +426,20 @@ def do_build(fname, options):
         blob_tinfo.type = tarfile.REGTYPE
 
         brp.addfile(blob_tinfo, blob_fobj)
+        # rewind and generate a SHA entry
+        blob_fobj.seek(0)
+        sha.update(blob_fobj.read())
         blob_fobj.close()
+
+        # create the SHA file and add it to the pkg
+        #
+        # NOTE: Can't use SpooledTemporaryFile here because it has to be a
+        #       real file in order for gettarinfo to work properly
+        with tempfile.TemporaryFile() as f:
+            f.write(sha.hexdigest().encode())
+            f.seek(0)
+            brp.addfile(brp.gettarinfo(arcname="SHA", fileobj=f),
+                        fileobj=f)
 
         # close the toplevel brp archive
         brp.close()
@@ -436,6 +458,8 @@ def do_build(fname, options):
 
 def do_install(fname, options):
     with tarfile.open(fname) as p:
+        # verify SHA
+        verify_sha(p)
         # verify that requirements are met
         fobj = p.extractfile("NOTES")
         n = srp.notes.notes(fobj)
