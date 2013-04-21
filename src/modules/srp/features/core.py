@@ -7,6 +7,7 @@ This feature module implements the core functionality of the package manager
 import hashlib
 import io
 import os
+import pickle
 import pwd
 import socket
 import stat
@@ -270,11 +271,23 @@ def install_func(work):
         if badness:
             raise Exceptoin("potentially unsafe BLOB: at least one file "+badness)
     # now actually extract it
+    #
+    # FIXME: can't use extractall here...  it bails out if files already
+    #        exist (at least true for symlinks).  we probably want some type
+    #        of srpbak mechanism that we'll have to implement by hand.
+    #
+    #        actually, this ONLY happens for symlinks.  directories and
+    #        regular files just overwrite fine.  is this a tarfile module
+    #        bug?
     blob.extractall(DESTDIR)
 
-    # install tarinfo in ruckus/installed/pkgname/sha
+    # install list of tarinfo in /var/lib/srp/pkgname/sha
     #
-    # FIXME: How should we do this?  pickle a list of tarinfos?  shelve?
+    # FIXME: How should we do this?  pickle looks like an easy way.
+    installed = blob.getmembers()
+    print(installed)
+    f = open("/tmp/dill", "wb")
+    pickle.dump(installed, f)
 
 
 def uninstall_func():

@@ -100,3 +100,24 @@ register_feature(feature_struct("deps",
                                 True,
                                 build = stage_struct("deps", build_func, ["core"], []),
                                 install = stage_struct("deps", install_func, [], ["core"])))
+
+# FIXME: can I register multiple install funcs?  I'd like to have dep
+#        checking at the beginning of install, but then i also want to
+#        install the deps info into the package manifest after installation.
+#        i guess i could always just go ahead and start writing into the pkg
+#        manifest dir if the dep checks pass, assuming that the package will
+#        get installed...
+#
+#        wait, do i have any way of knowing what the pkg sha is in here?  i
+#        was planning on installing files into /var/lib/srp/pkgname/sha/
+#
+#        well, if i have the brp, i can extract the SHA file.
+#
+#        maybe manifest contest should be finalized by an upper lever
+#        function?  similar to the do_build method actually added files to
+#        the brp.  otherwise the path to manifest (and potentially
+#        implementation details) will have to be known in all the feature
+#        modules...
+#
+#        hey, brain fart.  deps is appended to the NOTES file already, which
+#        we should also be adding to the manifest.

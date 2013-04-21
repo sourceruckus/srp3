@@ -171,6 +171,7 @@ and not get into implementation details.
   deps:
     build [after core]: build list of needed libs by files in the payload
     install [before core]: verify all libs present on host system
+    install [after core]: install deps list in pkg manifest
 
   user=user:group,user:group,...:
     install [before core]: create group and/or user accounts
