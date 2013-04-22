@@ -477,6 +477,17 @@ def do_install(fname, options):
 
         work['notes'] = n
 
+        # this is a map of fobjs to be stored for this package
+        #
+        # NOTE: it's a map instead of a list so that we can make sure we
+        #       have sane file names
+        #
+        # FIXME: if we're going to allow feature funcs to modify NOTES (as
+        #        we do during build), we'll need to do this at the very end.
+        #        for now, i'm just using the original NOTES fobj from the
+        #        brp.
+        work['manifest'] = {"NOTES": fobj}
+
         # run through install funcs
         m = srp.features.get_stage_map(n.options.features.split())
  
@@ -488,4 +499,36 @@ def do_install(fname, options):
             except:
                 print("ERROR: failed feature stage function:", f)
                 raise
+
+        # commit manifest to disk in srp db
+        #
+        # FIXME: missing upgrade logic
+        #
+        # FIXME: should we keep using the SHA from the brp? or should the
+        #        SHA for the db entry reflect its actual contents (i.e., if
+        #        we change pkg content after install via an action, should
+        #        the db SHA change)?  If the latter, perhaps we should add
+        #        an "installed_from = SHA" entry to the NOTES file so that
+        #        we can trace what exact brp we installed from?
+        print("manifest:", work['manifest'])
+        path="/var/lib/srp/"+n.info.name+"/"+p.extractfile("SHA").read().decode()
+        # FIXME: DESTDIR or --root.  see FIXME in core.install_func...
+        try:
+            path = os.environ["DESTDIR"] + path
+        except:
+            pass
+        print("path:", path)
+        # FIXME: if sha already installed, this will throw OSError
+        os.makedirs(path)
+        for x in work["manifest"]:
+            with open(path+"/"+x, "wb") as f:
+                work["manifest"][x].seek(0)
+                f.write(work["manifest"][x].read())
+
+
+
+
+
+
+# FIXME: what should srp -l output look like?  maybe just like v2's output?  but --raw gives a SHA?
 

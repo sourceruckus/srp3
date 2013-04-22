@@ -281,13 +281,10 @@ def install_func(work):
     #        bug?
     blob.extractall(DESTDIR)
 
-    # install list of tarinfo in /var/lib/srp/pkgname/sha
-    #
-    # FIXME: How should we do this?  pickle looks like an easy way.
-    installed = blob.getmembers()
-    print(installed)
-    f = open("/tmp/dill", "wb")
-    pickle.dump(installed, f)
+    # pickle our archive member list and add to manifest
+    f = tempfile.TemporaryFile()
+    pickle.dump(blob.getmembers(), f)
+    work['manifest']['FILES'] = f
 
 
 def uninstall_func():
