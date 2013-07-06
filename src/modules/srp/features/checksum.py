@@ -8,18 +8,22 @@ from srp.features import *
 
 def install_func(work):
     """gen sha of each file, update pkg manifest"""
+    # FIXME: MULTI:
     pass
 
 def uninstall_func():
     """verify, issue warning"""
+    # FIXME: MULTI:
     pass
 
 def verify_func():
     """gen sha of each file, compare with pkg manifest"""
+    # FIXME: MULTI:
     pass
 
 def commit_func():
     """update pkg manifest"""
+    # FIXME: MULTI:
     pass
 
 register_feature(feature_struct("checksum",

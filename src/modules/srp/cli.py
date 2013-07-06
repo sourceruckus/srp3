@@ -374,6 +374,10 @@ def do_build(fname, options):
 
         flist = list(work['manifest'].keys())
         flist.sort()
+        # FIXME: MULTI: is there any benefit to doing this in parallel?  we
+        #        would have to either manage a shared TarFile object or
+        #        create a bunch of small TarFiles and then concatenate them
+        #        at the end, so the overhead might be a bit problematic...
         for x in flist:
             realname = work['dir']+'/tmp/'+x
             tinfo = work['manifest'][x]['tinfo']

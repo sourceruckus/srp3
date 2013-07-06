@@ -18,6 +18,12 @@ import subprocess
 def build_func(work):
     """add library deps to the brp"""
     deps = []
+    # FIXME: MULTI: why don't i iterate over the list of TarInfo objects
+    #        instead of re-walking the filesystem.  not only will that be
+    #        faster, i could split the TarInfo list into chunks and use
+    #        multiprocessing to take advantage of multiple CPUs.  we would
+    #        need a Manager for the deps list, but probably not anything
+    #        else.
     for root, dirs, files in os.walk(work['dir']+"/tmp"):
         tmp = dirs[:]
         tmp.extend(files)
@@ -83,6 +89,9 @@ def install_func(work):
     deps = n.brp.deps.split()
     # NOTE: We iterate all the way through so that the user can see ALL the
     #       missing libs as apposed to just the first one
+    #
+    # FIXME: MULTI: this could also be split into chunks and passed to
+    #        worker processes to take advantage of multiple CPUs.
     missing = []
     for d in deps:
         try:

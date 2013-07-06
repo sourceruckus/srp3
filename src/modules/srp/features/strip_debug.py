@@ -23,10 +23,11 @@ from srp.features import *
 #        function.
 def install_func(work):
     """strip --strip-unneeded from all files"""
+    # FIXME: MULTI: iterate over TarInfo list in chunks in subprocesses
     pass
 
 
-# FIXME: this should also register an action so we can stip after
+# FIXME: this should also register an action so we can strip after
 #        installation if we want to
 
 register_feature(feature_struct("strip_debug",

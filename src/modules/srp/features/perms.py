@@ -138,6 +138,9 @@ def build_func(work):
     #print(p['/usr/local/bin/foo'])
     #print(p['/usr/share/asdf'])
 
+    # FIXME: MULTI: why not iterate over the list of TarInfo objects in
+    #        multiple subprocesses?  we only need read-only access to perms
+    #        list, so that should be easy.
     for root, dirs, files in os.walk(work['dir']+"/tmp"):
         tmp = dirs[:]
         tmp.extend(files)
@@ -181,6 +184,7 @@ def build_func(work):
 
 def verify_func():
     """check perms, issue warning"""
+    # FIXME: MULTI:
     pass
 
 register_feature(feature_struct("perms",

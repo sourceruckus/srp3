@@ -99,6 +99,21 @@ and not get into implementation details.
   used all over the place (i.e., for common tasks like adding users or services)
   should all get implemented in the core SRP code as Features.
 
+  We may need to have some very simple post func capability... but let's
+  keep it as light-weight and simple as possible, if we need it at all.
+
+** extensible features API
+
+  This is what we'll use isntead of prepostlibs.  For example, the gtk
+  package should install a python file to add a gtk-update-icon-cache
+  feature that can be requested by packages that install icons.
+
+** take full advantage of SMP
+
+  Make absolutely sure that we're spread our computational load out accross
+  multiple processors as much as possible.  In theory, we should be I/O
+  bound.  SRPv2, however, is definately not... 
+
 
 * Implementation Goals
 

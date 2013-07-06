@@ -279,6 +279,36 @@ def install_func(work):
     #        actually, this ONLY happens for symlinks.  directories and
     #        regular files just overwrite fine.  is this a tarfile module
     #        bug?
+    #
+    # FIXME: MULTI: should examine performance here.  we could maximize CPU
+    #        usage by using multiprocessing module and splitting this
+    #        processing into a couple subproccesses.  shouldn't be hard, we
+    #        would literally just be iterating over a list of files that we
+    #        could just as well split into hunks and do in parallel.  we
+    #        would have to make sure that leading directories are
+    #        automatically created propperly (e.g., if subproc goes to
+    #        install /usr/local/share/foo/bar, create leading path.
+    #        likewise, if a diff subproc goes to install the
+    #        /usr/local/share/foo dir but it already exists, don't barf or
+    #        recreate or do anything else stupid.
+    #
+    #        in order to do this, we'd have to share the following data
+    #        structures accross our subprocs:
+    #
+    #        files_subset: easy. Manager().list()
+    #
+    #        blob: hmm... TarFile object... this might be a problem.  i can
+    #              share a dict between subprocs by using
+    #              multiprocessing.Manager().dict() but i suspect that the
+    #              shared dict's contents have to be basic python types
+    #              (i.e., not a TarFile).  that being said, i could just
+    #              pass the list of files in and have each subproc open it's
+    #              own read-only copy of the tarfile for extraction...
+    #
+    # FIXME: MULTI: actually, if my subprocs get a COPY of what's been
+    #        passed in (list and TarFile), and i don't need to do any shared
+    #        state tracking (i.e., object usage is read-only), then do i
+    #        really need to worry about a Manager?
     blob.extractall(DESTDIR)
 
     # pickle our archive member list and add to manifest
@@ -289,10 +319,16 @@ def install_func(work):
 
 def uninstall_func():
     """remove files listed in pkg manifest"""
+    # FIXME: MULTI: why not?  i guess directory removal might git odd, but
+    #        that's already a hard question... where does the removal of
+    #        /usr/local/share/foo happen?  when i remove the last file in
+    #        foo?  what keeps us from accidentally removing share when i
+    #        remove foo if there are no other files in share?
     pass
 
 def commit_func():
     """update pkg manifest"""
+    # FIXME: MULTI:
     pass
 
 register_feature(feature_struct("core",
