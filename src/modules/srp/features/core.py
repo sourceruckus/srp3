@@ -18,6 +18,32 @@ import time
 
 from srp.features import *
 
+# FIXME: put this as a function somewhere useful... we'll be doing it in
+#        other places
+def partition_list(full_list, n):
+    """return a tuple containing n equal-ish length sublists of full_list
+
+    For this, equal-ish means that at least N-1 of the returned sublists
+    will be the same length, with the last sublist possibly being smaller if
+    length of full_list wasn't an even multiple of N
+    """
+    per_sub = int(len(full_list)/n)
+    # if it's not an even multiple, use a larger value for per_sub such that
+    # we at least have N-1 workers with an even load (i.e., worker-N will
+    # have a shorter list and finish first)
+    if per_sub*n != len(full_list):
+        per_sub+=1
+    # slice it up
+    sub_lists = []
+    for x in range(n):
+        sub_lists.append(full_list[x*per_sub:(x+1)*per_sub])
+    
+    return sub_lists
+
+
+
+
+
 def create_func(n):
     """create tar of NOTES, source, SHA"""
     # locate all needed files
@@ -309,7 +335,19 @@ def install_func(work):
     #        passed in (list and TarFile), and i don't need to do any shared
     #        state tracking (i.e., object usage is read-only), then do i
     #        really need to worry about a Manager?
-    blob.extractall(DESTDIR)
+    #
+    #blob.extractall(DESTDIR)
+    cpus=4
+    full_list = blob.getmembers()
+    sub_lists = partition_list(full_list, cpus)
+    worker_list = []
+    for x in sub_lists:
+        p = multiprocessing.Process(install_func_worker, args=(x,))
+        p.start()
+        worker_list.append(p)
+    # wait for all workers to finish
+    for p in worker_list:
+        p.join()
 
     # pickle our archive member list and add to manifest
     f = tempfile.TemporaryFile()
