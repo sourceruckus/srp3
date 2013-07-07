@@ -108,6 +108,15 @@ and not get into implementation details.
   package should install a python file to add a gtk-update-icon-cache
   feature that can be requested by packages that install icons.
 
+  texinfo: install_info, strip_info
+  systemd or sysvinit: service add/remove
+  perl: perl_mod
+  python: python_mod
+  man: strip_man
+  gettext: strip_translations
+  texlive: latex_mod
+
+
 ** take full advantage of SMP
 
   Make absolutely sure that we're spread our computational load out accross
@@ -196,6 +205,26 @@ and not get into implementation details.
     install [before core]: create group and/or user accounts
     uninstall [core]: remove user/groups
 
+  ldupdate:
+    install [core]: ldconfig
+    uninstall [core]: ldconfig
+
+  ldpath=[dir1,dir2,...]:
+    install [before ldupdate]: update conf to include new dir(s)
+    uninstall [before ldupdate]: remove dir(s) from conf
+
+  repairable:
+    install [core]: store BRP's blob along with pkg manifest
+    action.repair: rerun install using blob and manifset
+
+  strip_debug:
+    install [after core, before checksum]: strip debug symbols from all files
+    action.strip_debug: strip debug symbols from all files
+
+  strip_docs:
+    install [before core]: strip docs from tar (/*/share/docs)
+    action.strip_docs: remove docs from installed fs and manifest
+
   service=service1,service2,...:
     install [core]: register service (do not start)
     uninstall [before core]: unregister service
@@ -220,26 +249,6 @@ and not get into implementation details.
     install [core]: update info dir file
     uninstall [core]: update info dir file
     action:strip_info [strip_info]: update dir file
-
-  ldupdate:
-    install [core]: ldconfig
-    uninstall [core]: ldconfig
-
-  ldpath=[dir1,dir2,...]:
-    install [before ldupdate]: update conf to include new dir(s)
-    uninstall [before ldupdate]: remove dir(s) from conf
-
-  repairable:
-    install [core]: store BRP's blob along with pkg manifest
-    action.repair: rerun install using blob and manifset
-
-  strip_debug:
-    install [after core, before checksum]: strip debug symbols from all files
-    action.strip_debug: strip debug symbols from all files
-
-  strip_docs:
-    install [before core]: strip docs from tar (/*/share/docs)
-    action.strip_docs: remove docs from installed fs and manifest
 
   strip_man:
     install [before core]: strip manpages from tar (/*/man, /*/share/man)

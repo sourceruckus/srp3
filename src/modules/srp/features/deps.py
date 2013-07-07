@@ -92,6 +92,11 @@ def install_func(work):
     #
     # FIXME: MULTI: this could also be split into chunks and passed to
     #        worker processes to take advantage of multiple CPUs.
+    #
+    # FIXME: MULTI: this one might be kinda silly, though... given that most
+    #        packages aren't gonna have many deps, the speedup may not
+    #        outway the overhead induced... we'll have to benchmark it and
+    #        see.
     missing = []
     for d in deps:
         try:
