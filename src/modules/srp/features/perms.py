@@ -141,6 +141,9 @@ def build_func(work):
     # FIXME: MULTI: why not iterate over the list of TarInfo objects in
     #        multiple subprocesses?  we only need read-only access to perms
     #        list, so that should be easy.
+    #
+    # FIXME: MULTI: hold on, we'll also be needing access to the tinfo in
+    #        our subproc...
     for root, dirs, files in os.walk(work['dir']+"/tmp"):
         tmp = dirs[:]
         tmp.extend(files)
