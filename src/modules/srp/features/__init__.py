@@ -20,7 +20,15 @@ The pre-defined stages are:
   build -- Build the binary package by executing the embedded build script in
   the NOTES file, tar up the resulting payload.
 
+  build_iter -- Special iter stage after build.  This is where the core
+  feature actually creates the brp's blob.  If you want to tweak each file
+  before it gets added to the archive, this is the stage you want.
+
   install -- Install the package on a system.
+
+  install_iter -- Special iter stage after install.  If you have something
+  special to do that involves iterating over all the installed files, this
+  is the stage to use.
 
   uninstall -- Uninstall the package from a system.
 
@@ -41,7 +49,7 @@ registered_features = {}
 action_map = {}
 
 # The standard list of stages
-stage_list = ['create', 'build', 'install', 'uninstall']
+stage_list = ['create', 'build', 'build_iter', 'install', 'install_iter', 'uninstall']
 
 
 class feature_struct:
@@ -51,21 +59,28 @@ class feature_struct:
     list of name, stage_struct pairs.  The remaining items are stage_struct
     objects for each relevant stage."""
     def __init__(self, name=None, doc=None, default=False,
-                 create=None, build=None, install=None, uninstall=None,
+                 create=None,
+                 build=None, build_iter=None,
+                 install=None, install_iter=None,
+                 uninstall=None,
                  action=[]):
         self.name=name
         self.doc=doc
         self.default=default
         self.create=create
         self.build=build
+        self.build_iter=build_iter
         self.install=install
+        self.install_iter=install_iter
         self.uninstall=uninstall
         self.action=action
 
 
     def __repr__(self):
         s = "feature_struct({name!r}, {doc!r}, {default}"
-        for x in ["create", "build", "install", "uninstall", "action"]:
+        tmp = stage_list[:]
+        tmp.extend(["action"])
+        for x in tmp:
             if getattr(self, x, None) != None:
                 # NOTE: We use string += here instead of substitution because
                 #       we're trying to embed format strings to be formatted
@@ -81,8 +96,8 @@ class feature_struct:
         """Method used to do validity checking on instances"""
         if not (self.name and self.doc):
             return False
-        if not (self.create or self.build or self.install or self.uninstall
-                or self.action):
+        if not (self.create or self.build or self.build_iter or self.install
+                or self.install_iter or self.uninstall or self.action):
             return False
         return True
 
