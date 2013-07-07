@@ -169,22 +169,27 @@ and not get into implementation details.
   core:
     create: create tar of NOTES, source, SHA
     build: run build script, create initial tar of payload
-    install: untar payload, install tarinfo in ruckus/installed/pkgname/sha
-    uninstall: remove files listed in pkg manifest
+    build_iter: add files to blob
+    install: install tarinfo in /var/lib/srp/pkgname/sha
+    install_iter: install each file
+    uninstall_iter: uninstall each file
+    uninstall: remove pkg manifest
     action.commit: update pkg manifest
 
   checksum:
-    install [after core]: gen sha of each file, update pkg manifest
-    uninstall [before core]: verify, issue warning
+    install_iter [after core]: gen sha of each file (can this dynamically update the manifest?)
+    install: update pkg manifest
+    uninstall_iter [before core]: verify, issue warning
     action.verify: gen sha of each file, compare with pkg manifest
     action.commit: update pkg manifest
 
   perms:
-    build [after core]: update tarinfo via perms section of NOTES file
+    build_iter [after core]: update tarinfo via perms section of NOTES file
     action.verify: check perms, issue warning
 
   deps:
-    build [after core]: build list of needed libs by files in the payload
+    build_iter [after core]: build list of needed libs by files in the payload
+    build: seperate stage to commit results of build_iter?
     install [before core]: verify all libs present on host system
 
   user=user:group,user:group,...:
