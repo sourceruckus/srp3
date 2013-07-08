@@ -14,21 +14,28 @@ coordinate what order all the functions get executed in.
 
 The pre-defined stages are:
 
-  create -- Creating a source package from a NOTES file, source tarball, and
-  possibly other files (e.g., patches, extra sources)
+  create(notes) -- Creating a source package from a NOTES file, source
+  tarball, and possibly other files (e.g., patches, extra sources).
 
-  build -- Build the binary package by executing the embedded build script in
-  the NOTES file, tar up the resulting payload.
+  build(srp, notes, brp) -- Build the binary package by executing the
+  embedded build script in the NOTES file, tar up the resulting payload.
 
-  build_iter -- Special iter stage after build.  This is where the core
-  feature actually creates the brp's blob.  If you want to tweak each file
-  before it gets added to the archive, this is the stage you want.
+  build_iter(tinfo) -- Special iter stage after build.  This is where the
+  core feature actually creates the brp's blob.  If you want to tweak each
+  file before it gets added to the archive, this is the stage you want.
 
-  install -- Install the package on a system.
+  install_iter(tinfo) -- Special iter stage before install.  If you have
+  something special to do that involves iterating over all the installed
+  files, this is the stage to use.  This stage runs BEFORE install so that
+  if some package-wide meta-data is updated, it doesn't have to get
+  reinstalled.
 
-  install_iter -- Special iter stage after install.  If you have something
-  special to do that involves iterating over all the installed files, this
-  is the stage to use.
+  install(brp, notes, db) -- Install the package on a system.
+
+  uninstall_iter -- Special iter stage before uninstall.  If you have
+  something to do/check per file prior to uninstall, this is the stage to do
+  it in.  This stage runs BEFORE uninstall so that if some per-file check
+  fails we can abort prior to uninstalling the whole package.
 
   uninstall -- Uninstall the package from a system.
 
@@ -110,11 +117,12 @@ class stage_struct:
     happen prior to this feature's func being called.  post_reqs is a list of
     feature names that are required to happen after this feature's func (i.e.,
     this feature's func has to happen first)."""
-    def __init__(self, name=None, func=None, pre_reqs=[], post_reqs=[]):
+    def __init__(self, name=None, func=None, pre_reqs=[], post_reqs=[], async=True):
         self.name = name
         self.func = func
         self.pre_reqs = pre_reqs
         self.post_reqs = post_reqs
+        self.async = async
     
 
     def __repr__(self):

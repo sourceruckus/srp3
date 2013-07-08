@@ -178,7 +178,7 @@ and not get into implementation details.
   core:
     create: create tar of NOTES, source, SHA
     build: run build script, create initial tar of payload
-    build_iter: add files to blob
+    build_iter: add files to blob (!async)
     install_iter: install each file
     install: install tarinfo in /var/lib/srp/pkgname/sha
     uninstall_iter: uninstall each file
