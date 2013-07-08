@@ -179,8 +179,8 @@ and not get into implementation details.
     create: create tar of NOTES, source, SHA
     build: run build script, create initial tar of payload
     build_iter: add files to blob
-    install: install tarinfo in /var/lib/srp/pkgname/sha
     install_iter: install each file
+    install: install tarinfo in /var/lib/srp/pkgname/sha
     uninstall_iter: uninstall each file
     uninstall: remove pkg manifest
     action.commit: update pkg manifest
@@ -188,7 +188,7 @@ and not get into implementation details.
   checksum:
     install_iter [after core]: gen sha of each file (can this dynamically update the manifest?)
     install: update pkg manifest
-    uninstall_iter [before core]: verify, issue warning
+    uninstall_iter [before core]: verify, issue warning or error
     action.verify: gen sha of each file, compare with pkg manifest
     action.commit: update pkg manifest
 
@@ -218,11 +218,11 @@ and not get into implementation details.
     action.repair: rerun install using blob and manifset
 
   strip_debug:
-    install [after core, before checksum]: strip debug symbols from all files
+    install_iter [after core, before checksum]: strip debug symbols from all files
     action.strip_debug: strip debug symbols from all files
 
   strip_docs:
-    install [before core]: strip docs from tar (/*/share/docs)
+    install_iter [before core]: strip docs from tar (/*/share/docs)
     action.strip_docs: remove docs from installed fs and manifest
 
   service=service1,service2,...:
@@ -251,13 +251,13 @@ and not get into implementation details.
     action:strip_info [strip_info]: update dir file
 
   strip_man:
-    install [before core]: strip manpages from tar (/*/man, /*/share/man)
+    install_iter [before core]: strip manpages from tar (/*/man, /*/share/man)
     action.strip_man: remove manpages from installed fs and manifest
 
   strip_info:
-    install [before core]: strip info pages from tar (/*/info)
+    install_iter [before core]: strip info pages from tar (/*/info)
     action.strip_info [before info]: remove installed info, update manifest
 
   strip_translations:
-    install [before core]: strip translation files from tar (*.po?)
+    install_iter [before core]: strip translation files from tar (*.po?)
     action.strip_translations: remove installed files, update manifest
