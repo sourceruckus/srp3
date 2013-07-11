@@ -1,0 +1,47 @@
+-*- mode: outline -*-
+
+These tests are being done on my netbook w/ AC power
+
+Concentrating on speeding up the prep work for multiproc (e.g., splitting up
+our sublists).
+
+I suspected my partitioning algorithm, but running in the interpreter
+revealed that the entire delay is do to TarFile.getmembers().  My
+partitioning method returns instantly.
+
+Looks like loading the whole tarball into ram, then using getmembers only
+cuts off about 10 seconds on gzipped file, so that's not worth the
+potentially gross RAM usage...
+
+Work around might be to cache the TarInfo list inside the BRP (i.e., pickly
+the TarInfo list and include it as a FILES file next to the BLOB inside the
+toplevel package archive).
+
+Loading the TarInfo pickle takes less than 5 seconds.  :-)
+
+
+
+* uncompressed
+
+** 2 proc
+../test4.py gcc-4.5.2.tar  40.20s user 1.35s system 94% cpu 43.953 total
+
+
+** 4 proc
+../test4.py gcc-4.5.2.tar  39.80s user 0.86s system 99% cpu 40.753 total
+../test4.py gcc-4.5.2.tar  40.94s user 0.81s system 99% cpu 42.146 total
+
+
+* gzip
+
+** 2 proc
+../test4.py gcc-4.5.2.tar.gz  69.93s user 0.58s system 99% cpu 1:10.63 total
+
+** 4 proc
+../test4.py gcc-4.5.2.tar.gz  71.20s user 0.53s system 99% cpu 1:11.90 total
+../test4.py gcc-4.5.2.tar.gz  71.05s user 0.50s system 99% cpu 1:11.73 total
+
+** 4 proc, cached TarInfo list
+../test4.py gcc-4.5.2.tar.gz  4.57s user 0.30s system 99% cpu 4.901 total
+../test4.py gcc-4.5.2.tar.gz  4.60s user 0.28s system 99% cpu 4.898 total
+../test4.py gcc-4.5.2.tar.gz  4.67s user 0.29s system 99% cpu 4.971 total

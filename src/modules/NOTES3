@@ -1,0 +1,53 @@
+-*- mode: outline -*-
+
+These tests are being done on my netbook w/ AC power
+
+I'm rerunning the multiproc benchmarks again using a cached TarInfo list.
+
+Looking much better, although it looks like the overhead of decompression is
+hampering things.  Running uncompressed, I see roughly a 20% speedup.  With
+gzip, it's only about 10%.
+
+Now, if I uncompress to a temporary file and then extract uncompressed is it
+faster?
+
+
+* uncompressed
+
+** GNU TAR
+tar xf gcc-4.5.2.tar  1.70s user 10.47s system 66% cpu 18.227 total
+tar xf gcc-4.5.2.tar  1.78s user 10.00s system 85% cpu 13.749 total
+tar xf gcc-4.5.2.tar  1.79s user 10.07s system 87% cpu 13.532 total
+
+** test4.py, 1 proc, extractor_file, cached
+../test4.py gcc-4.5.2.tar  31.50s user 16.49s system 84% cpu 57.054 total
+../test4.py gcc-4.5.2.tar  31.50s user 15.62s system 98% cpu 48.001 total
+../test4.py gcc-4.5.2.tar  31.48s user 15.87s system 95% cpu 49.387 total
+
+** test4.py, 2 proc, extractor_file, cached
+../test4.py gcc-4.5.2.tar  39.10s user 19.40s system 154% cpu 37.833 total
+../test4.py gcc-4.5.2.tar  39.13s user 19.38s system 152% cpu 38.251 total
+
+** test4.py, 4 proc, extractor_file, cached
+../test4.py gcc-4.5.2.tar  40.36s user 20.14s system 150% cpu 40.094 total
+../test4.py gcc-4.5.2.tar  39.91s user 19.95s system 156% cpu 38.224 total
+
+** test4.py, 2 proc, extractor_mem, cached
+../test4.py gcc-4.5.2.tar  37.73s user 34.82s system 96% cpu 1:15.41 total
+
+
+
+* gzip
+
+** GNU TAR
+tar xf gcc-4.5.2.tar.gz  12.27s user 12.81s system 120% cpu 20.730 total
+tar xf gcc-4.5.2.tar.gz  12.41s user 12.71s system 126% cpu 19.910 total
+tar xf gcc-4.5.2.tar.gz  12.24s user 12.72s system 124% cpu 20.056 total
+
+** test4.py, 1 proc, extractor_file, cached
+../test4.py gcc-4.5.2.tar.gz  52.16s user 16.26s system 94% cpu 1:12.25 total
+../test4.py gcc-4.5.2.tar.gz  51.66s user 15.54s system 96% cpu 1:09.36 total
+
+** test4.py, 2 proc, extractor_file, cached
+../test4.py gcc-4.5.2.tar.gz  76.27s user 19.75s system 148% cpu 1:04.62 total
+../test4.py gcc-4.5.2.tar.gz  77.34s user 19.46s system 152% cpu 1:03.40 total

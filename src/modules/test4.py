@@ -7,6 +7,7 @@ import tarfile
 import tempfile
 import time
 import io
+import pickle
 
 import srp
 
@@ -58,23 +59,17 @@ def extractor_file(tinfo, filename):
 if __name__ == "__main__":
     print("hello")
 
-    # this time, let's try to create the fobj in RAM in main but free it up
-    # after the copy has been made in the manager proc
-
     # NOTE: we have to create the manager 1st because it dupes mem that then
     #       cannot be garbage collected in the mamager's interpreter
     #m = multiprocessing.Manager()
     #work = m.dict()
 
     pkgfile = sys.argv[1]
-    pkg = tarfile.open(pkgfile)
-    #print(pkg.list())
 
-    sublists = srp.features.core.partition_list(pkg.getmembers(),
-                                                1)
-    pkg.close()
+    biglist = pickle.load(open("FILES", "rb"))
+    sublists = srp.features.core.partition_list(biglist,
+                                                multiprocessing.cpu_count())
     print("made", len(sublists), "sublists")
-    #print(sublists)
 
     plist=[]
     for sublist in sublists:
