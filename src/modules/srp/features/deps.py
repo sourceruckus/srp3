@@ -15,53 +15,65 @@ import os
 import subprocess
 
 
-def build_func(work):
+# FIXME: MULTI: why don't i iterate over the list of TarInfo objects
+#        instead of re-walking the filesystem.  not only will that be
+#        faster, i could split the TarInfo list into chunks and use
+#        multiprocessing to take advantage of multiple CPUs.  we would
+#        need a Manager for the deps list, but probably not anything
+#        else.
+def build_func(work, fname):
     """add library deps to the brp"""
+    x = work["tinfo"][fname]
+
+    # we only care about regular files
+    if not x.isreg():
+        return
+
     deps = []
-    # FIXME: MULTI: why don't i iterate over the list of TarInfo objects
-    #        instead of re-walking the filesystem.  not only will that be
-    #        faster, i could split the TarInfo list into chunks and use
-    #        multiprocessing to take advantage of multiple CPUs.  we would
-    #        need a Manager for the deps list, but probably not anything
-    #        else.
-    for root, dirs, files in os.walk(work['dir']+"/tmp"):
-        tmp = dirs[:]
-        tmp.extend(files)
-        for x in tmp:
-            realname = os.path.join(root, x)
-            if os.path.islink(realname) or os.path.isdir(realname):
-                continue
 
-            #print("calculating deps for: ", realname)
+    realname = work['dir']+"/tmp"+fname
+    print("calculating deps for: ", realname)
 
-            # NOTE: We're using objdump here instead of ldd.  The difference
-            #       is that objdump will only tell us what libraries this
-            #       executable EXPLICITLY requires, whereas ldd will
-            #       recursively gather all libraries needed by this
-            #       executable and all its libs and all its libs' libs, etc,
-            #       etc.  From a package manager's standpoint, I don't think
-            #       we really care what other libs a library we need
-            #       needs... if the system has it, we'll assume that the
-            #       system has it AND ALL ITS DEPS already.
-            p = subprocess.Popen(["objdump", "-p", realname],
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-            buf = p.communicate()[0]
-            if p.returncode != 0:
-                continue
+    # NOTE: We're using objdump here instead of ldd.  The difference is that
+    #       objdump will only tell us what libraries this executable EXPLICITLY
+    #       requires, whereas ldd will recursively gather all libraries needed
+    #       by this executable and all its libs and all its libs' libs, etc,
+    #       etc.  From a package manager's standpoint, I don't think we really
+    #       care what other libs a library we need needs... if the system has
+    #       it, we'll assume that the system has it AND ALL ITS DEPS already.
+    p = subprocess.Popen(["objdump", "-p", realname],
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    buf = p.communicate()[0]
+    if p.returncode != 0:
+        # objdump failed, must not be an elf binary
+        return
 
-            for line in buf.decode().split('\n'):
-                line = line.strip().split()
-                if not line:
-                    continue
-                if line[0] == "NEEDED":
-                    deps.append(line[1])
+    for line in buf.decode().split('\n'):
+        line = line.strip().split()
+        if not line:
+            continue
+        if line[0] == "NEEDED":
+            deps.append(line[1])
 
-    # FIXME: should we sort this list?  i'm tempted, but it might also be
-    #        nice to preserve the order that the libs are listed in the ELF
-    #        headers...
-    #deps.sort()
-    work['notes'].additions['brp']['deps'] = " ".join(deps)
+    print("needed:", deps)
+
+    # NOTE: At this point, deps contains a sorted list of deps for THIS FILE.
+    #       We still need to update our global list of deps for this package.
+    #
+    # FIXME: if we use multiproc iter stage, we need to use some sort of
+    #        locking here so that we can modify the notes file from within each
+    #        subproc
+    n = work["notes"]
+    try:
+        big_deps = n.additions["brp"]["deps"].split()
+    except:
+        big_deps = []
+    for d in deps:
+        if d not in big_deps:
+            big_deps.append(d)
+    big_deps.sort()
+    n.additions['brp']['deps'] = " ".join(big_deps)
 
 
 def install_func(work):
@@ -109,11 +121,12 @@ def install_func(work):
 
 
 
-register_feature(feature_struct("deps",
-                                __doc__,
-                                True,
-                                build = stage_struct("deps", build_func, ["core"], []),
-                                install = stage_struct("deps", install_func, [], ["core"])))
+register_feature(
+    feature_struct("deps",
+                   __doc__,
+                   True,
+                   build_iter = stage_struct("deps", build_func, [], []),
+                   install = stage_struct("deps", install_func, [], ["core"])))
 
 # FIXME: can I register multiple install funcs?  I'd like to have dep
 #        checking at the beginning of install, but then i also want to

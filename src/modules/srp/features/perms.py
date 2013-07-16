@@ -13,6 +13,7 @@ from srp.features import *
 
 import os
 import re
+import tarfile
 
 
 class perms(list):
@@ -129,60 +130,82 @@ class perms(list):
 #
 # FIXME: I think the above is true, but TarInfo has a uid and uname
 #        field.... what if they don't match up?  are they both required?
-def build_func(work):
+def build_func(work, fname):
     """update tarinfo via perms section of NOTES file"""
     #print(work.keys())
     #print(work['notes'].perms.buf)
-    p = perms(work['notes'].perms.buf)
+    n = work["notes"]
+    p = perms(n.perms.buf)
     #print(p)
     #print(p['/usr/local/bin/foo'])
     #print(p['/usr/share/asdf'])
 
-    # FIXME: MULTI: why not iterate over the list of TarInfo objects in
-    #        multiple subprocesses?  we only need read-only access to perms
-    #        list, so that should be easy.
+    x = work["tinfo"][fname]
+    #print(x)
+
+    # skip links
     #
-    # FIXME: MULTI: hold on, we'll also be needing access to the tinfo in
-    #        our subproc...
-    for root, dirs, files in os.walk(work['dir']+"/tmp"):
-        tmp = dirs[:]
-        tmp.extend(files)
-        for x in tmp:
-            realname = os.path.join(root, x)
-            if os.path.islink(realname):
-                continue
-            arcname = os.path.join(root, x).split(work['dir']+"/tmp")[-1]
-            if not p[arcname]:
-                continue
+    # NOTE: I was going to also skip hard links here, but the behavior of GNU
+    #       Tar is that the 1st file linked to an inode gets added as a regular
+    #       file and all subsequent files get added as hard links... and the
+    #       order the files are visited by tar's recursive algo isn't entirely
+    #       clear.  For example, my example package creates a file foo, a
+    #       symlink to it called bar, and a hard link to it called baz, but
+    #       tarring that up with GNU Tar results in foo.islnk() == True and
+    #       baz.islnk() == False.  Not what I expected...  anyhoo, we'll not
+    #       skip hard links then so that package maintainers don't have to
+    #       worry about this bit of arbitrariness.
+    if x.issym():
+        return
 
-            #print("match:", arcname, ":", p[arcname])
-            x = work['manifest'][arcname]['tinfo']
-            #print(x.mode)
+    # special treatment for hard links
+    #
+    # NOTE: Ok, if the file we're acting on is a hard link, we're going to
+    #       follow the link and act on the real file.  This is needed so that
+    #       package maintainers don't need to worry about which file gets added
+    #       first when writing perms rules.
+    if x.islnk():
+        x = work["tinfo"]["/"+x.linkname]
+        #print(x)
 
-            for rule in p[arcname]:
+    # return if there's no perms matching this file
+    #
+    # NOTE: We need to use fname here instead of x.name because leading slashes
+    #       are pruned off of the TarInfo objects
+    if not p[fname]:
+        return
 
-                if 'user' in rule['options']:
-                    try:
-                        x.uid = int(rule['options']['user'])
-                    except:
-                        x.uname = rule['options']['user']
+    for rule in p[fname]:
+        #print("rule:", rule)
 
-                if 'group' in rule['options']:
-                    try:
-                        x.gid = int(rule['options']['group'])
-                    except:
-                        x.gname = rule['options']['group']
+        if 'user' in rule['options']:
+            try:
+                x.uid = int(rule['options']['user'])
+            except:
+                x.uname = rule['options']['user']
 
-                if 'mode' in rule['options']:
-                    x.mode = int(rule['options']['mode'], 8)
+        if 'group' in rule['options']:
+            try:
+                x.gid = int(rule['options']['group'])
+            except:
+                x.gname = rule['options']['group']
 
-                if 'mode_set' in rule['options']:
-                    x.mode = x.mode | int(rule['options']['mode_set'], 8)
+        if 'mode' in rule['options']:
+            x.mode = int(rule['options']['mode'], 8)
 
-                if 'mode_unset' in rule['options']:
-                    x.mode = x.mode & ~int(rule['options']['mode_unset'], 8)
+        if 'mode_set' in rule['options']:
+            x.mode = x.mode | int(rule['options']['mode_set'], 8)
 
-            #print(x.mode)
+        if 'mode_unset' in rule['options']:
+            x.mode = x.mode & ~int(rule['options']['mode_unset'], 8)
+
+    # update global data
+    #
+    # NOTE: We use x.name instead of fname here because we need to make sure we
+    #       update the right TarInfo instance and we may have followed a link
+    #       to a new file's TarInfo.
+    work["tinfo"]["/"+x.name] = x
+
 
 
 def verify_func():
@@ -190,7 +213,9 @@ def verify_func():
     # FIXME: MULTI:
     pass
 
-register_feature(feature_struct("perms",
-                                __doc__,
-                                build = stage_struct("perms", build_func, ["core"], []),
-                                action = [("verify", stage_struct("perms", verify_func, [], []))]))
+register_feature(
+    feature_struct("perms",
+                   __doc__,
+                   build_iter = stage_struct("perms", build_func, [], []),
+                   action = [("verify",
+                              stage_struct("perms", verify_func, [], []))]))

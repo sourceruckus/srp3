@@ -193,12 +193,11 @@ and not get into implementation details.
     action.commit: update pkg manifest
 
   perms:
-    build_iter [after core]: update tarinfo via perms section of NOTES file
+    build_iter: update tarinfo via perms section of NOTES file
     action.verify: check perms, issue warning
 
   deps:
-    build_iter [after core]: build list of needed libs by files in the payload
-    build: seperate stage to commit results of build_iter?
+    build_iter: build list of needed libs by files in the payload
     install [before core]: verify all libs present on host system
 
   user=user:group,user:group,...:
@@ -218,7 +217,7 @@ and not get into implementation details.
     action.repair: rerun install using blob and manifset
 
   strip_debug:
-    install_iter [after core, before checksum]: strip debug symbols from all files
+    install_iter [before checksum]: strip debug symbols from all files
     action.strip_debug: strip debug symbols from all files
 
   strip_docs:

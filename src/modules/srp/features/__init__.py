@@ -1,16 +1,17 @@
 """Module implementing the SRP Feature API.
 
 The SRP Feature API is used to make the package manager as flexible and
-extensible as possible.  This API provides programmers with an easy way to add
-new features without having to rewrite massive blocks of nasty code and
-introduce unseemly regressions (see SRP v2, regrettably).
+extensible as possible.  This API provides programmers with an easy way to
+add new features without having to rewrite massive blocks of nasty code
+and introduce unseemly regressions (see SRP v2, regrettably).
 
 The basic idea here is so simple it almost sounds funny: a Feature does
 something at a certain time.
 
-Each Feature provides a set of functions to be executed at pre-defined times, or
-stages.  Each Feature's stage function can have pre/post requirements to help
-coordinate what order all the functions get executed in.
+Each Feature provides a set of functions to be executed at pre-defined
+times, or stages.  Each Feature's stage function can have pre/post
+requirements to help coordinate what order all the functions get executed
+in.
 
 The pre-defined stages are:
 
@@ -33,21 +34,22 @@ The pre-defined stages are:
   install(brp, notes, db) -- Install the package on a system.
 
   uninstall_iter -- Special iter stage before uninstall.  If you have
-  something to do/check per file prior to uninstall, this is the stage to do
-  it in.  This stage runs BEFORE uninstall so that if some per-file check
-  fails we can abort prior to uninstalling the whole package.
+  something to do/check per file prior to uninstall, this is the stage to
+  do it in.  This stage runs BEFORE uninstall so that if some per-file
+  check fails we can abort prior to uninstalling the whole package.
 
   uninstall -- Uninstall the package from a system.
 
-  action -- This stage is special.  It's really a meta-stage of sorts, allowing
-  Features to create their own special pseudo-stages.  These special action
-  stages can be triggered by explicitly requesting them via the --action command
-  line flag.
+  action -- This stage is special.  It's really a meta-stage of sorts,
+  allowing Features to create their own special pseudo-stages.  These
+  special action stages can be triggered by explicitly requesting them via
+  the --action command line flag.
 
 
-So for example, when a package is being built, all the SRP main program has to
-do is fetch a list of create functions from all the registered Features (sorted
-via their pre/post rules), and execute them one by one.
+So for example, when a package is being built, all the SRP main program
+has to do is fetch a list of create functions from all the registered
+Features (sorted via their pre/post rules), and execute them one by one.
+
 """
 
 # These lists/maps are populated via calls to register_feature
@@ -60,11 +62,13 @@ stage_list = ['create', 'build', 'build_iter', 'install', 'install_iter', 'unins
 
 
 class feature_struct:
-    """The primary object used for feature registration.  The name and doc items
-    are the feature's name and short description.  The default item specifies
-    whether this feature should be turned on by default.  The action item is a
-    list of name, stage_struct pairs.  The remaining items are stage_struct
-    objects for each relevant stage."""
+    """The primary object used for feature registration.  The name and doc
+    items are the feature's name and short description.  The default item
+    specifies whether this feature should be turned on by default.  The
+    action item is a list of name, stage_struct pairs.  The remaining
+    items are stage_struct objects for each relevant stage.
+
+    """
     def __init__(self, name=None, doc=None, default=False,
                  create=None,
                  build=None, build_iter=None,
@@ -111,18 +115,20 @@ class feature_struct:
 
 class stage_struct:
     """This object is used for feature registration by using an instance to
-    populate one of the stage fields of feature_struct.  name is the name of the
-    feature as referenced by other features.  func is the function to be called
-    during this stage.  pre_reqs is a list of feature names that are required to
-    happen prior to this feature's func being called.  post_reqs is a list of
-    feature names that are required to happen after this feature's func (i.e.,
-    this feature's func has to happen first)."""
-    def __init__(self, name=None, func=None, pre_reqs=[], post_reqs=[], async=True):
+    populate one of the stage fields of feature_struct.  name is the name
+    of the feature as referenced by other features.  func is the function
+    to be called during this stage.  pre_reqs is a list of feature names
+    that are required to happen prior to this feature's func being called.
+    post_reqs is a list of feature names that are required to happen after
+    this feature's func (i.e., this feature's func has to happen
+    first).
+
+    """
+    def __init__(self, name=None, func=None, pre_reqs=[], post_reqs=[]):
         self.name = name
         self.func = func
         self.pre_reqs = pre_reqs
         self.post_reqs = post_reqs
-        self.async = async
     
 
     def __repr__(self):
@@ -139,7 +145,9 @@ class stage_struct:
 
     def __lt__(self, other):
         """The less than method is implemented so we can sort a list of
-        instances propperly using our pre_reqs and post_reqs feature lists."""
+        instances propperly using our pre_reqs and post_reqs feature
+        lists.
+        """
 
         # update pre_reqs and post_reqs for both self and other
         #
@@ -224,9 +232,12 @@ def register_feature(feature_obj):
 
 def get_function_list(stage, feature_list):
     """Utility function that returns a sorted list of feature stage_struct
-    objects for the specified stage.  Each feature's stage_struct object is
-    quereied for pre/post requirements and all are added, then the resulting
-    list of objects is sorted based on all the pre/post requirements."""
+    objects for the specified stage.  Each feature's stage_struct object
+    is quereied for pre/post requirements and all are added, then the
+    resulting list of objects is sorted based on all the pre/post
+    requirements.
+
+    """
     retval = []
     for f in feature_list:
         # get the list of feature funcs required for f
@@ -241,7 +252,9 @@ def get_function_list(stage, feature_list):
 
 def get_function_list_deps(f, stage, retval=None):
     """Utility function that recursively generates a list of stage_struct
-    objects for the specified feature and stage."""
+    objects for the specified feature and stage.
+
+    """
     if retval == None:
         retval = []
 
@@ -280,6 +293,7 @@ def get_function_list_deps(f, stage, retval=None):
 def get_stage_map(flags):
     """Utility function that returns a dict of sorted stage lists.  The flags
     argument is a list of features read from the NOTES file.
+
     """
     retval = {}
     for s in stage_list:

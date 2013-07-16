@@ -273,15 +273,24 @@ def do_create(fname):
     with open(fname, 'rb') as fobj:
         n = srp.notes.notes(fobj)
 
+    work = {}
+    work["pname"] = "{}-{}-{}.srp".format(n.info.name, n.info.version,
+                                          n.info.revision)
+    work["notes"] = n
+
     # run through all queued up stage funcs for create
     m = srp.features.get_stage_map(n.options.features.split())
     print("create funcs:", m['create'])
     for f in m['create']:
         print("executing:", f)
         try:
-            f.func(n)
+            f.func(work)
         except:
             print("ERROR: failed feature stage function:", f)
+            try:
+                os.remove(work["pname"])
+            except:
+                pass
             raise
 
 
@@ -305,159 +314,138 @@ def do_build(fname, options):
         n = srp.notes.notes(fobj)
         #print(n)
 
-        # FIXME: should the core feature func untar the srp in a tmp dir? or
-        #        should we do that here and pass tmpdir in via our work
-        #        map...?  i think that's the only reason any of the build
-        #        funcs would need the tarfile instance...  might just boil
-        #        down to how determined i am to make the feature funcs do as
-        #        much of the work as possible...
-        #
-        #        it might also come down to duplicating code all over the
-        #        place... chances are, there's a bunch of places where we'll
-        #        need to create the tmpdir and extract a package's
-        #        files... in which case we'll rip that out of the core
-        #        feature's build_func and put it somewhere else.
+    # FIXME: should the core feature func untar the srp in a tmp dir? or
+    #        should we do that here and pass tmpdir in via our work
+    #        map...?  i think that's the only reason any of the build
+    #        funcs would need the tarfile instance...  might just boil
+    #        down to how determined i am to make the feature funcs do as
+    #        much of the work as possible...
+    #
+    #        it might also come down to duplicating code all over the
+    #        place... chances are, there's a bunch of places where we'll
+    #        need to create the tmpdir and extract a package's
+    #        files... in which case we'll rip that out of the core
+    #        feature's build_func and put it somewhere else.
 
-        # prep our shared work namespace
-        #
-        # NOTE: This dict gets passed into all the stage funcs (i.e., it's
-        #       how they can all share data)
-        work = {}
-        work['srp'] = p
+    # prep our shared work namespace
+    #
+    # NOTE: This dict gets passed into all the stage funcs (i.e., it's
+    #       how they can all share data)
+    work = {}
+    work['fname'] = fname
 
-        # append brp section header to NOTES file
-        n.additions['brp'] = {}
-        work['notes'] = n
+    # NOTE: We do not pass the TarFile instance along because it doesn't
+    # play nicely with subproc access...
+    #work['srp'] = p
 
-        # create the toplevel brp archive
-        #
-        # NOTE: This is implemented using a ram-backed temporary file as the
-        #       fileobj for a tarfile.  When the fobj is closed it's
-        #       contents are lost, so we'll copy the data to our final
-        #       destination directory when we're all finished.
-        #
-        # FIXME: tweak the max_size argument
-        brp_fobj = tempfile.SpooledTemporaryFile()
-        brp = tarfile.open(fileobj=brp_fobj, mode="w")
-        work['brp'] = brp
-        sha = hashlib.new("sha1")
+    # append brp section header to NOTES file
+    n.additions['brp'] = {}
+    work['notes'] = n
 
-        # run through all queued up stage funcs for build
-        m = srp.features.get_stage_map(n.options.features.split())
- 
-        print("build funcs:", m['build'])
-        for f in m['build']:
-            print("executing:", f)
+    # run through all queued up stage funcs for build
+    m = srp.features.get_stage_map(n.options.features.split())
+    print("features", n.options.features)
+    print("build funcs:", m['build'])
+    for f in m['build']:
+        print("executing:", f)
+        try:
+            f.func(work)
+        except:
+            print("ERROR: failed feature stage function:", f)
+            raise
+
+    # now run through all queued up stage funcs for build_iter
+    #
+    # FIXME: multiprocessing
+    print("build_iter funcs:", m['build_iter'])
+    flist = list(work['tinfo'].keys())
+    flist.sort()
+    for x in flist:
+        for f in m['build_iter']:
+            print("executing:", f, x)
             try:
-                f.func(work)
+                f.func(work, x)
             except:
                 print("ERROR: failed feature stage function:", f)
                 raise
 
-        # populate the BLOB archive
-        #
-        # NOTE: This is where we actually add TarInfo objs and their associated
-        #       fobjs to the BLOB, then add the BLOB to the brp archive.
-        #
-        # NOTE: This is implemented using a ram-backed temporary file as the
-        #       fileobj for a tarfile.  When the fobj is closed it's
-        #       contents are lost, but that's fine because we will have
-        #       already added it to the toplevel brp archive.
-        #
-        # FIXME: tweak the max_size argument
-        #
-        # FIXME: compression should be configurable globally and also via
-        #        the command line when building.
-        blob_fobj = tempfile.SpooledTemporaryFile()
-        comp = 'bz2'
-        blob = tarfile.open(fileobj=blob_fobj, mode="w:"+comp)
+    # create the toplevel brp archive
+    #
+    # FIXME: compression should be configurable globally and also via
+    #        the command line when building.
+    mach = platform.machine()
+    if not mach:
+        mach = "unknown"
+    pname = "{}-{}-{}.{}.brp".format(n.info.name, n.info.version,
+                                     n.info.revision, mach)
+    comp = 'bz2'
+    # FIXME: we should remove this file if we fail...
+    brp = tarfile.open(pname, mode="w:"+comp)
+    sha = hashlib.new("sha1")
 
-        flist = list(work['manifest'].keys())
-        flist.sort()
-        # FIXME: MULTI: is there any benefit to doing this in parallel?  we
-        #        would have to either manage a shared TarFile object or
-        #        create a bunch of small TarFiles and then concatenate them
-        #        at the end, so the overhead might be a bit problematic...
-        for x in flist:
-            realname = work['dir']+'/tmp/'+x
-            tinfo = work['manifest'][x]['tinfo']
-            if os.path.islink(realname) or os.path.isdir(realname):
-                blob.addfile(tinfo)
-            else:
-                #print(realname)
-                #print(tinfo)
-                blob.addfile(tinfo, open(realname, 'rb'))
+    # populate the BLOB archive
+    #
+    # NOTE: This is where we actually add TarInfo objs and their associated
+    #       fobjs to the BLOB, then add the BLOB to the brp archive.
+    #
+    # NOTE: This is implemented using a temporary file as the fileobj for a
+    #       tarfile.  When the fobj is closed it's contents are lost, but
+    #       that's fine because we will have already added it to the toplevel
+    #       brp archive.
+    blob_fobj = tempfile.TemporaryFile()
+    blob = tarfile.open("blob", fileobj=blob_fobj, mode="w")
 
-        blob.close()
-        
-        # add items to NOTES file (e.g., blob_compression)
-        n.additions['brp']['blob_compression'] = comp
+    # FIXME: MULTI: is there any benefit to doing this in parallel?  we would
+    #        have to create a bunch of small TarFiles and then concatenate them
+    #        at the end...  re-iterating over the sub-tarfiles to create a full
+    #        tarfile would probably take way more time than we would have
+    #        saved... but we could try it and see.
+    #
+    # FIXME: Well, if there's no speedup benefit, doing it in parallel would
+    #        mean we could do this processing as a build_iter stage...
+    for x in flist:
+        realname = work['dir']+'/tmp/'+x
+        tinfo = work['tinfo'][x]
+        # NOTE: The fileobj gets x.size bytes read from it, which means we can
+        #       blindly pass fobj for file types that don't get any real data
+        #       (i.e., because size is 0).
+        try:
+            fobj = open(realname, 'rb')
+        except:
+            fobj = None
+        blob.addfile(tinfo, fobj)
 
-        # add NOTES file to toplevel pkg archive (the brp)
-        #
-        # FIXME: tweak the max_size argument
-        n_fobj = tempfile.SpooledTemporaryFile()
-        n.write(n_fobj)
-        n_fobj.seek(0)
-        # FIXME: perhaps write a method to build TarInfo from fobj.  can't
-        #        use gettarinfo on a SpooledTemporaryFile, so we have to do
-        #        an fstat and populate by hand
-        n_tinfo = tarfile.TarInfo("NOTES")
-        n_stat = os.fstat(n_fobj.fileno())
-        n_tinfo.size = n_stat.st_size
-        n_tinfo.mtime = n_stat.st_mtime
-        n_tinfo.mode = n_stat.st_mode
-        n_tinfo.uid = n_stat.st_uid
-        n_tinfo.gid = n_stat.st_gid
-        n_tinfo.type = tarfile.REGTYPE
+    blob.close()
 
-        brp.addfile(n_tinfo, n_fobj)
-        # rewind and generate a SHA entry
-        n_fobj.seek(0)
-        sha.update(n_fobj.read())
-        n_fobj.close()
+    # add NOTES file to toplevel pkg archive (the brp)
+    n_fobj = tempfile.TemporaryFile()
+    n.write(n_fobj)
+    n_fobj.seek(0)
+    brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
+                fileobj=n_fobj)
+    # rewind and generate a SHA entry
+    n_fobj.seek(0)
+    sha.update(n_fobj.read())
+    n_fobj.close()
 
-        # add BLOB file to toplevel pkg archive
-        blob_fobj.seek(0)
-        # FIXME: see previous note about making a method for this
-        blob_tinfo = tarfile.TarInfo("BLOB")
-        blob_stat = os.fstat(blob_fobj.fileno())
-        blob_tinfo.size = blob_stat.st_size
-        blob_tinfo.mtime = blob_stat.st_mtime
-        blob_tinfo.mode = blob_stat.st_mode
-        blob_tinfo.uid = blob_stat.st_uid
-        blob_tinfo.gid = blob_stat.st_gid
-        blob_tinfo.type = tarfile.REGTYPE
+    # add BLOB file to toplevel pkg archive
+    blob_fobj.seek(0)
+    brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob_fobj),
+                fileobj=blob_fobj)
+    # rewind and generate a SHA entry
+    blob_fobj.seek(0)
+    sha.update(blob_fobj.read())
+    blob_fobj.close()
 
-        brp.addfile(blob_tinfo, blob_fobj)
-        # rewind and generate a SHA entry
-        blob_fobj.seek(0)
-        sha.update(blob_fobj.read())
-        blob_fobj.close()
+    # create the SHA file and add it to the pkg
+    with tempfile.TemporaryFile() as f:
+        f.write(sha.hexdigest().encode())
+        f.seek(0)
+        brp.addfile(brp.gettarinfo(arcname="SHA", fileobj=f),
+                    fileobj=f)
 
-        # create the SHA file and add it to the pkg
-        #
-        # NOTE: Can't use SpooledTemporaryFile here because it has to be a
-        #       real file in order for gettarinfo to work properly
-        with tempfile.TemporaryFile() as f:
-            f.write(sha.hexdigest().encode())
-            f.seek(0)
-            brp.addfile(brp.gettarinfo(arcname="SHA", fileobj=f),
-                        fileobj=f)
-
-        # close the toplevel brp archive
-        brp.close()
-
-        # copy brp to pwd
-        brp_fobj.seek(0)
-        mach = platform.machine()
-        if not mach:
-            mach = "unknown"
-        pname = "{}-{}-{}.{}.brp".format(n.info.name, n.info.version,
-                                         n.info.revision, mach)
-        print(pname)
-        with open(pname, "wb") as f:
-            f.write(brp_fobj.read())
+    # close the toplevel brp archive
+    brp.close()
 
 
 def do_install(fname, options):

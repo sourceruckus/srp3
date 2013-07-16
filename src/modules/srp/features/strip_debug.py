@@ -30,10 +30,14 @@ def install_func(work):
 # FIXME: this should also register an action so we can strip after
 #        installation if we want to
 
-register_feature(feature_struct("strip_debug",
-                                __doc__,
-                                False,
-                                install = stage_struct("strip_debug", install_func, ["core"], ["?checksum"]),
-                                action = [("strip_debug", stage_struct("strip_debug", install_func, [], []))]))
+register_feature(
+    feature_struct("strip_debug",
+                   __doc__,
+                   False,
+                   install = stage_struct("strip_debug", install_func,
+                                          ["core"], ["?checksum"]),
+                   action = [("strip_debug",
+                              stage_struct("strip_debug", install_func,
+                                           [], []))]))
 
 # FIXME: what happens if checksum isn't enabled?

@@ -44,8 +44,11 @@ def partition_list(full_list, n):
 
 
 
-def create_func(n):
+def create_func(work):
     """create tar of NOTES, source, SHA"""
+
+    n = work["notes"]
+
     # locate all needed files
     #
     # NOTE: We expect these to all be relative to the directory containing
@@ -56,67 +59,40 @@ def create_func(n):
     except:
         pass
 
-    #print(flist)
-
     # create tarball
-    #
-    # NOTE: At this point, the tarball is unnamed and spooled in RAM.  When
-    #       we're all done, we'll write the file to disk in the original working
-    #       directory
-    #
-    # FIXME: The max_size should be configurable... systems that have little RAM
-    #        might want to not spool anything, whereas systems with tons might
-    #        want to improve performace by using a huge size.
-    #
-    # FIXME: It's not clear from the docs, but reading the tempfile sources
-    #        indicates that max_size=0 (the default) means there is no max
-    #        size (i.e., won't ever rollover automatically).
     #
     # NOTE: We add the source file and any extra files specified in the
     #       NOTES file, the NOTES file itself, and a SHA file containing a
     #       single checksum of the archive (all files concatenated together
     #       into a single stream).
     sha = hashlib.new("sha1")
-    max_spool=10*2**20
-    # create our tempfile obj
-    with tempfile.SpooledTemporaryFile(max_size=max_spool) as pkg:
-        # create a TarFile obj using the tempfile obj
-        with tarfile.open(fileobj=pkg, mode="w") as tar:
-            for fname in flist:
-                # create an open file object
-                with open(os.path.join(os.path.dirname(n.filename), fname),
-                          mode='rb') as f:
-                    # we need to remove all leading path segments so that all
-                    # files end up at the toplevel of the pkg file
-                    arcname = os.path.basename(fname)
-                    if arcname == os.path.basename(n.filename):
-                        # we also need to rename the notes file inside the
-                        # pkg
-                        arcname = "NOTES"
-                    #print("adding {} as {}".format(f.name, arcname))
-                    tar.addfile(tar.gettarinfo(arcname=arcname, fileobj=f),
-                                fileobj=f)
-                    # rewind and generate a SHA entry
-                    f.seek(0)
-                    sha.update(f.read())
+    tar = tarfile.open(work["pname"], mode="w")
+    for fname in flist:
+        # create an open file object
+        with open(os.path.join(os.path.dirname(n.filename), fname),
+                  mode='rb') as f:
+            # we need to remove all leading path segments so that all
+            # files end up at the toplevel of the pkg file
+            arcname = os.path.basename(fname)
+            if arcname == os.path.basename(n.filename):
+                # we also need to rename the notes file inside the
+                # pkg
+                arcname = "NOTES"
+            #print("adding {} as {}".format(f.name, arcname))
+            tar.addfile(tar.gettarinfo(arcname=arcname, fileobj=f),
+                        fileobj=f)
+            # rewind and generate a SHA entry
+            f.seek(0)
+            sha.update(f.read())
 
-            # create the SHA file and add it to the pkg
-            #
-            # NOTE: Can't use SpooledTemporaryFile here because it has to be a
-            #       real file in order for gettarinfo to work properly
-            with tempfile.TemporaryFile() as f:
-                f.write(sha.hexdigest().encode())
-                f.seek(0)
-                tar.addfile(tar.gettarinfo(arcname="SHA", fileobj=f),
-                            fileobj=f)
+    # create the SHA file and add it to the pkg
+    with tempfile.TemporaryFile() as f:
+        f.write(sha.hexdigest().encode())
+        f.seek(0)
+        tar.addfile(tar.gettarinfo(arcname="SHA", fileobj=f),
+                    fileobj=f)
 
-        # copy pkg to pwd
-        pkg.seek(0)
-        pname = "{}-{}-{}.srp".format(n.info.name, n.info.version,
-                                      n.info.revision)
-        print(pname)
-        with open(pname, "wb") as f:
-            f.write(pkg.read())
+    tar.close()
 
 
 def build_func(work):
@@ -134,12 +110,13 @@ def build_func(work):
     # NOTE: This is needed so that build scripts can access other misc files
     #       they've included in the srp (e.g., apply a patch, install an
     #       externally maintained init script)
-    work['srp'].extractall(work['dir'] + "/package")
+    with tarfile.open(work["fname"]) as f:
+        f.extractall(work['dir'] + "/package")
 
     # extract source tarball
-    t = tarfile.open(work['dir'] + "/package/" + work['notes'].info.sourcefilename)
-    t.extractall(work['dir'] + "/build")
-    sourcedir=t.getnames()[0]
+    with tarfile.open(work['dir'] + "/package/" + work['notes'].info.sourcefilename) as f:
+        sourcedir=f.firstmember.name
+        f.extractall(work['dir'] + "/build")
 
     # create build script
     #
@@ -201,16 +178,29 @@ def build_func(work):
     #       very end (i.e., when all other feature functions have been
     #       executed), all the TarInfo objects (and their associated file
     #       objects) will be added to the archive.
-    work['manifest'] = {}
+    #
+    # FIXME: straighten out these comments
+    work['tinfo'] = {}
+    # NOTE: This tar object is just so we can use the gettarinfo member
+    #       function
+    tar = tarfile.open("tar", fileobj=tempfile.TemporaryFile(), mode="w")
     for root, dirs, files in os.walk(new_env['PAYLOAD_DIR']):
         tmp = dirs[:]
         tmp.extend(files)
         for x in tmp:
             realname = os.path.join(root, x)
             arcname = os.path.join(root, x).split(new_env['PAYLOAD_DIR'])[-1]
-            x = {'tinfo': work['brp'].gettarinfo(realname, arcname)}
-            work['manifest'][arcname] = x
-            #print(work['manifest'][arcname])
+            # NOTE: Sockets don't go in tarballs.  GNU Tar issues a warning, so
+            #       we will too.  I don't know if there are other unsupported
+            #       file types, but it looks like gettarinfo returns None if
+            #       the file cannot be represented in a tarfile.
+            x = tar.gettarinfo(realname, arcname)
+            x.uname = "root"
+            x.gname = "root"
+            if x:
+                work['tinfo'][arcname] = x
+            else:
+                print("WARNING: ignoring unsupported file type:", arcname)
 
     # append to brp section of NOTES file
     #
@@ -276,6 +266,9 @@ def install_func(work):
     #
     #       The blob_compression algo is recored in the NOTES file's brp
     #       section and is checked prior to running any stage funcs.
+    #
+    # FIXME: these comments are erroneous now that we're compressing the
+    #        toplevel brp
     blob = tarfile.open(fileobj=work['brp'].extractfile("BLOB"))
 
     # install the files
@@ -350,6 +343,8 @@ def install_func(work):
         p.join()
 
     # pickle our archive member list and add to manifest
+    #
+    # FIXME: should just use the pickled FILES instance from the brp
     f = tempfile.TemporaryFile()
     pickle.dump(blob.getmembers(), f)
     work['manifest']['FILES'] = f
@@ -369,11 +364,13 @@ def commit_func():
     # FIXME: MULTI:
     pass
 
-register_feature(feature_struct("core",
-                                __doc__,
-                                True,
-                                create = stage_struct("core", create_func, [], []),
-                                build = stage_struct("core", build_func, [], []),
-                                install = stage_struct("core", install_func, [], []),
-                                uninstall = stage_struct("core", uninstall_func, [], []),
-                                action = [("commit", stage_struct("core", commit_func, [], []))]))
+register_feature(
+    feature_struct("core",
+                   __doc__,
+                   True,
+                   create = stage_struct("core", create_func, [], []),
+                   build = stage_struct("core", build_func, [], []),
+                   install = stage_struct("core", install_func, [], []),
+                   uninstall = stage_struct("core", uninstall_func, [], []),
+                   action = [("commit",
+                              stage_struct("core", commit_func, [], []))]))

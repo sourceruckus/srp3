@@ -26,10 +26,15 @@ def commit_func():
     # FIXME: MULTI:
     pass
 
-register_feature(feature_struct("checksum",
-                                __doc__,
-                                True,
-                                install = stage_struct("checksum", install_func, ["core"], []),
-                                uninstall = stage_struct("checksum", uninstall_func, [], ["core"]),
-                                action = [("commit", stage_struct("checksum", commit_func, [], [])),
-                                          ("verify", stage_struct("checksum", verify_func, [], []))]))
+register_feature(
+    feature_struct("checksum",
+                   __doc__,
+                   True,
+                   install = stage_struct("checksum", install_func,
+                                          ["core"], []),
+                   uninstall = stage_struct("checksum", uninstall_func,
+                                            [], ["core"]),
+                   action = [("commit",
+                              stage_struct("checksum", commit_func, [], [])),
+                             ("verify",
+                              stage_struct("checksum", verify_func, [], []))]))
