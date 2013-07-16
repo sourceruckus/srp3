@@ -11,9 +11,10 @@ import stat
 import sys
 import tarfile
 import tempfile
+import pickle
 
 import srp
-
+from pprint import pprint
 
 desc = """\
 {}, version {}
@@ -403,6 +404,13 @@ def do_build(fname, options):
     #
     # FIXME: Well, if there's no speedup benefit, doing it in parallel would
     #        mean we could do this processing as a build_iter stage...
+    #
+    # NOTE: We're going to install a cached TarInfo list in the BRP as well.
+    #       This will speed up package instantiation come install time.  We're
+    #       using the TarInfo objects that have been doctored during our build
+    #       stage(s) though so that we retain any extra data that stage funcs
+    #       may have stored in the TarInfo objects' dicts.
+    files = []
     for x in flist:
         realname = work['dir']+'/tmp/'+x
         tinfo = work['tinfo'][x]
@@ -414,6 +422,7 @@ def do_build(fname, options):
         except:
             fobj = None
         blob.addfile(tinfo, fobj)
+        files.append(tinfo)
 
     blob.close()
 
@@ -427,6 +436,29 @@ def do_build(fname, options):
     n_fobj.seek(0)
     sha.update(n_fobj.read())
     n_fobj.close()
+
+    # add FILES file to toplevel pkg archive
+    #
+    # NOTE: This cached TarInfo list means that our install processing won't
+    #       have to parse to the end of BLOB in order to figure out what files
+    #       to install.
+    print(files)
+    pprint(files)
+    files_fobj = tempfile.TemporaryFile()
+    for x in files:
+        print(x)
+        print(dir(x))
+        print("type x:", type(x))
+        print("type files_fobj:", type(files_fobj))
+        print(pickle.dumps(x))
+        pickle.dump(obj=x, file=files_fobj)
+    files_fobj.seek(0)
+    brp.addfile(brp.gettarinfo(arcname="FILES", fileobj=files_fobj),
+                fileobj=files_fobj)
+    # rewind and generate a SHA entry
+    files_fobj.seek(0)
+    sha.update(files_fobj.read())
+    files_fobj.close()
 
     # add BLOB file to toplevel pkg archive
     blob_fobj.seek(0)
