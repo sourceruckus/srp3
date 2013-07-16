@@ -209,6 +209,25 @@ class stage_struct:
                 raise Exception("circular post_req dependencies")
             return True
 
+        # NOTE: We need to support at least 1 level of indirect deps
+        #       (i.e., deps and checksum may not directly relate to each
+        #       other, but checksum has to happen after core while deps
+        #       has to happen before core).
+
+        # does other have a pre_req that's in our post_reqs
+        for x in other.pre_reqs:
+            if x in post_reqs:
+                return True
+
+        # does other have a post_req that's in our pre_reqs
+        for x in other.post_reqs:
+            if x in pre_reqs:
+                return False
+
+        # NOTE: If we've failed to determine if we're less than, we've
+        #       missed something... and this is a lot easier to detect in
+        #       the interpreter if we don't return anything...
+
 
 def register_feature(feature_obj):
     """The registration method for the Feature API."""

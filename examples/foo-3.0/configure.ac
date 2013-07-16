@@ -11,6 +11,12 @@ AC_PROG_INSTALL
 AC_PROG_MKDIR_P
 AC_PROG_LN_S
 
+# look for pkg-config
+PKG_PROG_PKG_CONFIG
+
+# detect python
+PKG_CHECK_MODULES(PYTHON, python3)
+
 # NOTE: It would appear that libreadline.so has undefined references unless
 #       you also link against libncurses.  I think that means that
 #       libreadline itself should be linked against libncurses, but
