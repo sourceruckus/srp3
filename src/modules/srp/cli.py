@@ -414,6 +414,7 @@ def do_build(fname, options):
     for x in flist:
         realname = work['dir']+'/tmp/'+x
         tinfo = work['tinfo'][x]
+
         # NOTE: The fileobj gets x.size bytes read from it, which means we can
         #       blindly pass fobj for file types that don't get any real data
         #       (i.e., because size is 0).
@@ -421,6 +422,16 @@ def do_build(fname, options):
             fobj = open(realname, 'rb')
         except:
             fobj = None
+
+        # remove problematic tarfile instance from TarInfo object
+        #
+        # NOTE: The tarfile instance inside the TarInfo instance cannot be
+        #       pickled, so we have to remove it.  It doesn't seem to hurt
+        #       anything.  TarInfo objects returned from TarFile.getmember()
+        #       don't have this, but ones returned from TarFile.gettarinfo()
+        #       do.
+        del(tinfo.tarfile)
+
         blob.addfile(tinfo, fobj)
         files.append(tinfo)
 
@@ -442,16 +453,8 @@ def do_build(fname, options):
     # NOTE: This cached TarInfo list means that our install processing won't
     #       have to parse to the end of BLOB in order to figure out what files
     #       to install.
-    print(files)
-    pprint(files)
     files_fobj = tempfile.TemporaryFile()
-    for x in files:
-        print(x)
-        print(dir(x))
-        print("type x:", type(x))
-        print("type files_fobj:", type(files_fobj))
-        print(pickle.dumps(x))
-        pickle.dump(obj=x, file=files_fobj)
+    pickle.dump(files, files_fobj)
     files_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="FILES", fileobj=files_fobj),
                 fileobj=files_fobj)
