@@ -508,38 +508,6 @@ def do_install(fname, options):
     work['tinfo'] = tinfo
     work['sha'] = sha
 
-    # this is a map of additional files to be stored for this package
-    #
-    # NOTE: Default content: NOTES, FILES (pickled TarInfo map)
-    #
-    # NOTE: Don't put file objects in here.  The key should be the filename
-    #       as it is going to be installed and the value should be a
-    #       pathname to a file on disk.  File objects might make sense, but
-    #       they don't play well with multiprocessing.
-    #
-    # FIXME: maybe the value should be a key to index into work?  that might
-    #        reduce unneeded copying of data...
-    #
-    # NOTE: it's a map instead of a list so that we can make sure we
-    #       have sane file names
-    #
-    # FIXME: what did i mean by that?
-    #
-    # FIXME: if we're going to allow feature funcs to modify NOTES (as
-    #        we do during build), we'll need to do this at the very end.
-    #        for now, i'm just using the original NOTES fobj from the
-    #        brp.
-    #
-    # FIXME: file objects should be written to disk in some special place so
-    #        that we don't have to share open file objects accross subprocesses...
-    #
-    # FIXME: is there any point to this at all?  why not have this method
-    #        write NOTES, FILES after the iter funcs and let the iter funcs
-    #        write their own files to db?
-
-    #work['manifest'] = {"NOTES": fobj}
-    work['manifest'] = {}
-
     # run through install funcs
     m = srp.features.get_stage_map(n.options.features.split())
     print("features:", n.options.features)
@@ -567,20 +535,22 @@ def do_install(fname, options):
                 print("ERROR: failed feature stage function:", f)
                 raise
 
-    # commit manifest to disk in srp db
+    # commit NOTES to disk in srp db
     #
-    # FIXME: missing upgrade logic
+    # NOTE: We need to refresh our copy of n because feature funcs may have
+    #       modified the copy in work[].
+    n = work["notes"]
+    with open(work["db"]+"/NOTES", "wb") as f:
+        n.write(f)
+
+    # commit FILES to disk in srp db
     #
-    # FIXME: should we keep using the SHA from the brp? or should the
-    #        SHA for the db entry reflect its actual contents (i.e., if
-    #        we change pkg content after install via an action, should
-    #        the db SHA change)?  If the latter, perhaps we should add
-    #        an "installed_from = SHA" entry to the NOTES file so that
-    #        we can trace what exact brp we installed from?
-    print("manifest:", work['manifest'])
-    path=work["db"]
-    for x in work["manifest"]:
-        shutil.copy2(work["manifest"][x], path+"/"+x)
+    # NOTE: Don't forget, these TarInfo objects have been (likely) modified
+    #       to add extra meta-data by feature stage functions.
+    tinfo = work["tinfo"]
+    with open(work["db"]+"/FILES", "wb") as f:
+        pickle.dump(tinfo, f)
+
 
 
 
