@@ -120,7 +120,7 @@ class perms(list):
 # NOTE: The core build_func does NOT actually add files to the brp, it just
 #       runs the build script and make a first pass at the package manifest.
 #       This gives us a chance to swoop in here and change perms in the
-#       TarInfo objects in work['manifest'] prior to the toplevel program
+#       TarInfo objects in work['tinfo'] prior to the toplevel program
 #       finalizing the brp (at which point, files are actually added to the
 #       BLOB archive).
 #

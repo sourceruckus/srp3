@@ -408,12 +408,11 @@ def do_build(fname, options):
     # FIXME: Well, if there's no speedup benefit, doing it in parallel would
     #        mean we could do this processing as a build_iter stage...
     #
-    # NOTE: We're going to install a cached TarInfo list in the BRP as well.
+    # NOTE: We're going to install a cached TarInfo map in the BRP as well.
     #       This will speed up package instantiation come install time.  We're
     #       using the TarInfo objects that have been doctored during our build
     #       stage(s) though so that we retain any extra data that stage funcs
     #       may have stored in the TarInfo objects' dicts.
-    files = []
     for x in flist:
         realname = work['dir']+'/tmp/'+x
         tinfo = work['tinfo'][x]
@@ -436,7 +435,6 @@ def do_build(fname, options):
         del(tinfo.tarfile)
 
         blob.addfile(tinfo, fobj)
-        files.append(tinfo)
 
     blob.close()
 
@@ -453,11 +451,11 @@ def do_build(fname, options):
 
     # add FILES file to toplevel pkg archive
     #
-    # NOTE: This cached TarInfo list means that our install processing won't
+    # NOTE: This cached TarInfo map means that our install processing won't
     #       have to parse to the end of BLOB in order to figure out what files
     #       to install.
     files_fobj = tempfile.TemporaryFile()
-    pickle.dump(files, files_fobj)
+    pickle.dump(work["tinfo"], files_fobj)
     files_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="FILES", fileobj=files_fobj),
                 fileobj=files_fobj)
@@ -510,7 +508,17 @@ def do_install(fname, options):
     work['tinfo'] = tinfo
     work['sha'] = sha
 
-    # this is a map of fobjs to be stored for this package
+    # this is a map of additional files to be stored for this package
+    #
+    # NOTE: Default content: NOTES, FILES (pickled TarInfo map)
+    #
+    # NOTE: Don't put file objects in here.  The key should be the filename
+    #       as it is going to be installed and the value should be a
+    #       pathname to a file on disk.  File objects might make sense, but
+    #       they don't play well with multiprocessing.
+    #
+    # FIXME: maybe the value should be a key to index into work?  that might
+    #        reduce unneeded copying of data...
     #
     # NOTE: it's a map instead of a list so that we can make sure we
     #       have sane file names
@@ -524,7 +532,13 @@ def do_install(fname, options):
     #
     # FIXME: file objects should be written to disk in some special place so
     #        that we don't have to share open file objects accross subprocesses...
+    #
+    # FIXME: is there any point to this at all?  why not have this method
+    #        write NOTES, FILES after the iter funcs and let the iter funcs
+    #        write their own files to db?
+
     #work['manifest'] = {"NOTES": fobj}
+    work['manifest'] = {}
 
     # run through install funcs
     m = srp.features.get_stage_map(n.options.features.split())
@@ -564,22 +578,9 @@ def do_install(fname, options):
     #        an "installed_from = SHA" entry to the NOTES file so that
     #        we can trace what exact brp we installed from?
     print("manifest:", work['manifest'])
-    path="/var/lib/srp/"+n.info.name+"/"+sha
-    # FIXME: DESTDIR or --root.  see FIXME in core.install_func...
-    try:
-        path = os.environ["DESTDIR"] + path
-    except:
-        pass
-    print("path:", path)
-    # FIXME: if sha already installed, this will throw OSError
-    os.makedirs(path)
+    path=work["db"]
     for x in work["manifest"]:
-        with open(path+"/"+x, "wb") as f:
-            work["manifest"][x].seek(0)
-            f.write(work["manifest"][x].read())
-
-
-
+        shutil.copy2(work["manifest"][x], path+"/"+x)
 
 
 

@@ -207,14 +207,6 @@ class notes:
         if missing:
             raise Exception("package requires missing features: {}".format(missing))
 
-        # check for required blob_compression IF the brp section exists
-        if 'brp' in self.sections:
-            comp = self.brp.blob_compression
-            try:
-                tarfile.TarFile.OPEN_METH[comp]
-            except:
-                raise Exception("package requires TarFile compression algorithm: "+comp)
-
 
     def update(self, options):
         features = self.options.features.split()

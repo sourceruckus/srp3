@@ -97,6 +97,10 @@ def install_func(work):
     #
     #        OSError: libasdf.so.5: cannot open shared object file: No such
     #        file or directory
+    #
+    # FIXME: for now, when tesing on systems with broken libreadline, you
+    #        can get the deps check to pass by setting
+    #        LD_PRELOAD=libncurses.so.5 on the command line.
     n = work['notes']
     deps = n.brp.deps.split()
     # NOTE: We iterate all the way through so that the user can see ALL the
