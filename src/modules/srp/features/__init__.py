@@ -15,30 +15,24 @@ in.
 
 The pre-defined stages are:
 
-  create(notes) -- Creating a source package from a NOTES file, source
+  create(work) -- Creating a source package from a NOTES file, source
   tarball, and possibly other files (e.g., patches, extra sources).
 
-  build(srp, notes, brp) -- Build the binary package by executing the
-  embedded build script in the NOTES file, tar up the resulting payload.
+  build(work) -- Build the binary package by executing the embedded build
+  script in the NOTES file, create TarInfo list of resulting payload.
 
-  build_iter(tinfo) -- Special iter stage after build.  This is where the
-  core feature actually creates the brp's blob.  If you want to tweak each
-  file before it gets added to the archive, this is the stage you want.
+  build_iter(work, fname) -- If you want to tweak each file before it gets
+  added to the archive, this is the stage you want.
 
-  install_iter(tinfo) -- Special iter stage before install.  If you have
-  something special to do that involves iterating over all the installed
-  files, this is the stage to use.  This stage runs BEFORE install so that
-  if some package-wide meta-data is updated, it doesn't have to get
-  reinstalled.
+  install(work) -- Install the package on a system.
 
-  install(brp, notes, db) -- Install the package on a system.
+  install_iter(work, fname) -- If you have something special to do that
+  involves iterating over all the installed files, this is the stage to use.
 
-  uninstall_iter -- Special iter stage before uninstall.  If you have
-  something to do/check per file prior to uninstall, this is the stage to
-  do it in.  This stage runs BEFORE uninstall so that if some per-file
-  check fails we can abort prior to uninstalling the whole package.
+  uninstall(work) -- Uninstall the package from a system.
 
-  uninstall -- Uninstall the package from a system.
+  uninstall_iter(work, fname) -- If you have something to do per file during
+  uninstall, this is the stage to do it in.
 
   action -- This stage is special.  It's really a meta-stage of sorts,
   allowing Features to create their own special pseudo-stages.  These
@@ -58,7 +52,10 @@ registered_features = {}
 action_map = {}
 
 # The standard list of stages
-stage_list = ['create', 'build', 'build_iter', 'install', 'install_iter', 'uninstall']
+stage_list = ['create',
+              'build', 'build_iter',
+              'install', 'install_iter',
+              'uninstall', 'uninstall_iter']
 
 
 class feature_struct:
@@ -73,7 +70,7 @@ class feature_struct:
                  create=None,
                  build=None, build_iter=None,
                  install=None, install_iter=None,
-                 uninstall=None,
+                 uninstall=None, uninstall_iter=None,
                  action=[]):
         self.name=name
         self.doc=doc
@@ -84,6 +81,7 @@ class feature_struct:
         self.install=install
         self.install_iter=install_iter
         self.uninstall=uninstall
+        self.uninstall_iter=uninstall_iter
         self.action=action
 
 
@@ -108,7 +106,8 @@ class feature_struct:
         if not (self.name and self.doc):
             return False
         if not (self.create or self.build or self.build_iter or self.install
-                or self.install_iter or self.uninstall or self.action):
+                or self.install_iter or self.uninstall or self.uninstall_iter
+                or self.action):
             return False
         return True
 

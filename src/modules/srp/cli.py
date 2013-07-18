@@ -315,6 +315,9 @@ def do_build(fname, options):
         n = srp.notes.notes(fobj)
         #print(n)
 
+    # update notes fields with optional command line flags
+    n.update(options)
+
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
     #        map...?  i think that's the only reason any of the build
@@ -336,7 +339,7 @@ def do_build(fname, options):
     work['fname'] = fname
 
     # NOTE: We do not pass the TarFile instance along because it doesn't
-    # play nicely with subproc access...
+    #       play nicely with subproc access...
     #work['srp'] = p
 
     # append brp section header to NOTES file
@@ -345,7 +348,7 @@ def do_build(fname, options):
 
     # run through all queued up stage funcs for build
     m = srp.features.get_stage_map(n.options.features.split())
-    print("features", n.options.features)
+    print("features:", n.options.features)
     print("build funcs:", m['build'])
     for f in m['build']:
         print("executing:", f)
@@ -488,69 +491,92 @@ def do_install(fname, options):
         # verify SHA
         verify_sha(p)
         # verify that requirements are met
-        fobj = p.extractfile("NOTES")
-        n = srp.notes.notes(fobj)
+        n_fobj = p.extractfile("NOTES")
+        n = srp.notes.notes(n_fobj)
+        tinfo_fobj = p.extractfile("FILES")
+        tinfo = pickle.load(tinfo_fobj)
+        sha = p.extractfile("SHA").read().decode()
 
-        # update notes fields with optional command line flags
-        n.update(options)
-        print(n)
+    # update notes fields with optional command line flags
+    n.update(options)
 
-        # prep our shared work namespace
-        #
-        # NOTE: This dict gets passed into all the stage funcs (i.e., it's
-        #       how they can all share data)
-        work = {}
-        work['brp'] = p
+    # prep our shared work namespace
+    #
+    # NOTE: This dict gets passed into all the stage funcs (i.e., it's
+    #       how they can all share data)
+    work = {}
+    work['fname'] = fname
+    work['notes'] = n
+    work['tinfo'] = tinfo
+    work['sha'] = sha
 
-        work['notes'] = n
+    # this is a map of fobjs to be stored for this package
+    #
+    # NOTE: it's a map instead of a list so that we can make sure we
+    #       have sane file names
+    #
+    # FIXME: what did i mean by that?
+    #
+    # FIXME: if we're going to allow feature funcs to modify NOTES (as
+    #        we do during build), we'll need to do this at the very end.
+    #        for now, i'm just using the original NOTES fobj from the
+    #        brp.
+    #
+    # FIXME: file objects should be written to disk in some special place so
+    #        that we don't have to share open file objects accross subprocesses...
+    #work['manifest'] = {"NOTES": fobj}
 
-        # this is a map of fobjs to be stored for this package
-        #
-        # NOTE: it's a map instead of a list so that we can make sure we
-        #       have sane file names
-        #
-        # FIXME: if we're going to allow feature funcs to modify NOTES (as
-        #        we do during build), we'll need to do this at the very end.
-        #        for now, i'm just using the original NOTES fobj from the
-        #        brp.
-        work['manifest'] = {"NOTES": fobj}
+    # run through install funcs
+    m = srp.features.get_stage_map(n.options.features.split())
+    print("features:", n.options.features)
+    print("install funcs:", m['install'])
+    for f in m['install']:
+        print("executing:", f)
+        try:
+            f.func(work)
+        except:
+            print("ERROR: failed feature stage function:", f)
+            raise
 
-        # run through install funcs
-        m = srp.features.get_stage_map(n.options.features.split())
- 
-        print("install funcs:", m['install'])
-        for f in m['install']:
-            print("executing:", f)
+    # now run through all queued up stage funcs for install_iter
+    #
+    # FIXME: multiprocessing
+    print("install_iter funcs:", m['install_iter'])
+    flist = list(work['tinfo'].keys())
+    flist.sort()
+    for x in flist:
+        for f in m['install_iter']:
+            print("executing:", f, x)
             try:
-                f.func(work)
+                f.func(work, x)
             except:
                 print("ERROR: failed feature stage function:", f)
                 raise
 
-        # commit manifest to disk in srp db
-        #
-        # FIXME: missing upgrade logic
-        #
-        # FIXME: should we keep using the SHA from the brp? or should the
-        #        SHA for the db entry reflect its actual contents (i.e., if
-        #        we change pkg content after install via an action, should
-        #        the db SHA change)?  If the latter, perhaps we should add
-        #        an "installed_from = SHA" entry to the NOTES file so that
-        #        we can trace what exact brp we installed from?
-        print("manifest:", work['manifest'])
-        path="/var/lib/srp/"+n.info.name+"/"+p.extractfile("SHA").read().decode()
-        # FIXME: DESTDIR or --root.  see FIXME in core.install_func...
-        try:
-            path = os.environ["DESTDIR"] + path
-        except:
-            pass
-        print("path:", path)
-        # FIXME: if sha already installed, this will throw OSError
-        os.makedirs(path)
-        for x in work["manifest"]:
-            with open(path+"/"+x, "wb") as f:
-                work["manifest"][x].seek(0)
-                f.write(work["manifest"][x].read())
+    # commit manifest to disk in srp db
+    #
+    # FIXME: missing upgrade logic
+    #
+    # FIXME: should we keep using the SHA from the brp? or should the
+    #        SHA for the db entry reflect its actual contents (i.e., if
+    #        we change pkg content after install via an action, should
+    #        the db SHA change)?  If the latter, perhaps we should add
+    #        an "installed_from = SHA" entry to the NOTES file so that
+    #        we can trace what exact brp we installed from?
+    print("manifest:", work['manifest'])
+    path="/var/lib/srp/"+n.info.name+"/"+sha
+    # FIXME: DESTDIR or --root.  see FIXME in core.install_func...
+    try:
+        path = os.environ["DESTDIR"] + path
+    except:
+        pass
+    print("path:", path)
+    # FIXME: if sha already installed, this will throw OSError
+    os.makedirs(path)
+    for x in work["manifest"]:
+        with open(path+"/"+x, "wb") as f:
+            work["manifest"][x].seek(0)
+            f.write(work["manifest"][x].read())
 
 
 

@@ -21,8 +21,8 @@ from srp.features import *
 #        Although, a hidden benefit of doing it after core is that the
 #        install_func and our strip_debug action can use the exact same
 #        function.
-def install_func(work):
-    """strip --strip-unneeded from all files"""
+def install_func(work, fname):
+    """strip --strip-unneeded from a file"""
     # FIXME: MULTI: iterate over TarInfo list in chunks in subprocesses
     pass
 
@@ -34,8 +34,8 @@ register_feature(
     feature_struct("strip_debug",
                    __doc__,
                    False,
-                   install = stage_struct("strip_debug", install_func,
-                                          ["core"], ["?checksum"]),
+                   install_iter = stage_struct("strip_debug", install_func,
+                                               [], ["?checksum"]),
                    action = [("strip_debug",
                               stage_struct("strip_debug", install_func,
                                            [], []))]))

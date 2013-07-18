@@ -178,18 +178,11 @@ and not get into implementation details.
   core:
     create: create tar of NOTES, source, SHA
     build: run build script, create initial tar of payload
-    build_iter: add files to blob (!async)
+    build_iter: add files to blob (maaaybe... not really async-able)
     install_iter: install each file
     install: install tarinfo in /var/lib/srp/pkgname/sha
     uninstall_iter: uninstall each file
     uninstall: remove pkg manifest
-    action.commit: update pkg manifest
-
-  checksum:
-    install_iter [after core]: gen sha of each file (can this dynamically update the manifest?)
-    install: update pkg manifest
-    uninstall_iter [before core]: verify, issue warning or error
-    action.verify: gen sha of each file, compare with pkg manifest
     action.commit: update pkg manifest
 
   perms:
@@ -199,6 +192,17 @@ and not get into implementation details.
   deps:
     build_iter: build list of needed libs by files in the payload
     install [before core]: verify all libs present on host system
+
+  checksum:
+    install_iter [after core]: gen sha of each file (can this dynamically update the manifest?)
+    install: update pkg manifest
+    uninstall_iter [before core]: verify, issue warning or error
+    action.verify: gen sha of each file, compare with pkg manifest
+    action.commit: update pkg manifest
+
+  upgrade: (on by default, need to throw an error if no_upgrade but pkg
+    already installed somewhere)
+    install: handle removal of old package manifest, leftover files
 
   user=user:group,user:group,...:
     install [before core]: create group and/or user accounts
@@ -223,6 +227,11 @@ and not get into implementation details.
   strip_docs:
     install_iter [before core]: strip docs from tar (/*/share/docs)
     action.strip_docs: remove docs from installed fs and manifest
+
+
+
+The following are probably extensions (to be supplied by different
+packages):
 
   service=service1,service2,...:
     install [core]: register service (do not start)

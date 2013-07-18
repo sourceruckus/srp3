@@ -256,19 +256,9 @@ def install_func(work):
     except:
         DESTDIR = "/"
 
-    # NOTE: We intentionally just named our BLOB file w/out a compression
-    #       extension because the tarfile module can autodetect it, which
-    #       make life easy.
-    #
-    # NOTE: The only problem with this, is that we have to check for
-    #       unsupported blob_compression before we start this or we could
-    #       erroneously report a corrupted BLOB file to the user.
-    #
-    #       The blob_compression algo is recored in the NOTES file's brp
-    #       section and is checked prior to running any stage funcs.
-    #
-    # FIXME: these comments are erroneous now that we're compressing the
-    #        toplevel brp
+    with tarfile.open(work['pname']) as brp:
+        
+    tarfile.extract
     blob = tarfile.open(fileobj=work['brp'].extractfile("BLOB"))
 
     # install the files
@@ -281,6 +271,10 @@ def install_func(work):
     #       files use relative path names (i.e., paths starting with / or
     #       .. would break DESTDIR usage).  This borders on severe paranoia,
     #       but... hey, who said that?
+
+    # FIXME: do we really need this check?
+
+    # FIXME: use the pickled FILES TarInfo list here
     for x in blob.getnames():
         badness = None
         if x.startswith("/"):
@@ -288,7 +282,7 @@ def install_func(work):
         elif x.startswith(".."):
             badness = "starts with '..'"
         if badness:
-            raise Exceptoin("potentially unsafe BLOB: at least one file "+badness)
+            raise Exception("potentially unsafe BLOB: at least one file "+badness)
     # now actually extract it
     #
     # FIXME: can't use extractall here...  it bails out if files already
@@ -359,6 +353,12 @@ def uninstall_func():
     #        remove foo if there are no other files in share?
     pass
 
+
+def uninstall_iter(work, fname):
+    """remove a file"""
+    pass
+
+
 def commit_func():
     """update pkg manifest"""
     # FIXME: MULTI:
@@ -372,5 +372,7 @@ register_feature(
                    build = stage_struct("core", build_func, [], []),
                    install = stage_struct("core", install_func, [], []),
                    uninstall = stage_struct("core", uninstall_func, [], []),
+                   uninstall_iter = stage_struct("core", uninstall_iter,
+                                                 [], []),
                    action = [("commit",
                               stage_struct("core", commit_func, [], []))]))
