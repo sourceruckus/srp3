@@ -4,12 +4,46 @@ This feature records checksums for each installed file and allows the user to
 verify files on demand after installation.
 """
 
+import hashlib
+
 from srp.features import *
 
 # FIXME: MULTI:
 def gen_sum(work, fname):
     """gen sha of a file, update pkg manifest"""
-    pass
+    x = work["tinfo"][fname]
+
+    # only record checksum of regular files
+    if not x.isreg():
+        return
+
+    # FIXME: we don't really want to hardcode sha1 do we?
+    sha = hashlib.new("sha1")
+
+    # NOTE: The file is already installed on disk, so we don't need to mess
+    #       with the old BLOB
+    #
+    # FIXME: DESTDIR or --root
+    try:
+        path = os.environ["DESTDIR"] + fname
+    except:
+        path = fname
+    with open(path, "rb") as f:
+        sha.update(f.read())
+
+    # FIXME: crap.  i can't do this because TarInfo is implemented using
+    #        __slots__...  looks like i need to go back to
+    #        work['manifest'][fname] = {tinfo: TarInfo} so that I can add to
+    #        this bugger.
+    #
+    #        i wonder if i should throw the NOTES file in there too and
+    #        pickle the whole thing into a single file on disk...? or leave
+    #        NOTES seperate so it's easier for users to go look at?
+    x.checksum = sha.hexdigest().encode()
+
+    # put our modifed TarInfo back into the global map
+    work['tinfo'][fname] = x
+
 
 def verify_sums(work):
     """verify, issue warning"""
