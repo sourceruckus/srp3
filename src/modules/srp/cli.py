@@ -280,9 +280,9 @@ def do_create(fname):
     work["notes"] = n
 
     # run through all queued up stage funcs for create
-    m = srp.features.get_stage_map(n.options.features.split())
-    print("create funcs:", m['create'])
-    for f in m['create']:
+    stages = srp.features.get_stage_map(n.options.features.split())
+    print("create funcs:", stages['create'])
+    for f in stages['create']:
         print("executing:", f)
         try:
             f.func(work)
@@ -347,10 +347,10 @@ def do_build(fname, options):
     work['notes'] = n
 
     # run through all queued up stage funcs for build
-    m = srp.features.get_stage_map(n.options.features.split())
+    stages = srp.features.get_stage_map(n.options.features.split())
     print("features:", n.options.features)
-    print("build funcs:", m['build'])
-    for f in m['build']:
+    print("build funcs:", stages['build'])
+    for f in stages['build']:
         print("executing:", f)
         try:
             f.func(work)
@@ -361,11 +361,11 @@ def do_build(fname, options):
     # now run through all queued up stage funcs for build_iter
     #
     # FIXME: multiprocessing
-    print("build_iter funcs:", m['build_iter'])
-    flist = list(work['tinfo'].keys())
+    print("build_iter funcs:", stages['build_iter'])
+    flist = list(work['manifest'].keys())
     flist.sort()
     for x in flist:
-        for f in m['build_iter']:
+        for f in stages['build_iter']:
             print("executing:", f, x)
             try:
                 f.func(work, x)
@@ -415,7 +415,7 @@ def do_build(fname, options):
     #       may have stored in the TarInfo objects' dicts.
     for x in flist:
         realname = work['dir']+'/tmp/'+x
-        tinfo = work['tinfo'][x]
+        tinfo = work['manifest'][x]['tinfo']
 
         # NOTE: The fileobj gets x.size bytes read from it, which means we can
         #       blindly pass fobj for file types that don't get any real data
@@ -433,6 +433,7 @@ def do_build(fname, options):
         #       don't have this, but ones returned from TarFile.gettarinfo()
         #       do.
         del(tinfo.tarfile)
+        work['manifest'][x]['tinfo'] = tinfo
 
         blob.addfile(tinfo, fobj)
 
@@ -455,7 +456,7 @@ def do_build(fname, options):
     #       have to parse to the end of BLOB in order to figure out what files
     #       to install.
     files_fobj = tempfile.TemporaryFile()
-    pickle.dump(work["tinfo"], files_fobj)
+    pickle.dump(work["manifest"], files_fobj)
     files_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="FILES", fileobj=files_fobj),
                 fileobj=files_fobj)
@@ -491,8 +492,8 @@ def do_install(fname, options):
         # verify that requirements are met
         n_fobj = p.extractfile("NOTES")
         n = srp.notes.notes(n_fobj)
-        tinfo_fobj = p.extractfile("FILES")
-        tinfo = pickle.load(tinfo_fobj)
+        m_fobj = p.extractfile("FILES")
+        m = pickle.load(m_fobj)
         sha = p.extractfile("SHA").read().decode()
 
     # update notes fields with optional command line flags
@@ -505,14 +506,14 @@ def do_install(fname, options):
     work = {}
     work['fname'] = fname
     work['notes'] = n
-    work['tinfo'] = tinfo
+    work['manifest'] = m
     work['sha'] = sha
 
     # run through install funcs
-    m = srp.features.get_stage_map(n.options.features.split())
+    stages = srp.features.get_stage_map(n.options.features.split())
     print("features:", n.options.features)
-    print("install funcs:", m['install'])
-    for f in m['install']:
+    print("install funcs:", stages['install'])
+    for f in stages['install']:
         print("executing:", f)
         try:
             f.func(work)
@@ -523,11 +524,11 @@ def do_install(fname, options):
     # now run through all queued up stage funcs for install_iter
     #
     # FIXME: multiprocessing
-    print("install_iter funcs:", m['install_iter'])
-    flist = list(work['tinfo'].keys())
+    print("install_iter funcs:", stages['install_iter'])
+    flist = list(work['manifest'].keys())
     flist.sort()
     for x in flist:
-        for f in m['install_iter']:
+        for f in stages['install_iter']:
             print("executing:", f, x)
             try:
                 f.func(work, x)
@@ -545,11 +546,11 @@ def do_install(fname, options):
 
     # commit FILES to disk in srp db
     #
-    # NOTE: Don't forget, these TarInfo objects have been (likely) modified
-    #       to add extra meta-data by feature stage functions.
-    tinfo = work["tinfo"]
+    # NOTE: We need to refresh our copy because feature funcs may have
+    #       modified it
+    m = work["manifest"]
     with open(work["db"]+"/FILES", "wb") as f:
-        pickle.dump(tinfo, f)
+        pickle.dump(m, f)
 
 
 

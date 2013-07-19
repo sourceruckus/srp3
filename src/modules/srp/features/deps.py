@@ -23,7 +23,7 @@ import subprocess
 #        else.
 def build_func(work, fname):
     """add library deps to the brp"""
-    x = work["tinfo"][fname]
+    x = work["manifest"][fname]["tinfo"]
 
     # we only care about regular files
     if not x.isreg():

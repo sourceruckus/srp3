@@ -11,10 +11,10 @@ from srp.features import *
 # FIXME: MULTI:
 def gen_sum(work, fname):
     """gen sha of a file, update pkg manifest"""
-    x = work["tinfo"][fname]
+    x = work["manifest"][fname]
 
     # only record checksum of regular files
-    if not x.isreg():
+    if not x['tinfo'].isreg():
         return
 
     # FIXME: we don't really want to hardcode sha1 do we?
@@ -39,10 +39,10 @@ def gen_sum(work, fname):
     #        i wonder if i should throw the NOTES file in there too and
     #        pickle the whole thing into a single file on disk...? or leave
     #        NOTES seperate so it's easier for users to go look at?
-    x.checksum = sha.hexdigest().encode()
+    x["checksum"] = sha.hexdigest().encode()
 
-    # put our modifed TarInfo back into the global map
-    work['tinfo'][fname] = x
+    # put our updated manifest entry back into the global map
+    work['manifest'][fname] = x
 
 
 def verify_sums(work):

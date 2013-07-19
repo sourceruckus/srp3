@@ -140,7 +140,7 @@ def build_func(work, fname):
     #print(p['/usr/local/bin/foo'])
     #print(p['/usr/share/asdf'])
 
-    x = work["tinfo"][fname]
+    x = work["manifest"][fname]["tinfo"]
     #print(x)
 
     # skip links
@@ -165,7 +165,7 @@ def build_func(work, fname):
     #       package maintainers don't need to worry about which file gets added
     #       first when writing perms rules.
     if x.islnk():
-        x = work["tinfo"]["/"+x.linkname]
+        x = work["manifest"]["/"+x.linkname]["tinfo"]
         #print(x)
 
     # return if there's no perms matching this file
@@ -204,7 +204,7 @@ def build_func(work, fname):
     # NOTE: We use x.name instead of fname here because we need to make sure we
     #       update the right TarInfo instance and we may have followed a link
     #       to a new file's TarInfo.
-    work["tinfo"]["/"+x.name] = x
+    work["manifest"]["/"+x.name]["tinfo"] = x
 
 
 

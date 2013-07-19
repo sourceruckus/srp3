@@ -185,7 +185,7 @@ def build_func(work):
     #       objects) will be added to the archive.
     #
     # FIXME: straighten out these comments
-    work['tinfo'] = {}
+    work['manifest'] = {}
     # NOTE: This tar object is just so we can use the gettarinfo member
     #       function
     tar = tarfile.open("tar", fileobj=tempfile.TemporaryFile(), mode="w")
@@ -211,7 +211,7 @@ def build_func(work):
             x.uname = "root"
             x.gname = "root"
             if x:
-                work['tinfo'][arcname] = x
+                work['manifest'][arcname] = {"tinfo": x}
             else:
                 print("WARNING: ignoring unsupported file type:", arcname)
 
@@ -269,7 +269,7 @@ def install_func(work):
     except:
         DESTDIR = "/"
 
-    tinfo = work['tinfo']
+    m = work['manifest']
 
     # verify pathnames in BLOB
     #
@@ -278,11 +278,11 @@ def install_func(work):
     #       files use relative path names (i.e., paths starting with / or
     #       .. would break DESTDIR usage).  This borders on severe paranoia,
     #       but... hey, who said that?
-    for x in tinfo.keys():
+    for x in m.keys():
         badness = None
-        if tinfo[x].name.startswith("/"):
+        if m[x]['tinfo'].name.startswith("/"):
             badness = "starts with '/'"
-        elif tinfo[x].name.startswith(".."):
+        elif m[x]['tinfo'].name.startswith(".."):
             badness = "starts with '..'"
         if badness:
             raise Exception("potentially unsafe BLOB: at least one file "+badness)
@@ -310,7 +310,6 @@ def install_func(work):
 
     # FIXME: if sha already installed, this will throw OSError
     os.makedirs(work["db"])
-
 
     # now actually extract it
     #
