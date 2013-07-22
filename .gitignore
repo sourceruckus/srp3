@@ -1,2 +1,33 @@
+# -*- mode: sh -*-
 *.pyc
 *~
+*.o
+
+# any FOO dir anywhere
+FOO
+
+# example autoconf stuff
+/examples/foo-3.0/Makefile.in
+/examples/foo-3.0/aclocal.m4
+/examples/foo-3.0/autom4te.cache/
+/examples/foo-3.0/config.h.in
+/examples/foo-3.0/configure
+/examples/foo-3.0/depcomp
+/examples/foo-3.0/docs/Makefile.in
+/examples/foo-3.0/headers/Makefile.in
+/examples/foo-3.0/install-sh
+/examples/foo-3.0/missing
+/examples/foo-3.0/src/Makefile.in
+
+# example build files
+/examples/foo-3.0/Makefile
+/examples/foo-3.0/config.h
+/examples/foo-3.0/config.log
+/examples/foo-3.0/config.status
+/examples/foo-3.0/docs/Makefile
+/examples/foo-3.0/headers/Makefile
+/examples/foo-3.0/src/.deps/
+/examples/foo-3.0/src/Makefile
+/examples/foo-3.0/src/foo
+/examples/foo-3.0/src/pizza
+/examples/foo-3.0/stamp-h1
