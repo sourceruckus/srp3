@@ -155,6 +155,8 @@ def build_func(work, fname):
     #       baz.islnk() == False.  Not what I expected...  anyhoo, we'll not
     #       skip hard links then so that package maintainers don't have to
     #       worry about this bit of arbitrariness.
+    #
+    # FIXME: Wait, do we need to support chowning symlinks here?
     if x.issym():
         return
 
