@@ -19,6 +19,10 @@ sudo ./test6.py gcc-4.5.2.blob FOO  37.97s user 17.90s system 84% cpu 1:06.27 to
 ./test6.py gcc-4.5.2.blob FOO  37.91s user 18.17s system 86% cpu 1:04.83 total
 ./test6.py gcc-4.5.2.blob FOO  37.66s user 17.89s system 85% cpu 1:04.94 total
 
+* extract (as root) w/ offset calculation and seeking commented out
+./test6.py gcc-4.5.2.blob FOO  36.41s user 17.92s system 86% cpu 1:02.69 total
+./test6.py gcc-4.5.2.blob FOO  37.07s user 17.66s system 86% cpu 1:03.16 total
+./test6.py gcc-4.5.2.blob FOO  36.36s user 17.29s system 87% cpu 1:01.56 total
 
 * old tarfile extract script (1 proc)
 ./test4.py gcc-4.5.2.tar  31.14s user 16.76s system 82% cpu 58.397 total
