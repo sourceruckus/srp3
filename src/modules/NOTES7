@@ -1,0 +1,33 @@
+-*- mode: outline -*-
+
+These tests are being done on my netbook w/ AC power
+
+NOTE: I can't seem to reproduce my excellent GNU Tar results...  every time
+      I try now it comes in around 25s...
+
+
+* GNU Tar extract
+
+
+* create
+
+
+* extract (tarfile, extractall)
+
+* extract (tarfile, 1 proc)
+
+* extract (tarfile, 2 proc)
+
+* extract (blob, extractall)
+
+* extract (blob, 1 proc)
+
+* extract (blob, 2 proc)
+
+* extract (blob_c, extractall)
+** haven't implemented this... probably won't
+
+* extract (blob_c, 1 proc)
+
+* extract (blob_c, 2 proc)
+

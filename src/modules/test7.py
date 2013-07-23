@@ -14,6 +14,7 @@ import pwd
 import grp
 
 import srp
+import _blob
 
 # testing brp layout options
 #
@@ -112,7 +113,7 @@ class blob:
         self.hdr_offset = self.fobj.tell()
 
     
-    def extract(self, fname, path=None):
+    def extract(self, fname, path=None, __c=False):
         # get the TarInfo object
         x = self.manifest[fname]['tinfo']
 
@@ -141,9 +142,12 @@ class blob:
         #        file creation w/ metadata
         if x.isreg():
             offset = self.hdr_offset + self.manifest[fname]["offset"]
-            self.fobj.seek(offset)
-            with open(target, "wb") as t_fobj:
-                t_fobj.write(self.fobj.read(x.size))
+            if __c:
+                _blob.extract(self.fname, target, offset, x.size)
+            else:
+                self.fobj.seek(offset)
+                with open(target, "wb") as t_fobj:
+                    t_fobj.write(self.fobj.read(x.size))
 
         elif x.isdir():
             try:
@@ -234,10 +238,10 @@ class blob:
 #       extractall... but i would have expected it to be... makes me think
 #       that extractall must not be very optimized
 def extractor_tarfile(files, pkgfile, path):
-    with tarfile.open(pkgfile) as pkg:
-        for x in files:
-            #print(multiprocessing.current_process().name, x)
-            pkg.extract(x, path)
+    pkg = tarfile.open(pkgfile)
+    for x in files:
+        #print(multiprocessing.current_process().name, x)
+        pkg.extract(x, path)
 
 
 def extractor_blob(files, pkgfile, path):
@@ -247,15 +251,23 @@ def extractor_blob(files, pkgfile, path):
         pkg.extract(x, path)
 
 
+def extractor_blob_c(files, pkgfile, path):
+    pkg = blob(pkgfile)
+    for x in files:
+        #print(multiprocessing.current_process().name, x)
+        pkg.extract(x, path, True)
+
+
 if __name__ == "__main__":
     print("hello")
-
     pkgfile = sys.argv[1]
     pkgdir = sys.argv[2]
     try:
         numprocs = int(sys.argv[3])
     except:
         numprocs = 0
+
+    extractor = eval("extractor_{}".format(sys.argv[4]))
 
     create = 0
     try:
@@ -269,18 +281,32 @@ if __name__ == "__main__":
         blob_create(m, pkgdir, pkgfile)
         sys.exit(0)
 
-    print("loading blob from", pkgfile)
-    b = blob(pkgfile)
+    if sys.argv[4] == "tarfile":
+        print("loading tarfile from", pkgfile)
+        b = tarfile.open(pkgfile)
 
-    if not numprocs:
-        print("extracting into", pkgdir)
-        b.extractall(pkgdir)
-        sys.exit(0)
+        if not numprocs:
+            print("extracting into", pkgdir)
+            b.extractall(pkgdir)
+            sys.exit(0)
 
+        print("sorting biglist")
+        biglist = b.getnames()
+        biglist.sort()
 
-    print("sorting biglist")
-    biglist = list(b.manifest.keys())
-    biglist.sort()
+    else:
+        print("loading blob from", pkgfile)
+        b = blob(pkgfile)
+
+        if not numprocs:
+            print("extracting into", pkgdir)
+            b.extractall(pkgdir)
+            sys.exit(0)
+
+        print("sorting biglist")
+        biglist = list(b.manifest.keys())
+        biglist.sort()
+
 
     print("partitioning list for", numprocs, "subproc(s)")
     sublists = srp.features.core.partition_list(biglist, numprocs)
@@ -292,7 +318,7 @@ if __name__ == "__main__":
     plist=[]
     for sublist in sublists:
         plist.append(
-            multiprocessing.Process(target=extractor_blob,
+            multiprocessing.Process(target=extractor,
                                     args=(sublist, pkgfile, pkgdir)))
         plist[-1].start()
     for p in plist:
