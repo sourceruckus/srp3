@@ -49,23 +49,38 @@ def manifest_create(payload_dir):
         for x in tmp:
             realname = os.path.join(root, x)
             arcname = os.path.join(root, x).split(payload_dir, 1)[-1]
+
             # NOTE: Sockets don't go in tarballs.  GNU Tar issues a warning, so
             #       we will too.  I don't know if there are other unsupported
             #       file types, but it looks like gettarinfo returns None if
             #       the file cannot be represented in a tarfile.
             x = tar.gettarinfo(realname, arcname)
-            x.uname = "root"
-            x.gname = "root"
-            del(x.tarfile)
-            if x:
-                retval[arcname] = {"tinfo": x}
-            else:
+            if not x:
                 print("WARNING: ignoring unsupported file type:", arcname)
+                continue
+
+            # set ownership to root:root
+            x.uid = 0
+            x.gid = 0
+
+            # remove problematic tarfile instance from TarInfo object
+            #
+            # NOTE: The tarfile instance inside the TarInfo instance
+            #       cannot be pickled, so we have to remove it.  It
+            #       doesn't seem to hurt anything.  TarInfo objects
+            #       returned from TarFile.getmember() don't have this, but
+            #       ones returned from TarFile.gettarinfo() do.
+            del(x.tarfile)
+
+            retval[arcname] = {"tinfo": x}
 
     return retval
 
 
-def blob_create(manifest, pkgdir, fname):
+def blob_create(manifest, payload_dir, fname=None, fobj=None):
+    if not fname and not fobj:
+        raise Exception("requires either fname or fobj")
+
     # create temporary file containing all the data from regular files
     # concatenated, while adding offset values to the manifest.
     tmp = tempfile.TemporaryFile()
@@ -76,7 +91,7 @@ def blob_create(manifest, pkgdir, fname):
         tinfo = manifest[x]['tinfo']
         if not tinfo.isreg():
             continue
-        with open(pkgdir+"/"+tinfo.name, 'rb') as f:
+        with open(payload_dir+"/"+tinfo.name, 'rb') as f:
             tmp.write(f.read())
         manifest[x]['offset'] = offset
         offset += tinfo.size
@@ -85,11 +100,18 @@ def blob_create(manifest, pkgdir, fname):
     
     # now pickle the manifest
     hdr = pickle.dumps(manifest)
-    print("sizeof hdr:", len(hdr))
     
-    with open(fname, "wb") as f:
-        f.write(hdr)
-        f.write(tmp.read())
+    if fobj:
+        f = fobj
+    else:
+        f = open(fname, "wb")
+
+    f.write(hdr)
+    f.write(tmp.read())
+
+    # only close the file object if we opened it
+    if not fobj:
+        f.close()
 
     # NOTE: i think that's enough.  looks like pickle doesn't read beyond
     #       pickled data in a fobj.  in other words, it's safe to append
@@ -106,8 +128,18 @@ class blob:
         self.manifest = pickle.load(self.fobj)
         self.hdr_offset = self.fobj.tell()
 
-    
-    def extract(self, fname, path=None, __c=False):
+        # FIXME: Should I update each manifest offset entry to reflect
+        #        hdr_offset?  Assuming that manifest gets pickled and
+        #        restored prior to installation, this should make
+        #        extraction a tad faster at the expense of a little extra
+        #        work during build.  It would also allow us to pass a
+        #        pre-created manifest into the constructor...
+
+
+    # FIXME: this needs to make backups of existing files.  i think we'll
+    #        add the upgrade logic via an upgrade feature, but we need to
+    #        at least make srpbak files here.
+    def extract(self, fname, path=None, __c=True):
         # get the TarInfo object
         x = self.manifest[fname]['tinfo']
 
@@ -136,7 +168,7 @@ class blob:
         if x.isreg():
             offset = self.hdr_offset + self.manifest[fname]["offset"]
             if __c:
-                _blob.extract(self.fname, target, offset, x.size)
+                srp._blob.extract(self.fname, target, offset, x.size)
             else:
                 self.fobj.seek(offset)
                 with open(target, "wb") as t_fobj:
@@ -166,7 +198,7 @@ class blob:
             #        follow the link in the archive and extract that file
             #        too?  What happens when the other file gets extracted
             #        in the other thread?
-            os.link(x.linkname, target)
+            os.link(os.path.join(path, x.linkname), target)
 
         elif x.ischr():
             os.mknod(target, x.mode | stat.S_IFCHR,

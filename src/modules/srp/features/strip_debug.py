@@ -35,7 +35,7 @@ register_feature(
                    __doc__,
                    False,
                    install_iter = stage_struct("strip_debug", install_func,
-                                               [], ["?checksum"]),
+                                               ["core"], ["?checksum"]),
                    action = [("strip_debug",
                               stage_struct("strip_debug", install_func,
                                            [], []))]))

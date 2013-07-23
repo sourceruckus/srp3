@@ -68,7 +68,7 @@ register_feature(
                    __doc__,
                    True,
                    install_iter = stage_struct("checksum", gen_sum,
-                                               [], []),
+                                               ["core"], []),
                    uninstall = stage_struct("checksum", verify_sums,
                                             [], ["core"]),
                    action = [("commit",

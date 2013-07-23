@@ -16,6 +16,7 @@ import tarfile
 import tempfile
 import time
 
+import srp
 from srp.features import *
 
 # FIXME: put this as a function somewhere useful... we'll be doing it in
@@ -168,7 +169,7 @@ def build_func(work):
     new_env['PAYLOAD_DIR'] = work['dir']+"/tmp"
     subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/'+sourcedir, env=new_env)
 
-    # create TarInfo objects
+    # create manifest
     #
     # NOTE: This is a map of all the files and associated meta-data that
     #       will be included in the package upon completion.  The core of
@@ -185,35 +186,7 @@ def build_func(work):
     #       objects) will be added to the archive.
     #
     # FIXME: straighten out these comments
-    work['manifest'] = {}
-    # NOTE: This tar object is just so we can use the gettarinfo member
-    #       function
-    tar = tarfile.open("tar", fileobj=tempfile.TemporaryFile(), mode="w")
-    for root, dirs, files in os.walk(new_env['PAYLOAD_DIR']):
-        tmp = dirs[:]
-        tmp.extend(files)
-        # NOTE: sorting here adds a little processing overhead, but if we're
-        #       going to keep these TarInfo objects around in a map and then
-        #       try to actually add them to the BLOB later, we have to make
-        #       sure that the order they get added matches the order in
-        #       which the TarInfo's were created, otherwise we might add a
-        #       hardlink before we add the file it's linked to, which will
-        #       cause the extraction to fail during install
-        tmp.sort()
-        for x in tmp:
-            realname = os.path.join(root, x)
-            arcname = os.path.join(root, x).split(new_env['PAYLOAD_DIR'])[-1]
-            # NOTE: Sockets don't go in tarballs.  GNU Tar issues a warning, so
-            #       we will too.  I don't know if there are other unsupported
-            #       file types, but it looks like gettarinfo returns None if
-            #       the file cannot be represented in a tarfile.
-            x = tar.gettarinfo(realname, arcname)
-            x.uname = "root"
-            x.gname = "root"
-            if x:
-                work['manifest'][arcname] = {"tinfo": x}
-            else:
-                print("WARNING: ignoring unsupported file type:", arcname)
+    work['manifest'] = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
 
     # append to brp section of NOTES file
     #
@@ -253,7 +226,7 @@ def build_func(work):
 
 
 def install_func(work):
-    """untar payload"""
+    """prep db stuff"""
     # NOTE: In order to test this (and later on, to test new packages) as an
     #       unprivileged, we need to have to have some sort of fake root
     #       option (e.g., the old SRP_ROOT_PREFIX trick).
@@ -265,80 +238,29 @@ def install_func(work):
     #
     # FIXME: For now, it's DESTDIR.  Perhaps revisit this later...
     try:
-        DESTDIR = os.environ["DESTDIR"]
+        work["DESTDIR"] = os.environ["DESTDIR"]
     except:
-        DESTDIR = "/"
+        work["DESTDIR"] = "/"
 
     m = work['manifest']
-
-    # verify pathnames in BLOB
-    #
-    # NOTE: We want to ensure that nobody malicously makes a package that
-    #       installs files in the wrong places, so we check to make sure all
-    #       files use relative path names (i.e., paths starting with / or
-    #       .. would break DESTDIR usage).  This borders on severe paranoia,
-    #       but... hey, who said that?
-    for x in m.keys():
-        badness = None
-        if m[x]['tinfo'].name.startswith("/"):
-            badness = "starts with '/'"
-        elif m[x]['tinfo'].name.startswith(".."):
-            badness = "starts with '..'"
-        if badness:
-            raise Exception("potentially unsafe BLOB: at least one file "+badness)
-
-    # create ruckus dir in tmp
-    work['dir'] = create_tmp_ruckus()
-
-    # extract package contents
-    #
-    # NOTE: This is needed so that build scripts can access other misc files
-    #       they've included in the srp (e.g., apply a patch, install an
-    #       externally maintained init script)
-    with tarfile.open(work["fname"]) as f:
-        f.extractall(work['dir'] + "/package")
 
     # setup the db dir for later
     #
     # FIXME: /var/lib/srp should probably be configurable...
     path = "/var/lib/srp/"+work["notes"].info.name+"/"+work["sha"]
     # FIXME: DESTDIR or --root.  see FIXME in core.install_func...
-    try:
-        work["db"] = os.environ["DESTDIR"] + path
-    except:
-        work["db"] = path
+    work["db"] = work["DESTDIR"] + path
 
     # FIXME: if sha already installed, this will throw OSError
     os.makedirs(work["db"])
 
-    # now actually extract it
-    #
-    # NOTE: We call the systems tar program for extraction.  We do this
-    #       because it's waaaay faster at extracting that Python's tarfile
-    #       module is (we're talking 3 - 4 times faster for an uncompressed
-    #       or gzipped tarball).
-    #
-    # FIXME: Benchmark external tar vs install_iter multiproc extraction
-    #        once we have something implemented well enough to measure.
-    #        Initial benchmarks of a multiproc extractor show it shaving
-    #        about 20% off the time needed to extract an uncompressed
-    #        tarball, but GNU Tar is still more than twice as fast.
-    #
-    #        However, if some of that overhead that's causing the Python
-    #        implementation to run slower is BEING DONE ALREADY during the
-    #        install_iter stage, maybe it'll be closer.
-    #
-    #        Also, I'm not so sure how well either GNU Tar or our python
-    #        multiproc extractor scale given more than 2 cores or with
-    #        faster hard drives (e.g., SDDs in RAID0).
-    go = ["tar", "-psx",
-          "--backup=simple", "--suffix=srpbak",
-          "--directory="+DESTDIR,
-          "-f", work["dir"] + "/package/BLOB"]
-    # NOTE: We use check_call w/out redirecting output.  There should be no
-    #       output, unless something goes wrong, in which case it might be
-    #       helpful to see it.
-    subprocess.check_call(go)
+
+def install_iter(work, fname):
+    """install a file"""
+    # FIXME: can we make blob() take a previously read manifest to speed
+    #        up instantiation?
+    blob = srp.blob.blob(work["dir"]+"/package/BLOB")
+    blob.extract(fname, work["DESTDIR"])
 
 
 def uninstall_func():
@@ -368,6 +290,7 @@ register_feature(
                    create = stage_struct("core", create_func, [], []),
                    build = stage_struct("core", build_func, [], []),
                    install = stage_struct("core", install_func, [], []),
+                   install_iter = stage_struct("core", install_iter, [], []),
                    uninstall = stage_struct("core", uninstall_func, [], []),
                    uninstall_iter = stage_struct("core", uninstall_iter,
                                                  [], []),

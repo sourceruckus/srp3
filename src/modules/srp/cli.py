@@ -397,47 +397,7 @@ def do_build(fname, options):
     #       that's fine because we will have already added it to the toplevel
     #       brp archive.
     blob_fobj = tempfile.TemporaryFile()
-    blob = tarfile.open("blob", fileobj=blob_fobj, mode="w")
-
-    # FIXME: MULTI: is there any benefit to doing this in parallel?  we would
-    #        have to create a bunch of small TarFiles and then concatenate them
-    #        at the end...  re-iterating over the sub-tarfiles to create a full
-    #        tarfile would probably take way more time than we would have
-    #        saved... but we could try it and see.
-    #
-    # FIXME: Well, if there's no speedup benefit, doing it in parallel would
-    #        mean we could do this processing as a build_iter stage...
-    #
-    # NOTE: We're going to install a cached TarInfo map in the BRP as well.
-    #       This will speed up package instantiation come install time.  We're
-    #       using the TarInfo objects that have been doctored during our build
-    #       stage(s) though so that we retain any extra data that stage funcs
-    #       may have stored in the TarInfo objects' dicts.
-    for x in flist:
-        realname = work['dir']+'/tmp/'+x
-        tinfo = work['manifest'][x]['tinfo']
-
-        # NOTE: The fileobj gets x.size bytes read from it, which means we can
-        #       blindly pass fobj for file types that don't get any real data
-        #       (i.e., because size is 0).
-        try:
-            fobj = open(realname, 'rb')
-        except:
-            fobj = None
-
-        # remove problematic tarfile instance from TarInfo object
-        #
-        # NOTE: The tarfile instance inside the TarInfo instance cannot be
-        #       pickled, so we have to remove it.  It doesn't seem to hurt
-        #       anything.  TarInfo objects returned from TarFile.getmember()
-        #       don't have this, but ones returned from TarFile.gettarinfo()
-        #       do.
-        del(tinfo.tarfile)
-        work['manifest'][x]['tinfo'] = tinfo
-
-        blob.addfile(tinfo, fobj)
-
-    blob.close()
+    srp.blob.blob_create(work["manifest"], work['dir']+'/tmp', fobj=blob_fobj)
 
     # add NOTES file to toplevel pkg archive (the brp)
     n_fobj = tempfile.TemporaryFile()
@@ -449,21 +409,6 @@ def do_build(fname, options):
     n_fobj.seek(0)
     sha.update(n_fobj.read())
     n_fobj.close()
-
-    # add FILES file to toplevel pkg archive
-    #
-    # NOTE: This cached TarInfo map means that our install processing won't
-    #       have to parse to the end of BLOB in order to figure out what files
-    #       to install.
-    files_fobj = tempfile.TemporaryFile()
-    pickle.dump(work["manifest"], files_fobj)
-    files_fobj.seek(0)
-    brp.addfile(brp.gettarinfo(arcname="FILES", fileobj=files_fobj),
-                fileobj=files_fobj)
-    # rewind and generate a SHA entry
-    files_fobj.seek(0)
-    sha.update(files_fobj.read())
-    files_fobj.close()
 
     # add BLOB file to toplevel pkg archive
     blob_fobj.seek(0)
@@ -486,15 +431,31 @@ def do_build(fname, options):
 
 
 def do_install(fname, options):
+    # create ruckus dir in tmp
+    #
+    # FIXME: we need to standardize who make the tmp dir... i think the
+    #        core build_func makes it during build...
+    work = {}
+    work['dir'] = srp.features.core.create_tmp_ruckus()
+
+    # extract package contents
+    #
+    # NOTE: This is needed so that build scripts can access other misc files
+    #       they've included in the srp (e.g., apply a patch, install an
+    #       externally maintained init script)
     with tarfile.open(fname) as p:
         # verify SHA
         verify_sha(p)
         # verify that requirements are met
         n_fobj = p.extractfile("NOTES")
         n = srp.notes.notes(n_fobj)
-        m_fobj = p.extractfile("FILES")
-        m = pickle.load(m_fobj)
-        sha = p.extractfile("SHA").read().decode()
+        # extract into work dir
+        p.extractall(work['dir'] + "/package")
+
+    blob = srp.blob.blob(work['dir']+"/package/BLOB")
+
+    with open(work["dir"]+"/package/SHA", "rb") as f:
+        sha = f.read().decode()
 
     # update notes fields with optional command line flags
     n.update(options)
@@ -503,10 +464,9 @@ def do_install(fname, options):
     #
     # NOTE: This dict gets passed into all the stage funcs (i.e., it's
     #       how they can all share data)
-    work = {}
     work['fname'] = fname
     work['notes'] = n
-    work['manifest'] = m
+    work['manifest'] = blob.manifest
     work['sha'] = sha
 
     # run through install funcs
@@ -544,12 +504,12 @@ def do_install(fname, options):
     with open(work["db"]+"/NOTES", "wb") as f:
         n.write(f)
 
-    # commit FILES to disk in srp db
+    # commit MANIFEST to disk in srp db
     #
     # NOTE: We need to refresh our copy because feature funcs may have
     #       modified it
     m = work["manifest"]
-    with open(work["db"]+"/FILES", "wb") as f:
+    with open(work["db"]+"/MANIFEST", "wb") as f:
         pickle.dump(m, f)
 
 
