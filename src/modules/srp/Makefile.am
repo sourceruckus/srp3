@@ -1,8 +1,24 @@
 pkgpython_PYTHON =
 pkgpython_PYTHON += __init__.py
+pkgpython_PYTHON += blob.py
 pkgpython_PYTHON += cli.py
 pkgpython_PYTHON += config.py
 pkgpython_PYTHON += notes.py
 
 SUBDIRS =
 SUBDIRS += features
+
+pkgpython_LTLIBRARIES =
+pkgpython_LTLIBRARIES += _blob.la
+
+_blob_la_CFLAGS = $(PYTHON_CFLAGS)
+_blob_la_LDFLAGS = $(PYTHON_LDFLAGS) -module -avoid-version
+_blob_la_SOURCES = blob.c
+
+# this is so we can import srp from inside the source tree during development
+all-local:
+	$(RM) -f _blob.so
+	$(LN_S) .libs/_blob.so _blob.so
+
+clean-local:
+	$(RM) -f _blob.so

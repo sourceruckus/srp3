@@ -4,6 +4,7 @@
 *.o
 *.lo
 *.la
+*.so
 .deps
 .libs
 Makefile
@@ -20,6 +21,7 @@ FOO
 /config.status
 /config.sub
 /configure
+/depcomp
 /install-sh
 /libtool
 /ltmain.sh
