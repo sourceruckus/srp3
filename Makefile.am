@@ -1,0 +1,7 @@
+ACLOCAL_AMFLAGS = -I m4
+
+SUBDIRS =
+SUBDIRS += src
+
+#EXTRA_DIST =
+#EXTRA_DIST += m4/python.m4
