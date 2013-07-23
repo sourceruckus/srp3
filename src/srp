@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # -*- mode: python -*-
 
+import os
 import sys
 
-# FIXME: need to rig something up so I can easily run this from inside the
-#        source tree (i.e., w/out installing)
-sys.path.append("modules")
-import srp.cli
+# This is so we can find our module in the source tree during development.
+# Our install target sed's this conditional into oblivion.
+if "__DEV__":
+    sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "modules"))
+
+import srp
 
 # FIXME: should i catch exceptions from main or just let it handle things
 #        itself?
