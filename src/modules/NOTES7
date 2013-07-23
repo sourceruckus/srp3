@@ -1,6 +1,6 @@
 -*- mode: outline -*-
 
-These tests are being done on my netbook w/ AC power
+These tests are being done on my netbook ON BATTERY
 
 NOTE: I can't seem to reproduce my excellent GNU Tar results...  every time
       I try now it comes in around 25s...
@@ -13,21 +13,29 @@ NOTE: I can't seem to reproduce my excellent GNU Tar results...  every time
 
 
 * extract (tarfile, extractall)
+./test7.py gcc-4.5.2.tar FOO 0 tarfile  84.30s user 20.57s system 92% cpu 1:53.47 total
+./test7.py gcc-4.5.2.tar FOO 0 tarfile  84.20s user 20.84s system 91% cpu 1:54.21 total
 
 * extract (tarfile, 1 proc)
+gave up after 5+ minutes
 
 * extract (tarfile, 2 proc)
 
 * extract (blob, extractall)
+./test7.py gcc-4.5.2.blob FOO 0 blob  37.52s user 17.90s system 82% cpu 1:07.55 total
 
 * extract (blob, 1 proc)
+./test7.py gcc-4.5.2.blob FOO 1 blob  46.19s user 18.81s system 87% cpu 1:14.23 total
 
 * extract (blob, 2 proc)
+./test7.py gcc-4.5.2.blob FOO 2 blob  62.95s user 22.97s system 144% cpu 59.638 total
 
 * extract (blob_c, extractall)
 ** haven't implemented this... probably won't
 
 * extract (blob_c, 1 proc)
+./test7.py gcc-4.5.2.blob FOO 1 blob_c  35.28s user 18.34s system 89% cpu 1:00.02 total
 
 * extract (blob_c, 2 proc)
+./test7.py gcc-4.5.2.blob FOO 2 blob_c  50.96s user 22.64s system 134% cpu 54.535 total
 
