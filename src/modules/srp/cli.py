@@ -132,6 +132,9 @@ g.add_argument('-I', '--init', action='store_true',
 g.add_argument('-V', '--version', action='version',
                version="{} version {}".format(srp.config.prog, srp.config.version))
 
+g.add_argument('--features', action='store_true',
+               help="""Display a summary of all registered features""")
+
 
 # the following options are independent of the exclusive group (at least as
 # far as the ArgumentParser is concerned).
@@ -259,6 +262,11 @@ def main():
 
     elif args.init:
         print("do_init_metadata()")
+
+    elif args.features:
+        m = srp.features.get_stage_map(srp.features.registered_features)
+        pprint(m)
+
 
 
 # /usr/bin/srp (import srp.cli; srp.cli.main(sys.argv))
