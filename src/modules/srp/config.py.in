@@ -1,0 +1,7 @@
+
+prog = "@PACKAGE_NAME@"
+version = "@PACKAGE_VERSION@"
+version_major = @SRP_MAJOR_VERSION@
+version_minor = @SRP_MINOR_VERSION@
+version_bugfix = @SRP_MICRO_VERSION@
+build_year = "@SRP_BUILD_YEAR@"

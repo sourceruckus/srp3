@@ -2,8 +2,10 @@ pkgpython_PYTHON =
 pkgpython_PYTHON += __init__.py
 pkgpython_PYTHON += blob.py
 pkgpython_PYTHON += cli.py
-pkgpython_PYTHON += config.py
 pkgpython_PYTHON += notes.py
+
+nodist_pkgpython_PYTHON = config.py
+#dist_EXTRA = config.py.in
 
 SUBDIRS =
 SUBDIRS += features

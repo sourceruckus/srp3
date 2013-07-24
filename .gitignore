@@ -33,6 +33,9 @@ FOO
 /missing
 /py-compile
 
+# other generated files
+/src/modules/srp/config.py
+
 # example autoconf stuff
 /examples/foo-3.0/Makefile.in
 /examples/foo-3.0/aclocal.m4

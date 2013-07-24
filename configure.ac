@@ -1,6 +1,21 @@
 AC_PREREQ([2.65])
-AC_INIT([srp], [3.0.0-alpha], [michael.d.labriola@gmail.com])
+
+m4_define(srp_major_version, 3)
+m4_define(srp_minor_version, 0)
+m4_define(srp_micro_version, 0)
+m4_define(srp_devtag, [alpha2])
+m4_ifnblank(srp_devtag,
+	[m4_define(srp_version, srp_major_version.srp_minor_version.srp_micro_version-srp_devtag)],
+	[m4_define(srp_version, srp_major_version.srp_minor_version.srp_micro_version)])
+
+AC_INIT([The Source Ruckus Packager], [srp_version], [michael.d.labriola@gmail.com], [srp])
 AC_CONFIG_MACRO_DIR([m4])
+
+AC_SUBST(SRP_MAJOR_VERSION, srp_major_version)
+AC_SUBST(SRP_MINOR_VERSION, srp_minor_version)
+AC_SUBST(SRP_MICRO_VERSION, srp_micro_version)
+AC_SUBST(SRP_DEVTAG, srp_devtag_version)
+AC_SUBST(SRP_BUILD_YEAR, 2013)
 
 AM_INIT_AUTOMAKE(dist-bzip2 no-dist-gzip)
 
@@ -31,6 +46,7 @@ AC_CONFIG_FILES([Makefile \
 		 src/Makefile \
 		 src/modules/Makefile \
 		 src/modules/srp/Makefile \
+		 src/modules/srp/config.py \
 		 src/modules/srp/features/Makefile])
 
 # Do this one seperate, so we can add the chmod
