@@ -34,17 +34,7 @@ and not get into implementation details.
   NOTE: I think we were already doing this with the old v3 developmental
         tree.
 
-** Add lots more SRP flags 
-
-  SRP_PERLMOD
-  SRP_GTK_ICONS
-  SRP_GTK_THEMES
-  SRP_USER
-  SRP_SERVICE
-  SRP_REVERT
-  SRP_REPAIRABLE
-
-** Repairable pacakges
+** Repairable pacakges (optionally)
 
   Keep package contents on file, not just checksums.  This way we can
   "repair" pacakges by reverting installed files to original contents.
@@ -102,9 +92,9 @@ and not get into implementation details.
   We may need to have some very simple post func capability... but let's
   keep it as light-weight and simple as possible, if we need it at all.
 
-** extensible features API
+** extensible Features API
 
-  This is what we'll use isntead of prepostlibs.  For example, the gtk
+  This is what we'll use instead of prepostlibs.  For example, the gtk
   package should install a python file to add a gtk-update-icon-cache
   feature that can be requested by packages that install icons.
 
@@ -119,9 +109,9 @@ and not get into implementation details.
 
 ** take full advantage of SMP
 
-  Make absolutely sure that we're spread our computational load out accross
-  multiple processors as much as possible.  In theory, we should be I/O
-  bound.  SRPv2, however, is definately not... 
+  Make absolutely sure that we're spreading our computational load out
+  accross multiple processors as much as possible.  In theory, we should be
+  I/O bound.  SRPv2, however, is definately not...
 
 
 * Implementation Goals
@@ -133,7 +123,13 @@ and not get into implementation details.
   lots of decorators... should ditch that (i.e., don't base the internals of
   SRP on the internals of Python!)
 
-** consistent usage of subprocess module
+** do things that can be done in python in python
+
+  In other words, don't launch a subprocess to chown each file, use
+  os.chown.  I suspect this is one of the key areas where SRPv2 was
+  incurring crazy overhead.
+
+** consistent usage of subprocess module (if at all!)
 
   This might just fix a lot of our old output issues, as I suspect a lot of
   them stem from redirecting output of a process that uses a mish-mash of

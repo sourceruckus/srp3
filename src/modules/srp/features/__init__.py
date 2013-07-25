@@ -19,7 +19,8 @@ The pre-defined stages are:
   tarball, and possibly other files (e.g., patches, extra sources).
 
   build(work) -- Build the binary package by executing the embedded build
-  script in the NOTES file, create TarInfo list of resulting payload.
+  script in the NOTES file, populate MANIFEST with TarInfo objects of
+  resulting payload.
 
   build_iter(work, fname) -- If you want to tweak each file before it gets
   added to the archive, this is the stage you want.

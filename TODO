@@ -1,31 +1,15 @@
 -*- mode: outline -*-
 
-* create toplevel exectuable
+* add --root flag (instead of DESTDIR or SRP_ROOT_PREFIX)
 
-* srp --init
-actually, i shouldn't need this until later on...
+* finish implementing planned feature modules
 
-* srp --create SRP_DIR
+* make sure we can pass options into --create, --build, --install
 
-This should create a source package
+* get the --action stuff plumbed up.
 
-* srp --query foo.srp
+* query (from srp, brp, and installed manifest)
 
-Test that we can query fields from source packages
+* upgrade logic
 
-* srp --build foo.srp
-
-This will build foo.brp.
-
-* srp --query boo.brp
-
-Test querying fields from brp
-
-* srp --install boo.brp
-
-* srp --list
-* srp --query
-* srp --action
-* srp --uninstall
-* srp --install (upgrade, no_upgrade, etc)
-
+* uninstall
