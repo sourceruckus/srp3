@@ -254,6 +254,13 @@ def install_func(work):
     # FIXME: if sha already installed, this will throw OSError
     os.makedirs(work["db"])
 
+    # add fields to NOTES
+    n = work['notes']
+
+    # FIXME: should i store seconds since epoch, struct_time, or a human
+    #        readable string here...?
+    n.additions['installed']['date'] = time.asctime()
+
 
 def install_iter(work, fname):
     """install a file"""

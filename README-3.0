@@ -196,6 +196,9 @@ and not get into implementation details.
     action.verify: gen sha of each file, compare with pkg manifest
     action.commit: update pkg manifest
 
+  size:
+    install_iter [after strip*]: record size of all files
+
   upgrade: (on by default, need to throw an error if no_upgrade but pkg
     already installed somewhere)
     install: handle removal of old package manifest, leftover files
@@ -221,7 +224,7 @@ and not get into implementation details.
     action.strip_debug: strip debug symbols from all files
 
   strip_docs:
-    install_iter [before core]: strip docs from tar (/*/share/docs)
+    install [before core]: strip docs from tar (/*/share/docs)
     action.strip_docs: remove docs from installed fs and manifest
 
 

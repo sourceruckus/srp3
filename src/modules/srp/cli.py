@@ -468,6 +468,8 @@ def do_install(fname, options):
     # update notes fields with optional command line flags
     n.update(options)
 
+    n.additions['installed'] = {}
+
     # prep our shared work namespace
     #
     # NOTE: This dict gets passed into all the stage funcs (i.e., it's

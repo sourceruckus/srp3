@@ -4,6 +4,8 @@ This feature strips debug symbols (all unneeded symbols, actually) at
 install-time, prior to checksums getting recorded.
 """
 
+import subprocess
+
 from srp.features import *
 
 # NOTE: This has to happen AFTER core (i.e., after the files are installed
@@ -23,8 +25,26 @@ from srp.features import *
 #        function.
 def install_func(work, fname):
     """strip --strip-unneeded from a file"""
-    # FIXME: MULTI: iterate over TarInfo list in chunks in subprocesses
-    pass
+    x = work["manifest"][fname]
+
+    # only strip actual files
+    if not x['tinfo'].isreg():
+        return
+
+    # FIXME: DESTDIR or --root
+    try:
+        path = os.environ["DESTDIR"] + fname
+    except:
+        path = fname
+
+    go = ["strip", "--strip-unneeded", path]
+    # NOTE: I'd love to do a check_call here, but strip returns error if
+    #       the file isn't an elf binary... and I really don't feel like
+    #       checking for that.
+    #
+    # FIXME: should I check error status somehow?
+    subprocess.call(go)
+
 
 
 # FIXME: this should also register an action so we can strip after
@@ -35,7 +55,8 @@ register_feature(
                    __doc__,
                    False,
                    install_iter = stage_struct("strip_debug", install_func,
-                                               ["core"], ["?checksum"]),
+                                               ["core"],
+                                               ["?checksum", "?size"]),
                    action = [("strip_debug",
                               stage_struct("strip_debug", install_func,
                                            [], []))]))

@@ -180,7 +180,7 @@ class notes:
         #
         # FIXME: max_size should be common w/ all our other
         #        SpooledTemporaryFile instances.
-        with tempfile.SpooledTemporaryFile(mode="w+") as wtf:
+        with tempfile.TemporaryFile(mode="w+") as wtf:
             c.write(wtf)
             wtf.seek(0)
             fobj.write(wtf.read().encode())
