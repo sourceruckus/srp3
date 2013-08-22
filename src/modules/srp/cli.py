@@ -12,6 +12,7 @@ import sys
 import tarfile
 import tempfile
 import pickle
+import fnmatch
 
 import srp
 from pprint import pprint
@@ -250,6 +251,7 @@ def main():
             args.query = args.query.split(',')
         for x in get_package_list():
             print("do_query(package={}, fields={})".format(x, args.query))
+            do_query(x, args.query)
 
     elif args.create:
         print("do_create(notes={})".format(args.create))
@@ -527,3 +529,9 @@ def do_install(fname, options):
 
 # FIXME: what should srp -l output look like?  maybe just like v2's output?  but --raw gives a SHA?
 
+def do_query(fname, options):
+    print(fname, options)
+    # n, m = srp.db.lookup(fname) ??
+    for x in os.listdir(os.environ["DESTDIR"]+"/var/lib/srp"):
+        if fnmatch.fnmatch(x, fname):
+            print(x)
