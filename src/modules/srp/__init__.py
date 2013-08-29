@@ -5,7 +5,7 @@ Packager.  Importing it will automatically include all submodules.
 """
 
 # FIXME: was there some reason for the strange ordering here?
-__all__ = ["config", "features", "notes", "cli", "blob"]
+__all__ = ["config", "features", "notes", "cli", "blob", "db"]
 
 for x in __all__:
     __import__(".".join([__name__, x]))

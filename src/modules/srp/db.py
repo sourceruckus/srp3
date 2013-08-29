@@ -2,6 +2,10 @@
 lookup functions
 """
 
+import srp
+from pprint import pprint
+
+
 # let's store the db as a pickled map
 #
 # db = {pkg1: [inst1, inst2, ...], ...}
@@ -21,8 +25,8 @@ lookup functions
 # /var/lib/srp/db (this is the pickled meta-data)
 #
 # /var/lib/srp/objects/ (this is a directory of sha dirs, each containing a package's files)
-# /var/lib/srp/objects/d976b5ba0496df79b7e9c63dd7b82372dd903a45/NOTES
-# /var/lib/srp/objects/d976b5ba0496df79b7e9c63dd7b82372dd903a45/FILES
+# /var/lib/srp/objects/d976b5ba0496df79b7e9c63dd7b82372dd903a45/NOTES (txt)
+# /var/lib/srp/objects/d976b5ba0496df79b7e9c63dd7b82372dd903a45/FILES (pickled)
 #
 # the db object is now a map like this:
 #
@@ -49,8 +53,41 @@ lookup functions
 # srp's sha anywhere?  do we care about this level of tracability?
 
 
+def refresh():
+    import os
+    # FIXME: path to db in config?
+    #
+    # FIXME: DESTDIR?  --root?  both/either?
+    try:
+        dbpath = os.getenv("DESTDIR")
+    except:
+        dbpath = ""
+    dbpath+="/var/lib/srp/"
+
+    objs = os.listdir(dbpath)
+    print(objs)
+    for x in objs:
+        path = dbpath+"/"+x+"/"
+        print(os.listdir(path))
+        with open(path+"NOTES", "rb") as f:
+            n = srp.notes.notes(f)
+        print(n)
+        #print(dir())
+        #print(dir(srp.db))
+        #print(locals())
+        #print(globals())
+        g = globals()
+        try:
+            g[n.info.name].append(n)
+        except:
+            g[n.info.name] = [n]
 
 
+#srp.db.foo = [{"af4237": {
+
+# foo = [{"n": <notes inst>, "shadir": "af43212"}, {"n": <notes inst>, "shadir": "ff2315"}]
+
+# srp.db.foo[0]['n'].info.name
 
 
 # these functions lookup and return installed package instances or None
