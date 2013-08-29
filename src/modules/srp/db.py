@@ -1,6 +1,8 @@
 """The SRP db module - on-disk representation of installed pacakges and
 lookup functions
 """
+import os
+import pickle
 
 import srp
 from pprint import pprint
@@ -10,38 +12,47 @@ from pprint import pprint
 #
 # db = {pkg1: [inst1, inst2, ...], ...}
 #
-# each installed version is referenced by sha of its db contents, which is
-# NOTES and pickled FILES (and perhaps other files as well).
-#
-# inst = pickeld {"FILES": files_obj, "NOTES": notes_obj, ...}
+# each installed version is referenced by sha of its pickled db contents,
+# which is NOTES and MANIFEST (and perhaps other files as well).
 
 
-# hmm, i'm falling into the trap of holding everything (even our files
-# contents) in memory.  i don't want to do that.  i want to use the disk to
-# hold all the big stuff, and just have pickled meta-data
+class installed_package:
+    def __init__(self, notes, manifest, sha):
+        self.notes = notes
+        self.manifest = manifest
+        self.sha = sha
 
-# take 2:
+        # the sha will be used to store aditional files on disk (as apposed
+        # to pickled in the db).
+
+
+    def addfile(self, name, fobj):
+        """creates an additional file in the sha-specific object dir"""
+        pass
+
+    def removefile(self, name):
+        """removes an additional file from the object dir"""
+        pass
+
+
+
 #
 # /var/lib/srp/db (this is the pickled meta-data)
 #
-# /var/lib/srp/objects/ (this is a directory of sha dirs, each containing a package's files)
-# /var/lib/srp/objects/d976b5ba0496df79b7e9c63dd7b82372dd903a45/NOTES (txt)
-# /var/lib/srp/objects/d976b5ba0496df79b7e9c63dd7b82372dd903a45/FILES (pickled)
-#
-# the db object is now a map like this:
-#
-# {"pkgname", ["shadirname", ...], ...}
-#
-# so db[foo] will return the list of installed shadirs for the package named
-# foo.
+# /var/lib/srp/objects/ (this is a directory of sha dirs, each containing a package's extra files)
+# /var/lib/srp/objects/d976b5ba0496df79b7e9c63dd7b82372dd903a45/something_extra
 
 
-# should we keep NOTES as a txt file or pickled NOTES instance?
-
-# should the sha be of NOTES, NOTES+FILES, or everything in the dir?  if we
+# should the sha be of NOTES, NOTES+MANIFEST, or everything in the dir?  if we
 # do everything (which would make sense from a uniqueness standpoint), we
 # might end up incurring some rather time consuming sha-ing if we have a
 # repairable package (contains the actual BLOB) in the shadir.
+#
+# actually, there's probably no need to include the extra stuff in the sha.
+# for example, modifying/adding/removing a file will generally cause
+# MANIFEST to be modified (unless it's modify and checksum is disabled).
+# adding/removing extra content should generaly cause NOTES to be updated.
+# modifying extra content might not get noticed.
 #
 # right now, sha is the one embedded in the brp (i.e., it's the shasum of
 # the original brp's contents (BLOB, NOTES)).  this would mean that no matter what extra things we do
@@ -53,6 +64,54 @@ from pprint import pprint
 # srp's sha anywhere?  do we care about this level of tracability?
 
 
+# probably can't just use the module's toplevel namespace as the db, as i'm
+# gonna need to be able to easily unpickle/repickle the db contents all the
+# time.
+#__db = {}
+
+
+def register(p):
+    """register installed_package instance p in the db"""
+    name = p["notes"].info.name
+    try:
+        __db[name].append(p)
+    except:
+        __db[name] = [p]
+
+
+# FIXME: path to db in config?
+#
+# FIXME: DESTDIR?  --root?  both/either?
+try:
+    dbpath = os.getenv("DESTDIR")
+except:
+    dbpath = ""
+dbpath+="/var/lib/srp/db"
+
+
+def commit():
+    """re-pickle __db to disk"""
+    with open(dbpath, "wb") as f:
+        pickle.dump(__db, f)
+
+
+def load():
+    """un-pickle __db from disk"""
+    global __db
+    try:
+        with open(dbpath, "rb") as f:
+            __db = pickle.load(f)
+    except:
+        # FIXME: should detect failed unpickle vs missing db entirely and
+        #        issue an error if unpickle failed, but silently create new
+        #        db if there wasn't one before.  or maybe just print
+        #        something out.
+        __db = {}
+
+
+
+
+# FIXME: think this is OBE...
 def refresh():
     import os
     # FIXME: path to db in config?
@@ -113,3 +172,8 @@ def lookup_by_builder():
 
 # should we just plumb something up to dynamically query on any field in
 # NOTES?
+
+
+
+
+load()

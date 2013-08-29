@@ -524,6 +524,11 @@ def do_install(fname, options):
     with open(work["db"]+"/MANIFEST", "wb") as f:
         pickle.dump(m, f)
 
+    # FIXME: working towards this:
+    #
+    #  srp.db.register(srp.db.installed_pacakge(n, m, work["sha"]))
+    #
+    #        we'll create and register in 2 steps so that extra files can be added in between
 
 
 
