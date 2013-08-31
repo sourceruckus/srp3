@@ -101,14 +101,13 @@ def load():
     try:
         with open(dbpath, "rb") as f:
             __db = pickle.load(f)
-    except:
-        # FIXME: should detect failed unpickle vs missing db entirely and
-        #        issue an error if unpickle failed, but silently create new
-        #        db if there wasn't one before.  or maybe just print
-        #        something out.
+    except IOError:
         __db = {}
-
-
+    except Exception as e:
+        # NOTE: Anything other than IOError means the file was there but
+        #       corrupt... user is gonna want to know about that.
+        print("ERROR: failed to load __db:", e)
+        raise
 
 
 # FIXME: think this is OBE...
