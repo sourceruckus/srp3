@@ -13,3 +13,21 @@
 * upgrade logic
 
 * uninstall
+
+* exception handling clean up
+**should we do this:
+*** this one prints a good error message including the exception details, then prints a traceback when exception is re-raised
+
+try:
+    blarg
+except Exception as e:
+    print("bad things:", e)
+    raise
+
+**or this:
+*** this one chains the exceptions together... which i don't really like
+
+try:
+    blarg
+except Exception:
+    raise Exception("bad things")
