@@ -37,6 +37,36 @@ class notes:
 
     NOTE: fobj must be opened in binary mode
     """
+    # FIXME: using namedtuple class factory in here makes notes
+    #        un-picklable... i guess we should go back to making each ini
+    #        section into a map.  notes.info["name"] instead of
+    #        notes.info.name?
+    #
+    # FIXME: maybe we should make this less dynamic...  it's one thing to
+    #        make sure that our config parsing doesn't barf if there's
+    #        strange stuff in there, but it's another thing entirely to be
+    #        generating a class definition based on what's in the NOTES
+    #        file.  seems like there must be a security hole here... but i
+    #        can't find it.
+    #
+    # FIXME: so, what having this be dynamic buys us:
+    #
+    #        1. If a distributed package adds new entries to notes file,
+    #           they'll automatically become class members when the file is
+    #           parsed.  If this is due to a new feature, the package should
+    #           also request whatever new feature is required, which cause
+    #           us to exit, so this isn't helpful in this case.
+    #
+    #           However, if the notes file addition is part of a
+    #           bugfix/enhancement in an existing feature in a newer release
+    #           than that which is being used to parse the package (i.e.,
+    #           distributer used newer version than user has installed),
+    #           then the dynamic nature of the notes implementation will
+    #           cause the new data to end up in the class definition.
+    #           However, whatever processing was added to the responsible
+    #           feature will still be missing, so it'll essentially be a
+    #           version mismatch.  That's why we need to have srp version
+    #           requiremens in the notes file.
     def __init__(self, fobj):
         # check for open mode
         #
@@ -73,6 +103,8 @@ class notes:
         #       through it directly all the time.  And we can type the
         #       values (e.g., notes.prereqs.version_major is an int, but
         #       notes.config['prereqs']['version_major'] is a string
+        #
+        # FIXME: is that typing stuff true still?
         self.sections = {}
         for s in c.keys():
             if s == "DEFAULT":
@@ -135,6 +167,7 @@ class notes:
         self.check()
 
 
+    # FIXME: do i really want to do this?  look at __str__ vs __repr__
     def __str__(self):
         ret = ""
         for s in self.sections:

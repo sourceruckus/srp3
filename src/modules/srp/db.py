@@ -3,6 +3,7 @@ lookup functions
 """
 import os
 import pickle
+import hashlib
 
 import srp
 from pprint import pprint
@@ -17,13 +18,20 @@ from pprint import pprint
 
 
 class installed_package:
-    def __init__(self, notes, manifest, sha):
+    def __init__(self, notes, manifest):
         self.notes = notes
         self.manifest = manifest
-        self.sha = sha
 
-        # the sha will be used to store aditional files on disk (as apposed
-        # to pickled in the db).
+        # gen sha of data stream consisting of pickled notes and manifest
+        # objects
+        #
+        # NOTES: The sha will be used to store aditional files on disk (as
+        #        apposed to pickled in the db).
+        sha = hashlib.new("sha1")
+        sha.update(pickle.dumps(notes))
+        sha.update(pickle.dumps(manifest))
+        self.sha = sha.hexdigest().encode()
+
 
 
     def addfile(self, name, fobj):
@@ -83,7 +91,7 @@ def register(p):
 #
 # FIXME: DESTDIR?  --root?  both/either?
 try:
-    dbpath = os.getenv("DESTDIR")
+    dbpath = os.environ["DESTDIR"]
 except:
     dbpath = ""
 dbpath+="/var/lib/srp/db"
@@ -117,7 +125,7 @@ def refresh():
     #
     # FIXME: DESTDIR?  --root?  both/either?
     try:
-        dbpath = os.getenv("DESTDIR")
+        dbpath = os.environ["DESTDIR"]
     except:
         dbpath = ""
     dbpath+="/var/lib/srp/"

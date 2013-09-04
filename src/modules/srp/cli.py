@@ -513,22 +513,24 @@ def do_install(fname, options):
     # NOTE: We need to refresh our copy of n because feature funcs may have
     #       modified the copy in work[].
     n = work["notes"]
-    with open(work["db"]+"/NOTES", "wb") as f:
-        n.write(f)
+    #with open(work["db"]+"/NOTES", "wb") as f:
+    #    n.write(f)
 
     # commit MANIFEST to disk in srp db
     #
     # NOTE: We need to refresh our copy because feature funcs may have
     #       modified it
     m = work["manifest"]
-    with open(work["db"]+"/MANIFEST", "wb") as f:
-        pickle.dump(m, f)
+    #with open(work["db"]+"/MANIFEST", "wb") as f:
+    #    pickle.dump(m, f)
 
     # FIXME: working towards this:
     #
     #  srp.db.register(srp.db.installed_pacakge(n, m, work["sha"]))
     #
     #        we'll create and register in 2 steps so that extra files can be added in between
+    inst = srp.db.installed_package(n, m)
+    srp.db.register(inst)
 
 
 
