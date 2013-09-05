@@ -11,27 +11,29 @@
 #        build_host:
 #        build_date:
 
-[prereqs]
-# these specify the minimum version of srp required to build this package
-version_major = 3
-version_minor = 0
-version_bugfix = 0
+[header]
 
-[info]
+#[prereqs]
+# these specify the minimum version of srp required to build this package
+#[info]
 name = foo
 version = 3.0.0
-revision = 1
-sourcefilename = srp-example-3.0.0.tar.bz2
+pkg_rev = 1
+source_filename = srp-example-3.0.0.tar.bz2
 description = example package of doom
+
+version_major = 3
+version_minor = 0
+version_micro = 0
 
 # list of paths to extra files to include in source package (usually patches or
 # more source tarballs)
 #
 # NOTE: These paths are relative to the location of the NOTES file
-extra = docs/docs1 docs/docs2
+extra_content = docs/docs1 docs/docs2
 
 
-[options]
+#[options]
 # NOTE: This list controls which features to enable for this package.  There are
 #       two ways to enable a feature:
 #

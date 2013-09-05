@@ -24,49 +24,57 @@ import tempfile
 #       str, but the base64 methods operates on bytes...
 
 def encodescript(m):
-    return "encoded = True\nbuf = {}".format(base64.b64encode(m.group(1).encode()).decode())
+    return "encoded = True\nbuffer = {}".format(base64.b64encode(m.group(1).encode()).decode())
 
 def bufferencode(buf):
     return re.sub("^%%BUFFER_BEGIN%%\n(.*?)\n%%BUFFER_END%%\n", encodescript, buf, flags=re.DOTALL|re.MULTILINE)
 
 
-class notes:
-    """Class representing a NOTES file.  This class is designed very
-    intentionally to do as much as possible dynamically based on what's actually
-    in the NOTES file being parsed.
+class notes_header:
+    def __init__(self, config):
+        self.name = config["name"]
+        self.version = config["version"]
+        self.pkg_rev = config["pkg_rev"]
+        self.sourcefilename = config["source_filename"]
+        self.description = config["description"]
+        self.extra_content = config["extra_content"]
+        self.version_major = config["version_major"]
+        self.version_minor = config["version_minor"]
+        self.version_micro = config["version_micro"]
+        self.features = config["features"]
+
+class notes_script:
+    def __init__(self, config):
+        try:
+            self.encoded = config["encoded"]
+            self.buffer = base64.b64decode(config["buffer"].encode()).decode()
+        except:
+            self.encoded = False
+            self.buffer = config["buffer"]
+        #self.buffer = config["buffer"]
+        #if getattr(getattr(self, s), "encoded", False):
+        #    getattr(self, s).buf = base64.b64decode(getattr(self, s).buf.encode()).decode()
+
+#    class notes_brp:
+#        def __init__():
+#            self.build_date
+#            self.build_host
+#            self.build_user
+#            self.deps
+#            self.built_from_sha
+#    class notes_installed():
+#        def __init__():
+#            self.install_date
+#            self.installed_from_sha
+#
+
+class notes_file:
+    """Class representing a NOTES file.
 
     NOTE: fobj must be opened in binary mode
+
+    NOTE: We implement sub-classes in here to handle each section of the file.
     """
-    # FIXME: using namedtuple class factory in here makes notes
-    #        un-picklable... i guess we should go back to making each ini
-    #        section into a map.  notes.info["name"] instead of
-    #        notes.info.name?
-    #
-    # FIXME: maybe we should make this less dynamic...  it's one thing to
-    #        make sure that our config parsing doesn't barf if there's
-    #        strange stuff in there, but it's another thing entirely to be
-    #        generating a class definition based on what's in the NOTES
-    #        file.  seems like there must be a security hole here... but i
-    #        can't find it.
-    #
-    # FIXME: so, what having this be dynamic buys us:
-    #
-    #        1. If a distributed package adds new entries to notes file,
-    #           they'll automatically become class members when the file is
-    #           parsed.  If this is due to a new feature, the package should
-    #           also request whatever new feature is required, which cause
-    #           us to exit, so this isn't helpful in this case.
-    #
-    #           However, if the notes file addition is part of a
-    #           bugfix/enhancement in an existing feature in a newer release
-    #           than that which is being used to parse the package (i.e.,
-    #           distributer used newer version than user has installed),
-    #           then the dynamic nature of the notes implementation will
-    #           cause the new data to end up in the class definition.
-    #           However, whatever processing was added to the responsible
-    #           feature will still be missing, so it'll essentially be a
-    #           version mismatch.  That's why we need to have srp version
-    #           requiremens in the notes file.
     def __init__(self, fobj):
         # check for open mode
         #
@@ -90,21 +98,14 @@ class notes:
         c = configparser.ConfigParser(comment_prefixes=('#'),
                                       inline_comment_prefixes=('#'))
         c.read_string(buf)
-        
-        # now dynamically assign attributes based on what configparser sees
-        #
-        # NOTE: This means we can access things as notes.info.version as apposed
-        #       to keeping the config parser around and getting at things via
-        #       notes.config['info']['version']
-        #
-        # NOTE: This isn't just for aesthetics.  It should be faster and
-        #       less memory intensive to use this struct-ish data model than
-        #       keeping the config parser around and accessing things
-        #       through it directly all the time.  And we can type the
-        #       values (e.g., notes.prereqs.version_major is an int, but
-        #       notes.config['prereqs']['version_major'] is a string
-        #
-        # FIXME: is that typing stuff true still?
+
+        # populate sub-section instances
+        self.header = notes_header(c["header"])
+        self.script = notes_script(c["script"])
+        self.brp = None
+        self.installed = None
+
+    def foo(self):
         self.sections = {}
         for s in c.keys():
             if s == "DEFAULT":
@@ -170,16 +171,33 @@ class notes:
     # FIXME: do i really want to do this?  look at __str__ vs __repr__
     def __str__(self):
         ret = ""
-        for s in self.sections:
-            for k in self.sections[s]:
-                if getattr(getattr(self, s), "encoded", False) and k == "buf":
-                    ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(getattr(getattr(self, s), k))
-                else:
-                    ret += "[{}] {} = {}\n".format(s, k, getattr(getattr(self, s), k))
-        for s in self.additions:
-            for k in self.additions[s]:
-                ret += "[{}] {} = {}\n".format(s, k, self.additions[s][k])
+        ret += repr(self) + "\n"
+        for x in "header", "script", "brp", "installed":
+            s = getattr(self, x)
+            ret += x + ": " + repr(s) + "\n"
+            if not s:
+                continue
+            keys = list(s.__dict__.keys())
+            keys.sort()
+            for k in keys:
+                try:
+                    if not s.__dict__["encoded"]:
+                        raise Exception("shouldn't happen")
+                    ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(s.__dict__["buffer"])
+                except:
+                    ret += "{}.{}: ".format(s.__class__.__name__, k) + s.__dict__[k] + "\n"
         return ret.strip()
+
+
+#            for k in self.sections[s]:
+#                if getattr(getattr(self, s), "encoded", False) and k == "buf":
+#                    ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(getattr(getattr(self, s), k))
+#                else:
+#                    ret += "[{}] {} = {}\n".format(s, k, getattr(getattr(self, s), k))
+#        for s in self.additions:
+#            for k in self.additions[s]:
+#                ret += "[{}] {} = {}\n".format(s, k, self.additions[s][k])
+#        return ret.strip()
 
 
     def write(self, fobj):
