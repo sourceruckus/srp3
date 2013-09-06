@@ -282,15 +282,15 @@ def main():
 
 def do_create(fname):
     with open(fname, 'rb') as fobj:
-        n = srp.notes.notes(fobj)
+        n = srp.notes.notes_file(fobj)
 
     work = {}
-    work["pname"] = "{}-{}-{}.srp".format(n.info.name, n.info.version,
-                                          n.info.revision)
+    work["pname"] = "{}-{}-{}.srp".format(n.header.name, n.header.version,
+                                          n.header.pkg_rev)
     work["notes"] = n
 
     # run through all queued up stage funcs for create
-    stages = srp.features.get_stage_map(n.options.features.split())
+    stages = srp.features.get_stage_map(n.header.features)
     print("create funcs:", stages['create'])
     for f in stages['create']:
         print("executing:", f)
@@ -326,7 +326,7 @@ def do_build(fname, options):
         #print(n)
 
     # update notes fields with optional command line flags
-    n.update(options)
+    n.update_features(options)
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
@@ -468,7 +468,7 @@ def do_install(fname, options):
         sha = f.read().decode()
 
     # update notes fields with optional command line flags
-    n.update(options)
+    n.update_features(options)
 
     n.additions['installed'] = {}
 

@@ -29,6 +29,21 @@ def encodescript(m):
 def bufferencode(buf):
     return re.sub("^%%BUFFER_BEGIN%%\n(.*?)\n%%BUFFER_END%%\n", encodescript, buf, flags=re.DOTALL|re.MULTILINE)
 
+def cmp_version(a, b):
+    if a[0] > b[0]:
+        return 1
+    if a[0] < b[0]:
+        return -1
+    if a[1] > b[1]:
+        return 1
+    if a[1] < b[1]:
+        return -1
+    if a[2] > b[2]:
+        return 1
+    if a[2] < b[2]:
+        return -1
+    return 0
+
 
 class notes_header:
     def __init__(self, config):
@@ -36,37 +51,84 @@ class notes_header:
         self.version = config["version"]
         self.pkg_rev = config["pkg_rev"]
         self.sourcefilename = config["source_filename"]
-        self.description = config["description"]
-        self.extra_content = config["extra_content"]
-        self.version_major = config["version_major"]
-        self.version_minor = config["version_minor"]
-        self.version_micro = config["version_micro"]
-        self.features = config["features"]
+
+        # strip carriage returns out of this potentially multi-line item
+        self.description = config["description"].replace("\n", " ")
+
+        self.extra_content = config["extra_content"].split()
+
+        # if any segments of srp_min_version aren't defined, fallback to the
+        # version being used to create the package.
+        try:
+            self.srp_min_version_major = int(config["srp_min_version_major"])
+            self.srp_min_version_minor = int(config["srp_min_version_minor"])
+            self.srp_min_version_micro = int(config["srp_min_version_micro"])
+
+        except:
+            self.srp_min_version_major = config.version_major
+            self.srp_min_version_minor = config.version_minor
+            self.srp_min_version_micro = config.version_micro
+
+        self.srp_min_version = "{}.{}.{}".format(
+            self.srp_min_version_major,
+            self.srp_min_version_minor,
+            self.srp_min_version_micro)
+
+        self.features = config["features"].split()
+
+        # populate features with our defaults
+        f = srp.features.default_features[:]
+
+        # parse features from NOTES file
+        #
+        # NOTE: We ONLY want to tweak features if this NOTES file hasn't
+        #       already been run through srp (i.e., it's not coming from a
+        #       brp archive)
+        #
+        # NOTE: That's ok, we won't ever be constructing NOTES again after
+        #       package creation because we're going to store a pickled
+        #       instance from there on out.
+        for x in self.features:
+            if x.startswith("no_"):
+                # handle feature disabling
+                try:
+                    f.remove(x[3:])
+                except:
+                    pass
+            else:
+                # handle enables
+                f.append(x)
+
+        # overwrite the raw value with the parsed list
+        self.features = f
+
 
 class notes_script:
     def __init__(self, config):
         try:
             self.encoded = config["encoded"]
+            # FIXME: why not leave this as bytes?  i really need to get a
+            #        better handle on the rationale for bytes vs string...
             self.buffer = base64.b64decode(config["buffer"].encode()).decode()
         except:
             self.encoded = False
             self.buffer = config["buffer"]
-        #self.buffer = config["buffer"]
-        #if getattr(getattr(self, s), "encoded", False):
-        #    getattr(self, s).buf = base64.b64decode(getattr(self, s).buf.encode()).decode()
 
-#    class notes_brp:
-#        def __init__():
-#            self.build_date
-#            self.build_host
-#            self.build_user
-#            self.deps
-#            self.built_from_sha
-#    class notes_installed():
-#        def __init__():
-#            self.install_date
-#            self.installed_from_sha
-#
+
+class notes_brp:
+    def __init__(self):
+        self.build_date = None
+        self.build_host = None
+        self.build_user = None
+        self.deps = []
+        self.built_from_sha = None
+
+
+class notes_installed():
+    def __init__():
+        self.install_date = None
+        self.installed_from_sha = None
+
 
 class notes_file:
     """Class representing a NOTES file.
@@ -105,64 +167,15 @@ class notes_file:
         self.brp = None
         self.installed = None
 
-    def foo(self):
-        self.sections = {}
-        for s in c.keys():
-            if s == "DEFAULT":
-                continue
-            self.sections[s] = []
-            setattr(self, s, collections.namedtuple(s, c[s].keys()))
-            for k in c[s].keys():
-                setattr(getattr(self, s), k, c[s][k])
-                self.sections[s].append(k)
-            if getattr(getattr(self, s), "encoded", False):
-                getattr(self, s).buf = base64.b64decode(getattr(self, s).buf.encode()).decode()
-
-        # and now do some re-typing (for standard items)
-        self.prereqs.version = ".".join([self.prereqs.version_major,
-                                         self.prereqs.version_minor,
-                                         self.prereqs.version_bugfix])
-        self.prereqs.version_major = int(self.prereqs.version_major)
-        self.prereqs.version_minor = int(self.prereqs.version_minor)
-        self.prereqs.version_bugfix = int(self.prereqs.version_bugfix)
-
-        # prepopulate features with our defaults
-        f = srp.features.default_features[:]
-
-        # parse features from NOTES file
+        # add features for unclaimed sections
         #
-        # NOTE: We ONLY want to tweak features if this NOTES file hasn't
-        #       already been run through srp (i.e., it's not coming from a
-        #       brp archive)
-        if 'brp' not in self.sections:
-            for x in self.options.features.split():
-                if x.startswith("no_"):
-                    # handle feature disabling
-                    try:
-                        f.remove(x[3:])
-                    except:
-                        pass
-                else:
-                    # handle enables
-                    f.append(x)
-
-            # add features for unclaimed sections
-            #
-            # NOTE: This will automatically enable any feature that has a
-            #       special section defined for it in the NOTES file (e.g.,
-            #       perms).  However, it means that every unclaimed section
-            #       is assumed to be a valid feature name.
-            for s in self.sections:
-                if s not in ['prereqs', 'info', 'options', 'script', 'brp']:
-                    f.append(s)
-
-            # overwrite the raw value with the parsed list
-            #
-            # NOTE: We flatten this back out into a string to make life
-            #       easier later on when we write via ConfigParser
-            self.options.features = " ".join(f)
-
-        self.additions = {}
+        # NOTE: This will automatically enable any feature that has a
+        #       special section defined for it in the NOTES file (e.g.,
+        #       perms).  However, it means that every unclaimed section
+        #       is assumed to be a valid feature name.
+        for s in c.keys():
+            if s not in ["header", "script", "brp", "installed", "DEFAULT"]:
+                self.header.features.append(s)
 
         # check package requirements
         self.check()
@@ -180,26 +193,15 @@ class notes_file:
             keys = list(s.__dict__.keys())
             keys.sort()
             for k in keys:
-                try:
-                    if not s.__dict__["encoded"]:
-                        raise Exception("shouldn't happen")
-                    ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(s.__dict__["buffer"])
-                except:
-                    ret += "{}.{}: ".format(s.__class__.__name__, k) + s.__dict__[k] + "\n"
+                if k == "buffer" and getattr(s, "encoded", False):
+                    ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(getattr(s, "buffer"))
+                else:
+                    ret += "{}.{}: ".format(s.__class__.__name__, k) + str(getattr(s, k)) + "\n"
         return ret.strip()
 
 
-#            for k in self.sections[s]:
-#                if getattr(getattr(self, s), "encoded", False) and k == "buf":
-#                    ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(getattr(getattr(self, s), k))
-#                else:
-#                    ret += "[{}] {} = {}\n".format(s, k, getattr(getattr(self, s), k))
-#        for s in self.additions:
-#            for k in self.additions[s]:
-#                ret += "[{}] {} = {}\n".format(s, k, self.additions[s][k])
-#        return ret.strip()
-
-
+    # FIXME: haven't rewritten this yet, is it still needed if we pickle
+    #        into the srp file?
     def write(self, fobj):
         # we accomplish this by re-populating a new configparser instance
         # with all our data (namedtuples and items from self.additions),
@@ -239,37 +241,38 @@ class notes_file:
 
     def check(self):
         # check for required version
-        if srp.config.version_major < self.prereqs.version_major:
-            raise Exception("package requires srp >= {}".format(self.prereqs.version))
-        elif srp.config.version_minor < self.prereqs.version_minor:
-            raise Exception("package requires srp >= {}".format(self.prereqs.version))
-        elif srp.config.version_bugfix < self.prereqs.version_bugfix:
-            raise Exception("package requires srp >= {}".format(self.prereqs.version))
+        #
+        # NOTE: This check does not include devtag (i.e., 3.0.0-alpha1 ==
+        #       3.0.0)
+        if cmp_version([srp.config.version_major,
+                        srp.config.version_minor,
+                        srp.config.version_micro],
+                       [self.header.srp_min_version_major,
+                        self.header.srp_min_version_minor,
+                        self.header.srp_min_version_micro]) < 0:
+            raise Exception("package requires srp >= " +
+                            self.header.srp_min_version)
 
         # check for required features
-        missing = self.options.features.split()
-        #print(missing)
-        #print(srp.features.registered_features)
+        missing = self.header.features[:]
         for x in srp.features.registered_features:
             try:
                 missing.remove(x)
             except:
                 pass
         if missing:
-            raise Exception("package requires missing features: {}".format(missing))
+            err="package requires missing features: {}".format(missing)
+            raise Exception(err)
 
 
-    def update(self, options):
-        features = self.options.features.split()
-        print(features)
+    # used to update features on the command line
+    def update_features(self, options):
         for o in options:
             if o.startswith("no_"):
                 try:
-                    features.remove(o[3:])
+                    self.header.features.remove(o[3:])
                 except:
                     # wasn't enabled to begin with
                     pass
             else:
-                features.append(o)
-
-        self.options.features = " ".join(features)
+                self.header.features.append(o)

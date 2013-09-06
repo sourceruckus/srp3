@@ -63,20 +63,33 @@ def create_func(work):
     #
     # NOTE: We expect these to all be relative to the directory containing
     #       the notes file.
-    flist = [os.path.basename(n.filename), n.info.sourcefilename]
+    flist = [n.header.sourcefilename]
     try:
-        flist.extend(n.info.extra.split())
+        flist.extend(n.header.extra)
     except:
         pass
 
     # create tarball
     #
-    # NOTE: We add the source file and any extra files specified in the
-    #       NOTES file, the NOTES file itself, and a SHA file containing a
-    #       single checksum of the archive (all files concatenated together
-    #       into a single stream).
+    # NOTE: We add the pickled notes_file instance, the source tarball, any
+    #       extra files specified in the NOTES file, and a SHA file
+    #       containing a single checksum of the archive (all files
+    #       concatenated together into a single stream).
     sha = hashlib.new("sha1")
     tar = tarfile.open(work["pname"], mode="w")
+
+    # pickle our notes_file instance and add it to the pkg
+    with tempfile.TemporaryFile() as f:
+        pickle.dump(n, f)
+        # rewind for tar.addfile
+        f.seek(0)
+        tar.addfile(tar.gettarinfo(arcname="NOTES", fileobj=f),
+                    fileobj=f)
+        # rewind and generate a SHA entry
+        f.seek(0)
+        sha.update(f.read())
+
+    # add all the files in flist
     for fname in flist:
         # create an open file object
         with open(os.path.join(os.path.dirname(n.filename), fname),
@@ -84,10 +97,6 @@ def create_func(work):
             # we need to remove all leading path segments so that all
             # files end up at the toplevel of the pkg file
             arcname = os.path.basename(fname)
-            if arcname == os.path.basename(n.filename):
-                # we also need to rename the notes file inside the
-                # pkg
-                arcname = "NOTES"
             #print("adding {} as {}".format(f.name, arcname))
             tar.addfile(tar.gettarinfo(arcname=arcname, fileobj=f),
                         fileobj=f)
@@ -110,6 +119,10 @@ def build_func(work):
     all files"""
     # create ruckus dir in tmp
     work['dir'] = create_tmp_ruckus()
+
+    # FIXME: make sure system default features are enabled.  defaults were
+    #        populated when the notes_file was instantiated during creation,
+    #        but we may now be on a different host with different defaults.
 
     # extract package contents
     #
