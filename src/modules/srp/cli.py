@@ -322,11 +322,23 @@ def do_build(fname, options):
         verify_sha(p)
         # verify that requirements are met
         fobj = p.extractfile("NOTES")
-        n = srp.notes.notes(fobj)
-        #print(n)
+        #n = srp.notes.notes(fobj)
+        n = pickle.load(fobj)
+        print(n)
+
+    # update notes_file with host defaults
+    #
+    # FIXME: we need to keep the no_* flags around for later, otherwise
+    #        we'll accidentally re-enable explicitly disabled features here...
+    n.update_features(srp.features.default_features)
+    print(n)
 
     # update notes fields with optional command line flags
+    #
     n.update_features(options)
+    print(n)
+
+    sys.exit(1)
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work

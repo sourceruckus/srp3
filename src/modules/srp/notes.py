@@ -95,9 +95,12 @@ class notes_header:
                     f.remove(x[3:])
                 except:
                     pass
-            else:
-                # handle enables
-                f.append(x)
+
+            # NOTE: We add the "no_*" entries along with the enabler flags
+            #       so we can keep track of what's been explicitly disabled
+            #       as apposed to simply not enambed somewhere along the
+            #       line.
+            f.append(x)
 
         # overwrite the raw value with the parsed list
         self.features = f
@@ -255,6 +258,11 @@ class notes_file:
 
         # check for required features
         missing = self.header.features[:]
+        # prune all disablers
+        for x in self.header.features:
+            if x.startswith("no_"):
+                missing.remove(x)
+        # prune all registered features
         for x in srp.features.registered_features:
             try:
                 missing.remove(x)
@@ -268,11 +276,15 @@ class notes_file:
     # used to update features on the command line
     def update_features(self, options):
         for o in options:
+            if o in self.header.features:
+                # already there
+                continue
+
             if o.startswith("no_"):
                 try:
                     self.header.features.remove(o[3:])
                 except:
                     # wasn't enabled to begin with
                     pass
-            else:
-                self.header.features.append(o)
+
+            self.header.features.append(o)

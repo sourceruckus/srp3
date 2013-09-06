@@ -259,6 +259,9 @@ def get_function_list(stage, feature_list):
     """
     retval = []
     for f in feature_list:
+        # skip disablers
+        if f.startswith("no_"):
+            continue
         # get the list of feature funcs required for f
         f_funcs = get_function_list_deps(f, stage)
         # add only new entries from f_funcs
