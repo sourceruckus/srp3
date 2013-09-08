@@ -368,6 +368,13 @@ def do_build(fname, options):
     print("features:", n.header.features)
     print("build funcs:", stages['build'])
     for f in stages['build']:
+        # check for notes section class and create if needed
+        section = getattr(getattr(srp.features, f.name),
+                          "notes_"+f.name, False)
+        if section and not getattr(n, f.name, False):
+            print("creating notes section:", f.name)
+            setattr(n, f.name, section())
+
         print("executing:", f)
         try:
             f.func(work)
@@ -383,6 +390,13 @@ def do_build(fname, options):
     flist.sort()
     for x in flist:
         for f in stages['build_iter']:
+            # check for notes section class and create if needed
+            section = getattr(getattr(srp.features, f.name),
+                              "notes_"+f.name, False)
+            if section and not getattr(n, f.name, False):
+                print("creating notes section:", f.name)
+                setattr(n, f.name, section())
+
             print("executing:", f, x)
             try:
                 f.func(work, x)
@@ -494,6 +508,13 @@ def do_install(fname, options):
     print("features:", n.options.features)
     print("install funcs:", stages['install'])
     for f in stages['install']:
+        # check for notes section class and create if needed
+        section = getattr(getattr(srp.features, f.name),
+                          "notes_"+f.name, False)
+        if section and not getattr(n, f.name, False):
+            print("creating notes section:", f.name)
+            setattr(n, f.name, section())
+
         print("executing:", f)
         try:
             f.func(work)
@@ -509,6 +530,13 @@ def do_install(fname, options):
     flist.sort()
     for x in flist:
         for f in stages['install_iter']:
+            # check for notes section class and create if needed
+            section = getattr(getattr(srp.features, f.name),
+                              "notes_"+f.name, False)
+            if section and not getattr(n, f.name, False):
+                print("creating notes section:", f.name)
+                setattr(n, f.name, section())
+
             print("executing:", f, x)
             try:
                 f.func(work, x)
