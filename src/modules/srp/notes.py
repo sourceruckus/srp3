@@ -9,6 +9,8 @@ import re
 import base64
 import tarfile
 import tempfile
+import types
+import os
 
 # FIXME: we should implement a v2->v3 translator here.  it should translate
 #        the following variables in the build script:
@@ -46,16 +48,19 @@ def cmp_version(a, b):
 
 
 class notes_header:
-    def __init__(self, config):
+    def __init__(self, config, path=""):
         self.name = config["name"]
         self.version = config["version"]
         self.pkg_rev = config["pkg_rev"]
-        self.sourcefilename = config["source_filename"]
+        self.sourcefilename = os.path.join(path, config["source_filename"])
 
         # strip carriage returns out of this potentially multi-line item
         self.description = config["description"].replace("\n", " ")
 
-        self.extra_content = config["extra_content"].split()
+        # prepend path segments to each element in this list
+        self.extra_content = []
+        for x in config["extra_content"].split():
+            self.extra_content.append(os.path.join(path, x))
 
         # if any segments of srp_min_version aren't defined, fallback to the
         # version being used to create the package.
@@ -106,8 +111,8 @@ class notes_header:
         self.features = f
 
 
-class notes_script:
-    def __init__(self, config):
+class notes_buffer:
+    def __init__(self, config, path=""):
         try:
             self.encoded = config["encoded"]
             # FIXME: why not leave this as bytes?  i really need to get a
@@ -116,6 +121,10 @@ class notes_script:
         except:
             self.encoded = False
             self.buffer = config["buffer"]
+
+
+class notes_script(notes_buffer):
+    pass
 
 
 class notes_brp:
@@ -128,9 +137,13 @@ class notes_brp:
 
 
 class notes_installed():
-    def __init__():
+    def __init__(self):
         self.install_date = None
         self.installed_from_sha = None
+
+
+class notes_perms(notes_buffer):
+    pass
 
 
 class notes_file:
@@ -154,7 +167,8 @@ class notes_file:
         if type(fobj.read(0)) != bytes:
             raise Exception("{}(fobj): fobj must be opened in binary mode".format(self.__class__.__name__))
 
-        self.filename = fobj.name
+        __path = os.path.dirname(fobj.name)
+
         # NOTE: We pass the actual buffer read from file through buffencode,
         #       which encodes specified sections and allows the configparser to
         #       parse things w/out having heartburn about embedded scripts,
@@ -165,8 +179,8 @@ class notes_file:
         c.read_string(buf)
 
         # populate sub-section instances
-        self.header = notes_header(c["header"])
-        self.script = notes_script(c["script"])
+        self.header = notes_header(c["header"], __path)
+        self.script = notes_script(c["script"], __path)
         self.brp = None
         self.installed = None
 
@@ -179,6 +193,8 @@ class notes_file:
         for s in c.keys():
             if s not in ["header", "script", "brp", "installed", "DEFAULT"]:
                 self.header.features.append(s)
+                # instantiate special feature subsections
+                setattr(self, s, globals()["notes_"+s](c[s], __path))
 
         # check package requirements
         self.check()
@@ -188,8 +204,11 @@ class notes_file:
     def __str__(self):
         ret = ""
         ret += repr(self) + "\n"
-        for x in "header", "script", "brp", "installed":
+        for x in dir(self):
             s = getattr(self, x)
+            if x.startswith("_") or type(s) == types.MethodType:
+                continue
+
             ret += x + ": " + repr(s) + "\n"
             if not s:
                 continue

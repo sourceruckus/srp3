@@ -65,15 +65,12 @@ def build_func(work, fname):
     #        locking here so that we can modify the notes file from within each
     #        subproc
     n = work["notes"]
-    try:
-        big_deps = n.additions["brp"]["deps"].split()
-    except:
-        big_deps = []
+    big_deps = n.brp.deps[:]
     for d in deps:
         if d not in big_deps:
             big_deps.append(d)
     big_deps.sort()
-    n.additions['brp']['deps'] = " ".join(big_deps)
+    n.brp.deps = big_deps
 
 
 def install_func(work):
@@ -102,7 +99,7 @@ def install_func(work):
     #        can get the deps check to pass by setting
     #        LD_PRELOAD=libncurses.so.5 on the command line.
     n = work['notes']
-    deps = n.brp.deps.split()
+    deps = n.brp.deps[:]
     # NOTE: We iterate all the way through so that the user can see ALL the
     #       missing libs as apposed to just the first one
     #

@@ -283,6 +283,7 @@ def main():
 def do_create(fname):
     with open(fname, 'rb') as fobj:
         n = srp.notes.notes_file(fobj)
+    print(n)
 
     work = {}
     work["pname"] = "{}-{}-{}.srp".format(n.header.name, n.header.version,
@@ -324,21 +325,19 @@ def do_build(fname, options):
         fobj = p.extractfile("NOTES")
         #n = srp.notes.notes(fobj)
         n = pickle.load(fobj)
-        print(n)
+        #print(n)
 
     # update notes_file with host defaults
     #
     # FIXME: we need to keep the no_* flags around for later, otherwise
     #        we'll accidentally re-enable explicitly disabled features here...
     n.update_features(srp.features.default_features)
-    print(n)
+    #print(n)
 
     # update notes fields with optional command line flags
     #
     n.update_features(options)
     print(n)
-
-    sys.exit(1)
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
@@ -364,13 +363,13 @@ def do_build(fname, options):
     #       play nicely with subproc access...
     #work['srp'] = p
 
-    # append brp section header to NOTES file
-    n.additions['brp'] = {}
+    # add brp section to NOTES instance
+    n.brp = srp.notes.notes_brp()
     work['notes'] = n
 
     # run through all queued up stage funcs for build
-    stages = srp.features.get_stage_map(n.options.features.split())
-    print("features:", n.options.features)
+    stages = srp.features.get_stage_map(n.header.features)
+    print("features:", n.header.features)
     print("build funcs:", stages['build'])
     for f in stages['build']:
         print("executing:", f)
@@ -402,8 +401,8 @@ def do_build(fname, options):
     mach = platform.machine()
     if not mach:
         mach = "unknown"
-    pname = "{}-{}-{}.{}.brp".format(n.info.name, n.info.version,
-                                     n.info.revision, mach)
+    pname = "{}-{}-{}.{}.brp".format(n.header.name, n.header.version,
+                                     n.header.pkg_rev, mach)
     comp = 'bz2'
     # FIXME: we should remove this file if we fail...
     brp = tarfile.open(pname, mode="w:"+comp)
@@ -421,9 +420,10 @@ def do_build(fname, options):
     blob_fobj = tempfile.TemporaryFile()
     srp.blob.blob_create(work["manifest"], work['dir']+'/tmp', fobj=blob_fobj)
 
-    # add NOTES file to toplevel pkg archive (the brp)
+    # add NOTES (pickled instance) to toplevel pkg archive (the brp)
     n_fobj = tempfile.TemporaryFile()
-    n.write(n_fobj)
+    #n.write(n_fobj)
+    pickle.dump(n, n_fobj)
     n_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
                 fileobj=n_fobj)

@@ -64,10 +64,17 @@ def create_func(work):
     # NOTE: We expect these to all be relative to the directory containing
     #       the notes file.
     flist = [n.header.sourcefilename]
-    try:
-        flist.extend(n.header.extra)
-    except:
-        pass
+    flist.extend(n.header.extra_content)
+
+    # cleanup paths in notes_file
+    #
+    # NOTE: Files get added to the toplevel of the pkg, so we need to remove
+    #       path info from associated entries in notes_file so we can find
+    #       the files in the pkg later
+    n.header.sourcefilename = os.path.basename(n.header.sourcefilename)
+    for x in n.header.extra_content[:]:
+        n.header.extra_content.remove(x)
+        n.header.extra_content.append(os.path.basename(x))
 
     # create tarball
     #
@@ -92,8 +99,7 @@ def create_func(work):
     # add all the files in flist
     for fname in flist:
         # create an open file object
-        with open(os.path.join(os.path.dirname(n.filename), fname),
-                  mode='rb') as f:
+        with open(fname, mode='rb') as f:
             # we need to remove all leading path segments so that all
             # files end up at the toplevel of the pkg file
             arcname = os.path.basename(fname)

@@ -135,7 +135,7 @@ def build_func(work, fname):
     #print(work.keys())
     #print(work['notes'].perms.buf)
     n = work["notes"]
-    p = perms(n.perms.buf)
+    p = perms(n.perms.buffer)
     #print(p)
     #print(p['/usr/local/bin/foo'])
     #print(p['/usr/share/asdf'])
