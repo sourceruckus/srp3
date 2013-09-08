@@ -146,20 +146,11 @@ class notes_brp:
         #        readable string here...?
         self.build_date = time.asctime()
 
-        # FIXME: how do i want to handle the deps list?  special section
-        #        populated by deps features? or built into the brp section
-        #        (it is a default feature, after all)
-        self.deps = []
-
 
 class notes_installed():
     def __init__(self):
         self.install_date = None
         self.installed_from_sha = None
-
-
-class notes_perms(notes_buffer):
-    pass
 
 
 class notes_file:

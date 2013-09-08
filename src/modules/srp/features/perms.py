@@ -9,11 +9,26 @@ NOTE: This is the only appropriate way to set file ownership.  Using chown in
       non-root.
 """
 
+import srp.notes
 from srp.features import *
 
 import os
 import re
 import tarfile
+
+
+class notes_perms(srp.notes.notes_buffer):
+    pass
+
+# NOTE: We need to stick our notes section definition class in the notes
+#       module's namespace so that it can be located dynamically in the
+#       notes_file constructor.
+#
+# FIXME: Need to document this requirement somewhere more obvious...  By the
+#        way, this is ONLY needed because we expect stuff for this feature
+#        to be parsed from the initial notes file (i.e., if we only add
+#        things during build it's not needed).
+srp.notes.notes_perms = notes_perms
 
 
 class perms(list):

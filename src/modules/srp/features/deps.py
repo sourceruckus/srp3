@@ -15,6 +15,30 @@ import os
 import subprocess
 
 
+class notes_deps:
+    def __init__(self):
+        self.libs = []
+
+
+# NOTE: We need to stick our notes section definition class in the notes
+#       module's namespace so that it can be located dynamically in the
+#       notes_file constructor.
+#
+# FIXME: Need to document this requirement somewhere more obvious...
+#
+# FIXME: I don't think this is actually needed for deps...
+#
+#srp.notes.notes_deps = notes_deps
+
+
+# FIXME: Should we do this to prep things?  Or should we add code to
+#        do_build to automagically add sections to the notes instance before
+#        calling all the funcs...
+def build_prep(work):
+    n = work["notes"]
+    n.deps = notes_deps()
+
+
 # FIXME: MULTI: why don't i iterate over the list of TarInfo objects
 #        instead of re-walking the filesystem.  not only will that be
 #        faster, i could split the TarInfo list into chunks and use
@@ -65,12 +89,12 @@ def build_func(work, fname):
     #        locking here so that we can modify the notes file from within each
     #        subproc
     n = work["notes"]
-    big_deps = n.brp.deps[:]
+    big_deps = n.deps.libs[:]
     for d in deps:
         if d not in big_deps:
             big_deps.append(d)
     big_deps.sort()
-    n.brp.deps = big_deps
+    n.deps.libs = big_deps
 
 
 def install_func(work):
@@ -99,7 +123,7 @@ def install_func(work):
     #        can get the deps check to pass by setting
     #        LD_PRELOAD=libncurses.so.5 on the command line.
     n = work['notes']
-    deps = n.brp.deps[:]
+    deps = n.deps.libs[:]
     # NOTE: We iterate all the way through so that the user can see ALL the
     #       missing libs as apposed to just the first one
     #
@@ -126,6 +150,7 @@ register_feature(
     feature_struct("deps",
                    __doc__,
                    True,
+                   build = stage_struct("deps", build_prep, [], []),
                    build_iter = stage_struct("deps", build_func, [], []),
                    install = stage_struct("deps", install_func, [], ["core"])))
 
