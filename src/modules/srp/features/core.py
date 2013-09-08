@@ -63,7 +63,7 @@ def create_func(work):
     #
     # NOTE: We expect these to all be relative to the directory containing
     #       the notes file.
-    flist = [n.header.sourcefilename]
+    flist = [n.header.source_filename]
     flist.extend(n.header.extra_content)
 
     # cleanup paths in notes_file
@@ -71,7 +71,7 @@ def create_func(work):
     # NOTE: Files get added to the toplevel of the pkg, so we need to remove
     #       path info from associated entries in notes_file so we can find
     #       the files in the pkg later
-    n.header.sourcefilename = os.path.basename(n.header.sourcefilename)
+    n.header.source_filename = os.path.basename(n.header.source_filename)
     for x in n.header.extra_content[:]:
         n.header.extra_content.remove(x)
         n.header.extra_content.append(os.path.basename(x))
@@ -139,7 +139,7 @@ def build_func(work):
         f.extractall(work['dir'] + "/package")
 
     # extract source tarball
-    with tarfile.open(work['dir'] + "/package/" + work['notes'].info.sourcefilename) as f:
+    with tarfile.open(work['dir'] + "/package/" + work['notes'].header.source_filename) as f:
         sourcedir=f.firstmember.name
         f.extractall(work['dir'] + "/build")
 
@@ -148,7 +148,7 @@ def build_func(work):
     # FIXME: do i really need to create an executable script file?  or can i
     #        just somehow spawn a subprocess using the contents of the buf?
     with open(work['dir'] + "/build/srp_go", 'w') as f:
-        f.write(work['notes'].script.buf)
+        f.write(work['notes'].script.buffer)
         os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # run build script
@@ -206,42 +206,6 @@ def build_func(work):
     #
     # FIXME: straighten out these comments
     work['manifest'] = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
-
-    # append to brp section of NOTES file
-    #
-    # FIXME: hmmm... i might have to rethink using namedtuples for NOTES'
-    #        data... if i need to append to it here (and i do), and then
-    #        write it back out (which i do), i probably want to keep the
-    #        parser around.  and if i'm going to keep the parser around
-    #        anyway, why not just use it for all the data all the time?
-    #
-    #        well, i could update the parser as i go along (inside the notes
-    #        constructor, default expansions, etc), but still access the
-    #        data via the exposed struct (which should be much
-    #        faster)... the question really is, is it a big enough speed
-    #        improvement to justify the extra complexity.  it's not going to
-    #        be a mem improvement, unless i ditch the parser after
-    #        construction...
-    #
-    #        it might not actually be that hard to iterate through our named
-    #        tuples and spit the data back into a new ConfigParser instance
-    #        when we want to write back to file... but we will have to
-    #        decide how we want to go about appending to the data while
-    #        we're working here... keeping the parser around just for that
-    #        seems silly.  maybe we just add a appendage dict for new data
-    #        and serialize it all into a new ConfigParser when we're done.
-    n = work['notes']
-
-    # FIXME: should have a .srprc file to specify a full name (e.g., 'Joe
-    #        Bloe <bloe@mail.com>'), and fallback to user id if it's not set
-    n.additions['brp']['builder'] = pwd.getpwuid(os.getuid()).pw_gecos
-
-    # FIXME: this should probably be a bit more complicated...
-    n.additions['brp']['build_host'] = socket.gethostname()
-
-    # FIXME: should i store seconds since epoch, struct_time, or a human
-    #        readable string here...?
-    n.additions['brp']['build_date'] = time.asctime()
 
 
 def install_func(work):

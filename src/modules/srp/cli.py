@@ -315,27 +315,25 @@ def verify_sha(tar):
     y = tar.extractfile("SHA").read()
     if x != y:
         raise Exception("SHA doesn't match.  Corrupted archive?")
+    return x
 
 
 def do_build(fname, options):
     with tarfile.open(fname) as p:
         # verify SHA
-        verify_sha(p)
+        from_sha = verify_sha(p)
         # verify that requirements are met
         fobj = p.extractfile("NOTES")
         #n = srp.notes.notes(fobj)
         n = pickle.load(fobj)
-        #print(n)
+
+    # add brp section to NOTES instance
+    n.brp = srp.notes.notes_brp(from_sha)
 
     # update notes_file with host defaults
-    #
-    # FIXME: we need to keep the no_* flags around for later, otherwise
-    #        we'll accidentally re-enable explicitly disabled features here...
     n.update_features(srp.features.default_features)
-    #print(n)
 
     # update notes fields with optional command line flags
-    #
     n.update_features(options)
     print(n)
 
@@ -363,8 +361,6 @@ def do_build(fname, options):
     #       play nicely with subproc access...
     #work['srp'] = p
 
-    # add brp section to NOTES instance
-    n.brp = srp.notes.notes_brp()
     work['notes'] = n
 
     # run through all queued up stage funcs for build

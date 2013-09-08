@@ -11,6 +11,9 @@ import tarfile
 import tempfile
 import types
 import os
+import pwd
+import socket
+import time
 
 # FIXME: we should implement a v2->v3 translator here.  it should translate
 #        the following variables in the build script:
@@ -52,7 +55,7 @@ class notes_header:
         self.name = config["name"]
         self.version = config["version"]
         self.pkg_rev = config["pkg_rev"]
-        self.sourcefilename = os.path.join(path, config["source_filename"])
+        self.source_filename = os.path.join(path, config["source_filename"])
 
         # strip carriage returns out of this potentially multi-line item
         self.description = config["description"].replace("\n", " ")
@@ -128,12 +131,25 @@ class notes_script(notes_buffer):
 
 
 class notes_brp:
-    def __init__(self):
-        self.build_date = None
-        self.build_host = None
-        self.build_user = None
+    def __init__(self, from_sha=None):
+        self.built_from_sha = from_sha
+
+        # FIXME: should have a .srprc file to specify a full name (e.g.,
+        #        'Joe Bloe <bloe@mail.com>'), and fallback to user id if
+        #        it's not set
+        self.build_user = pwd.getpwuid(os.getuid()).pw_gecos
+
+        # FIXME: this should probably be a bit more complicated...
+        self.build_host = socket.gethostname()
+
+        # FIXME: should i store seconds since epoch, struct_time, or a human
+        #        readable string here...?
+        self.build_date = time.asctime()
+
+        # FIXME: how do i want to handle the deps list?  special section
+        #        populated by deps features? or built into the brp section
+        #        (it is a default feature, after all)
         self.deps = []
-        self.built_from_sha = None
 
 
 class notes_installed():
