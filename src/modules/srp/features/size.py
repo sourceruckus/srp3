@@ -8,6 +8,12 @@ import stat
 
 from srp.features import *
 
+
+class notes_size:
+    def __init__(self):
+        self.total = 0
+
+
 def increment_notes(work, fname):
     """add size of fname to total in NOTES"""
     x = work["manifest"][fname]
@@ -17,11 +23,6 @@ def increment_notes(work, fname):
         return
 
     n = work["notes"]
-
-    try:
-        total = int(n.additions["installed"]["size"])
-    except:
-        total = 0
 
     # NOTE: We can't use the size recorded in TarInfo here because some
     #       other Feature may have changed the file once installed
@@ -34,9 +35,7 @@ def increment_notes(work, fname):
     except:
         path = fname
 
-    total += os.stat(path)[stat.ST_SIZE]
-
-    n.additions["installed"]["size"] = str(total)
+    n.size.total += os.stat(path)[stat.ST_SIZE]
 
 
 # FIXME: this should also register a commit action so we can recalc size

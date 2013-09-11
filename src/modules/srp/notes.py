@@ -131,7 +131,7 @@ class notes_script(notes_buffer):
 
 
 class notes_brp:
-    def __init__(self, from_sha=None):
+    def __init__(self, from_sha):
         self.built_from_sha = from_sha
 
         # FIXME: should have a .srprc file to specify a full name (e.g.,
@@ -148,9 +148,9 @@ class notes_brp:
 
 
 class notes_installed():
-    def __init__(self):
-        self.install_date = None
-        self.installed_from_sha = None
+    def __init__(self, from_sha):
+        self.install_date = time.asctime()
+        self.installed_from_sha = from_sha
 
 
 class notes_file:

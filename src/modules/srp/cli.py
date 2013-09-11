@@ -477,22 +477,25 @@ def do_install(fname, options):
     #       externally maintained init script)
     with tarfile.open(fname) as p:
         # verify SHA
-        verify_sha(p)
+        from_sha = verify_sha(p)
         # verify that requirements are met
         n_fobj = p.extractfile("NOTES")
-        n = srp.notes.notes(n_fobj)
+        #n = srp.notes.notes(n_fobj)
+        n = pickle.load(n_fobj)
         # extract into work dir
         p.extractall(work['dir'] + "/package")
 
-    blob = srp.blob.blob(work['dir']+"/package/BLOB")
+    # add installed section to NOTES instance
+    n.installed = srp.notes.notes_installed(from_sha)
 
-    with open(work["dir"]+"/package/SHA", "rb") as f:
-        sha = f.read().decode()
+    # update notes_file with host defaults
+    n.update_features(srp.features.default_features)
 
     # update notes fields with optional command line flags
     n.update_features(options)
+    print(n)
 
-    n.additions['installed'] = {}
+    blob = srp.blob.blob(work['dir']+"/package/BLOB")
 
     # prep our shared work namespace
     #
@@ -501,11 +504,25 @@ def do_install(fname, options):
     work['fname'] = fname
     work['notes'] = n
     work['manifest'] = blob.manifest
-    work['sha'] = sha
+
+    # NOTE: In order to test this (and later on, to test new packages) as an
+    #       unprivileged, we need to have to have some sort of fake root
+    #       option (e.g., the old SRP_ROOT_PREFIX trick).
+    #
+    #       I'm waffling between using a DESTDIR environment variable
+    #       (because that's what autotools and tons of other Makefiles use)
+    #       and adding a --root command line arg (because that's what RPM
+    #       does and it's easier to document)
+    #
+    # FIXME: For now, it's DESTDIR.  Perhaps revisit this later...
+    try:
+        work["DESTDIR"] = os.environ["DESTDIR"]
+    except:
+        work["DESTDIR"] = "/"
 
     # run through install funcs
-    stages = srp.features.get_stage_map(n.options.features.split())
-    print("features:", n.options.features)
+    stages = srp.features.get_stage_map(n.header.features)
+    print("features:", n.header.features)
     print("install funcs:", stages['install'])
     for f in stages['install']:
         # check for notes section class and create if needed
@@ -549,22 +566,14 @@ def do_install(fname, options):
     # NOTE: We need to refresh our copy of n because feature funcs may have
     #       modified the copy in work[].
     n = work["notes"]
-    #with open(work["db"]+"/NOTES", "wb") as f:
-    #    n.write(f)
 
     # commit MANIFEST to disk in srp db
     #
     # NOTE: We need to refresh our copy because feature funcs may have
     #       modified it
     m = work["manifest"]
-    #with open(work["db"]+"/MANIFEST", "wb") as f:
-    #    pickle.dump(m, f)
 
-    # FIXME: working towards this:
-    #
-    #  srp.db.register(srp.db.installed_pacakge(n, m, work["sha"]))
-    #
-    #        we'll create and register in 2 steps so that extra files can be added in between
+    # register w/ srp db
     inst = srp.db.installed_package(n, m)
     srp.db.register(inst)
 

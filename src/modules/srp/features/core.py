@@ -208,6 +208,8 @@ def build_func(work):
     work['manifest'] = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
 
 
+# FIXME: dead code.  db init is done in db module now and we've unregistered
+#        this func in the feature_struct
 def install_func(work):
     """prep db stuff"""
     # NOTE: In order to test this (and later on, to test new packages) as an
@@ -227,22 +229,23 @@ def install_func(work):
 
     m = work['manifest']
 
+    n = work["notes"]
+
     # setup the db dir for later
     #
     # FIXME: /var/lib/srp should probably be configurable...
-    path = "/var/lib/srp/"+work["notes"].info.name+"/"+work["sha"]
+    #
+    # FIXME: is this really where we should be doing this?  shouldn't some
+    #        method in the db module take care of it?
+    #
+    # FIXME: and that's the wrong sha... that's the sha of the brp we're
+    #        installing from... don't we want to calc a final sha?
+    path = "/var/lib/srp/"+n.header.name+"/"+n.installed.installed_from_sha
     # FIXME: DESTDIR or --root.  see FIXME in core.install_func...
     work["db"] = work["DESTDIR"] + path
 
     # FIXME: if sha already installed, this will throw OSError
     os.makedirs(work["db"])
-
-    # add fields to NOTES
-    n = work['notes']
-
-    # FIXME: should i store seconds since epoch, struct_time, or a human
-    #        readable string here...?
-    n.additions['installed']['date'] = time.asctime()
 
 
 def install_iter(work, fname):
@@ -279,7 +282,6 @@ register_feature(
                    True,
                    create = stage_struct("core", create_func, [], []),
                    build = stage_struct("core", build_func, [], []),
-                   install = stage_struct("core", install_func, [], []),
                    install_iter = stage_struct("core", install_iter, [], []),
                    uninstall = stage_struct("core", uninstall_func, [], []),
                    uninstall_iter = stage_struct("core", uninstall_iter,

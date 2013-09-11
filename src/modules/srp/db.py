@@ -80,7 +80,7 @@ class installed_package:
 
 def register(p):
     """register installed_package instance p in the db"""
-    name = p["notes"].info.name
+    name = p.notes.header.name
     try:
         __db[name].append(p)
     except:
