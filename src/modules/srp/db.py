@@ -99,6 +99,7 @@ dbpath+="/var/lib/srp/db"
 
 def commit():
     """re-pickle __db to disk"""
+    os.makedirs(os.path.dirname(dbpath), exist_ok=True)
     with open(dbpath, "wb") as f:
         pickle.dump(__db, f)
 
