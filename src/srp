@@ -24,4 +24,6 @@ import srp
 srp.cli.main()
 
 # FIXME: make sure we only do this if we're exiting cleanly
-srp.db.commit()
+#
+#        only install, uninstall, and maybe action should do this
+#srp.db.commit()

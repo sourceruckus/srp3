@@ -577,13 +577,20 @@ def do_install(fname, options):
     inst = srp.db.installed_package(n, m)
     srp.db.register(inst)
 
+    # commit db to disk
+    #
+    # FIXME: is there a better place for this?
+    srp.db.commit()
+
 
 
 # FIXME: what should srp -l output look like?  maybe just like v2's output?  but --raw gives a SHA?
 
 def do_query(fname, options):
     print(fname, options)
-    # n, m = srp.db.lookup(fname) ??
-    for x in os.listdir(os.environ["DESTDIR"]+"/var/lib/srp"):
-        if fnmatch.fnmatch(x, fname):
-            print(x)
+    matches = srp.db.lookup_by_name(fname)
+    print(matches)
+    for m in matches:
+        print("-".join((m.notes.header.name,
+                        m.notes.header.version,
+                        m.notes.header.pkg_rev)))
