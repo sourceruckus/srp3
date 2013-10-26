@@ -34,7 +34,7 @@ AC_SUBST(PYTHON_CFLAGS)
 PYTHON_LDFLAGS=$($PYTHON-config --ldflags)
 AC_SUBST(PYTHON_LDFLAGS)
 
-# FIXME: These macros can be used to disable functionality... but I don'
+# FIXME: These macros can be used to disable functionality... but I don't
 #        think they're really needed here.  Although, I could require >3.2
 #        and then check explicitly for xz module.
 #AM_CHECK_PYMOD(tarfile)
@@ -42,12 +42,13 @@ AC_SUBST(PYTHON_LDFLAGS)
 #AM_CHECK_PYMOD(asdfooo)
 #AM_CHECK_PYMOD()
 
-AC_CONFIG_FILES([Makefile \
-		 src/Makefile \
-		 src/modules/Makefile \
-		 src/modules/srp/Makefile \
-		 src/modules/srp/config.py \
-		 src/modules/srp/features/Makefile])
+AC_CONFIG_FILES([Makefile
+		 src/Makefile
+		 src/modules/Makefile
+		 src/modules/srp/Makefile
+		 src/modules/srp/config.py
+		 src/modules/srp/features/Makefile
+		 ])
 
 # Do this one seperate, so we can add the chmod
 #AC_CONFIG_FILES([src/ruckusrd], [chmod +x src/ruckusrd])
