@@ -78,7 +78,7 @@ features = no_ldupdate #perms users ldpath gtk_icons
 [script]
 %%BUFFER_BEGIN%%
 #!/bin/bash
-./configure && make -j5 &&
+./configure --disable-srp-dist && make -j5 &&
 make DESTDIR=$PAYLOAD_DIR install || exit 1
 
 mkdir -p $PAYLOAD_DIR/tmp/{foo,bar} || exit 1
