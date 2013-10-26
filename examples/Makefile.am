@@ -1,0 +1,2 @@
+SUBDIRS =
+SUBDIRS += foo-3.0

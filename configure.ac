@@ -9,6 +9,7 @@ m4_ifnblank(srp_devtag,
 	[m4_define(srp_version, srp_major_version.srp_minor_version.srp_micro_version)])
 
 AC_INIT([The Source Ruckus Packager], [srp_version], [michael.d.labriola@gmail.com], [srp])
+AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_SUBST(SRP_MAJOR_VERSION, srp_major_version)
@@ -48,9 +49,12 @@ AC_CONFIG_FILES([Makefile
 		 src/modules/srp/Makefile
 		 src/modules/srp/config.py
 		 src/modules/srp/features/Makefile
+		 examples/Makefile
 		 ])
 
 # Do this one seperate, so we can add the chmod
 #AC_CONFIG_FILES([src/ruckusrd], [chmod +x src/ruckusrd])
+
+AC_CONFIG_SUBDIRS(examples/foo-3.0)
 
 AC_OUTPUT
