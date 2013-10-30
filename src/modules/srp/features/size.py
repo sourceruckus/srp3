@@ -19,6 +19,10 @@ def increment_notes(work, fname):
     x = work["manifest"][fname]
 
     # only count regular files
+    #
+    # FIXME: Do we want to add an arbitrary ammount to size for non-reg
+    #        files?  Directories do indeed take up some space, right?
+    #        What about symlinks?  Hardlinks?  Fifos?  Devnodes?
     if not x['tinfo'].isreg():
         return
 

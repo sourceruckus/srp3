@@ -4,6 +4,7 @@ lookup functions
 import os
 import pickle
 import hashlib
+import fnmatch
 
 import srp
 from pprint import pprint
@@ -81,6 +82,11 @@ class installed_package:
 def register(p):
     """register installed_package instance p in the db"""
     name = p.notes.header.name
+    # FIXME: should the __db[name] entry be a list or a dict? for now it's
+    #        a list, but we should revisit this once we've had a chance to
+    #        figure out what the API is gonna be like... a dict might make
+    #        more sense if we're always looking up by sha internally, for
+    #        example.
     try:
         __db[name].append(p)
     except:
@@ -164,23 +170,36 @@ def refresh():
 #
 # names should use fnmatch to support basic completion
 
-def lookup_by_name(pkgname):
-    pass
+#def lookup_by_name(pkgname):
+#    pass
 
-def lookup_by_file(filename):
-    pass
+#def lookup_by_file(filename):
+#    pass
 
-def lookup_by_dep_lib(libname):
-    pass
+#def lookup_by_dep_lib(libname):
+#    pass
 
-def lookup_by_builder():
-    pass
+#def lookup_by_builder():
+#    pass
 
 #def lookup_by...description...install_date...build_date...
 
 # should we just plumb something up to dynamically query on any field in
 # NOTES?
 
+def lookup_by_name(name):
+    retval = []
+    for x in __db:
+        if fnmatch.fnmatch(x, name):
+            retval.extend(__db[x])
+    return retval
+
+
+def lookup_by_notes(field, value):
+    pass
+
+def lookup_by_manifest(filename):
+    pass
 
 
 
