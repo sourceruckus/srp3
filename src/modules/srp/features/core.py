@@ -54,6 +54,7 @@ def create_tmp_ruckus():
 
 
 
+# FIXME: migrate bits of this to build_func, then remove
 def create_func(work):
     """create tar of NOTES, source, SHA"""
 
@@ -125,6 +126,30 @@ def build_func(work):
     all files"""
     # create ruckus dir in tmp
     work['dir'] = create_tmp_ruckus()
+
+    n = work["notes"]
+
+    # locate all needed files
+    #
+    # NOTE: We expect these to all be relative to the directory containing
+    #       the notes file.
+    flist = []
+    if n.header.source_dir:
+        flist.append(n.header.source_dir)
+    else:
+        flist.append(n.header.source_filename)
+    flist.extend(n.header.extra_content)
+
+    for fname in flist:
+        # fname may be a file or a dir, so we just check for existence
+        if not os.path.exists(fname):
+            raise Exception("Missing required file/dir: " + fname)
+
+    # FIXME: should i make a symlink forest in dir/package so that build
+    #        scripts can assume all their files are relative to there?
+    #        would be easy enough, and would add a bit of backwards
+    #        compatibility in old build scripts.
+
 
     # FIXME: make sure system default features are enabled.  defaults were
     #        populated when the notes_file was instantiated during creation,
@@ -280,7 +305,6 @@ register_feature(
     feature_struct("core",
                    __doc__,
                    True,
-                   create = stage_struct("core", create_func, [], []),
                    build = stage_struct("core", build_func, [], []),
                    install_iter = stage_struct("core", install_iter, [], []),
                    uninstall = stage_struct("core", uninstall_func, [], []),

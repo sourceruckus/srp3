@@ -15,9 +15,6 @@ in.
 
 The pre-defined stages are:
 
-  create(work) -- Creating a source package from a NOTES file, source
-  tarball, and possibly other files (e.g., patches, extra sources).
-
   build(work) -- Build the binary package by executing the embedded build
   script in the NOTES file, populate MANIFEST with TarInfo objects of
   resulting payload.
@@ -42,7 +39,7 @@ The pre-defined stages are:
 
 
 So for example, when a package is being built, all the SRP main program
-has to do is fetch a list of create functions from all the registered
+has to do is fetch a list of build functions from all the registered
 Features (sorted via their pre/post rules), and execute them one by one.
 
 """
@@ -53,8 +50,7 @@ registered_features = {}
 action_map = {}
 
 # The standard list of stages
-stage_list = ['create',
-              'build', 'build_iter',
+stage_list = ['build', 'build_iter',
               'install', 'install_iter',
               'uninstall', 'uninstall_iter']
 
@@ -68,7 +64,6 @@ class feature_struct:
 
     """
     def __init__(self, name=None, doc=None, default=False,
-                 create=None,
                  build=None, build_iter=None,
                  install=None, install_iter=None,
                  uninstall=None, uninstall_iter=None,
@@ -76,7 +71,6 @@ class feature_struct:
         self.name=name
         self.doc=doc
         self.default=default
-        self.create=create
         self.build=build
         self.build_iter=build_iter
         self.install=install
@@ -106,7 +100,7 @@ class feature_struct:
         """Method used to do validity checking on instances"""
         if not (self.name and self.doc):
             return False
-        if not (self.create or self.build or self.build_iter or self.install
+        if not (self.build or self.build_iter or self.install
                 or self.install_iter or self.uninstall or self.uninstall_iter
                 or self.action):
             return False

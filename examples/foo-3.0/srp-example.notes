@@ -34,6 +34,9 @@ srp_min_version_micro = 0
 # more source tarballs).
 #
 # NOTE: These paths are relative to the location of the NOTES file
+#
+# NOTE: This is so we can error-check that the files are available prior to
+#       running our build methods.
 extra_content = docs/docs1 docs/docs2
 
 

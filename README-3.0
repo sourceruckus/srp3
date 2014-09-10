@@ -34,6 +34,18 @@ and not get into implementation details.
   NOTE: I think we were already doing this with the old v3 developmental
         tree.
 
+** Build binary packages w/out dist tarball
+*** Should we remove the entire concept of a source package?
+
+  If you've already got an extracted source tree on disk, you shouldn't have to
+  make a dist tarball and create a source package before you start building.
+  Just have the notes file specify path to source tree in it (or pass it in on
+  the command line?), then attempt to build out-of-tree (or in a copy of the
+  tree, if out-of-tree isn't supported).
+
+  srp -b foo.notes --srctree=/path/to/src
+
+
 ** Repairable pacakges (optionally)
 
   Keep package contents on file, not just checksums.  This way we can

@@ -131,9 +131,7 @@ class notes_script(notes_buffer):
 
 
 class notes_brp:
-    def __init__(self, from_sha):
-        self.built_from_sha = from_sha
-
+    def __init__(self):
         # FIXME: should have a .srprc file to specify a full name (e.g.,
         #        'Joe Bloe <bloe@mail.com>'), and fallback to user id if
         #        it's not set

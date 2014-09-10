@@ -23,9 +23,7 @@ desc = """\
 """.format(srp.config.prog, srp.config.version, srp.config.build_year)
 
 epi = """\
-example: srp -v --create=foo.notes
-
-example: srp -vvv --build -p foo.srp
+example: srp -v --build=foo.notes --srcdir=/path/to/src --intree
 
 example: srp --install=strip_debug,strip_docs,strip_man -p foo.i686.brp
 
@@ -43,9 +41,6 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
 
 # one and only one of the following options is required
 g = p.add_mutually_exclusive_group(required=True)
-
-g.add_argument('-c', '--create', metavar="NOTES",
-               help="""Create a source package from an SRP NOTES file.""")
 
 g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
                const=[],
@@ -77,13 +72,9 @@ g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
                     request only specific information (e.g.,
                     --query=size,date_installed).""")
 
-g.add_argument('-b', '--build', metavar="OPTIONS", nargs='?',
-               const=[],
-               help="""Build PACKAGE.  Resulting binary package will be
-                    written to PWD.  Can optionally be passed a
-                    comma-delimited list of FIELDS to tailor the build
-                    process (e.g.,
-                    --build=author=somebody@somewhere,write_dir=/scrap/my_packages).""")
+g.add_argument('-b', '--build', metavar="NOTES",
+               help="""Build package specified by the supplied NOTES file.
+                    Resulting binary package will be written to PWD.""")
 
 g.add_argument('-a', '--action', metavar="ACTIONS",
                help="""Perform some sort of action on an installed PACKAGE.
@@ -253,10 +244,6 @@ def main():
             print("do_query(package={}, fields={})".format(x, args.query))
             do_query(x, args.query)
 
-    elif args.create:
-        print("do_create(notes={})".format(args.create))
-        do_create(args.create)
-
     elif args.list != None:
         if not args.list:
             args.list = ["*"]
@@ -280,31 +267,6 @@ def main():
 #                    .features.py
 #                    .features/somefeature.py
 
-def do_create(fname):
-    with open(fname, 'rb') as fobj:
-        n = srp.notes.notes_file(fobj)
-    print(n)
-
-    work = {}
-    work["pname"] = "{}-{}-{}.srp".format(n.header.name, n.header.version,
-                                          n.header.pkg_rev)
-    work["notes"] = n
-
-    # run through all queued up stage funcs for create
-    stages = srp.features.get_stage_map(n.header.features)
-    print("create funcs:", stages['create'])
-    for f in stages['create']:
-        print("executing:", f)
-        try:
-            f.func(work)
-        except:
-            print("ERROR: failed feature stage function:", f)
-            try:
-                os.remove(work["pname"])
-            except:
-                pass
-            raise
-
 
 def verify_sha(tar):
     sha = hashlib.new("sha1")
@@ -319,19 +281,11 @@ def verify_sha(tar):
 
 
 def do_build(fname, options):
-    with tarfile.open(fname) as p:
-        # verify SHA
-        from_sha = verify_sha(p)
-        # verify that requirements are met
-        fobj = p.extractfile("NOTES")
-        #n = srp.notes.notes(fobj)
-        n = pickle.load(fobj)
+    with open(fname, 'rb') as fobj:
+        n = srp.notes.notes_file(fobj)
 
     # add brp section to NOTES instance
-    n.brp = srp.notes.notes_brp(from_sha)
-
-    # update notes_file with host defaults
-    n.update_features(srp.features.default_features)
+    n.brp = srp.notes.notes_brp()
 
     # update notes fields with optional command line flags
     n.update_features(options)
