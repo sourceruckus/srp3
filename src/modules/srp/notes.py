@@ -55,6 +55,12 @@ class notes_header:
         self.name = config["name"]
         self.version = config["version"]
         self.pkg_rev = config["pkg_rev"]
+
+        # FIXME: need to pass in path to source tree somehow...
+        #
+        #        OR
+        #
+        #        use a source_filename?
         self.source_filename = os.path.join(path, config["source_filename"])
 
         # strip carriage returns out of this potentially multi-line item

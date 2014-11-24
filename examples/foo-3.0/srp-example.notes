@@ -13,7 +13,8 @@ version = 3.0.0
 # source.
 pkg_rev = 1
 
-source_filename = srp-example-3.0.0.tar.bz2
+# FIXME: still need this?
+#source_filename = srp-example-3.0.0.tar.bz2
 
 # The description can be multiple lines, as long as the wrapped lines are
 # indented further than the "description" key was.

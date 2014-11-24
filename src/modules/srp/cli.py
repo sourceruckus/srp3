@@ -225,13 +225,11 @@ def main():
             print("do_uninstall(package={}, flags={})".format(x, args.uninstall))
 
     elif args.build != None:
-        if args.build != []:
-            args.build = args.build.split(',')
-        # NOTE: I'm not sure why you would end up specifying packages to
-        #       build on stdin... but we might as well support it
-        for x in get_package_list():
-            print("do_build(package={}, flags={})".format(x, args.build))
-            do_build(x, args.build)
+        # FIXME: old create/build behavior allowed us to pass
+        #        --build=options where now we have --build=path_to_notes and
+        #        no way to pass in build options...
+        print("do_build(notes={}, flags={})".format(args.build, []))
+        do_build(args.build, [])
 
     elif args.action:
         for x in get_package_list():
