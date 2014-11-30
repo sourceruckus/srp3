@@ -133,12 +133,22 @@ def build_func(work):
     #
     # NOTE: We expect these to all be relative to the directory containing
     #       the notes file.
+    #
+    # FIXME: perhaps this whole assertion should be done from the notes
+    #        constructor...?
     flist = []
+    # source dir/tarball
     if n.header.source_dir:
         flist.append(n.header.source_dir)
     else:
         flist.append(n.header.source_filename)
-    flist.extend(n.header.extra_content)
+    # extra content
+    # FIXME: the extradir expansion should get done in notes constructor...
+    if n.header.extra_dir:
+        for x in n.header.extra_content:
+            flist.append(os.path.join(n.header.extra_dir, x))
+    else:
+        flist.extend(n.header.extra_content)
 
     for fname in flist:
         # fname may be a file or a dir, so we just check for existence
@@ -154,6 +164,10 @@ def build_func(work):
     # FIXME: make sure system default features are enabled.  defaults were
     #        populated when the notes_file was instantiated during creation,
     #        but we may now be on a different host with different defaults.
+    #
+    # FIXME: NOT true if we're removing the conecpt of a source package!
+
+    blargedyblargleftoffhere
 
     # extract package contents
     #

@@ -56,13 +56,6 @@ class notes_header:
         self.version = config["version"]
         self.pkg_rev = config["pkg_rev"]
 
-        # FIXME: need to pass in path to source tree somehow...
-        #
-        #        OR
-        #
-        #        use a source_filename?
-        self.source_filename = os.path.join(path, config["source_filename"])
-
         # strip carriage returns out of this potentially multi-line item
         self.description = config["description"].replace("\n", " ")
 
@@ -301,6 +294,10 @@ class notes_file:
         if missing:
             err="package requires missing features: {}".format(missing)
             raise Exception(err)
+
+        # check for needed files (source tree, patches, etc)
+        #
+        # FIXME: do this
 
 
     # used to update features on the command line

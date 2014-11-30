@@ -23,7 +23,9 @@ desc = """\
 """.format(srp.config.prog, srp.config.version, srp.config.build_year)
 
 epi = """\
-example: srp -v --build=foo.notes --srcdir=/path/to/src --intree
+example: srp -v --build=foo.notes --src=/path/to/src --intree
+
+example: srp --build=foo.notes --src=foo.tar.bz2 --extra=/path/to/extra/files
 
 example: srp --install=strip_debug,strip_docs,strip_man -p foo.i686.brp
 
@@ -42,27 +44,25 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
 # one and only one of the following options is required
 g = p.add_mutually_exclusive_group(required=True)
 
-g.add_argument('-i', '--install', metavar="OPTIONS", nargs='?',
-               const=[],
+g.add_argument('-b', '--build', metavar="NOTES",
+               help="""Build package specified by the supplied NOTES file.
+                    Resulting binary package will be written to PWD.  Source
+                    dir (or source tarball) must also be specified via
+                    --src.""")
+
+g.add_argument('-i', '--install', action='store_true',
                help="""Install the provided PACKAGE(s).  If a different
                     version of PACKAGE is already installed, it will be
                     upgraded unless --no-upgrade is set.  Note that upgrade
                     and downgrade are not differentiated (i.e., you can
                     upgrade from version 3 to version 2 of a package even
                     though you'd probably think of that as a downgrade
-                    (unless version 3 is broken, of course)).  Can
-                    optionally be passed a comma-delimited list of OPTIONS
-                    to tailor the install processing (e.g.,
-                    --install=no_upgrade,strip_debug).""")
+                    (unless version 3 is broken, of course)).""")
 
-g.add_argument('-u', '--uninstall', metavar="OPTIONS", nargs='?',
-               const=[],
+g.add_argument('-u', '--uninstall', action='store_true',
                help="""Uninstall the provided PACKAGE(s).  If PACKAGE isn't
                     installed, this will quietly return successfully (well,
-                    it DID get uninstalled at some point).  Can optionally
-                    be passed a comma-delimited list of OPTIONS to tailor
-                    the uninstall processing (e.g.,
-                    --uninstall=no_leftovers).""")
+                    it DID get uninstalled at some point).""")
 
 g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
                const=[],
@@ -71,10 +71,6 @@ g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
                     optionally be passed a comma-delimited list of FIELDS to
                     request only specific information (e.g.,
                     --query=size,date_installed).""")
-
-g.add_argument('-b', '--build', metavar="NOTES",
-               help="""Build package specified by the supplied NOTES file.
-                    Resulting binary package will be written to PWD.""")
 
 g.add_argument('-a', '--action', metavar="ACTIONS",
                help="""Perform some sort of action on an installed PACKAGE.
@@ -150,12 +146,29 @@ p.add_argument('-F', '--force', action='store_true',
 #        silly for --query.
 p.add_argument('-p', '--package', metavar='PACKAGE', nargs='+',
                help="""Specifies the PACKAGE(s) for --install, --uninstall,
-               --query, --action, and --build.  Note that PACKAGE can be a
-               Unix shell-style wildcard for modes that act on previously
+               --query, and --action.  Note that PACKAGE can be a Unix
+               shell-style wildcard for modes that act on previously
                installed packages (e.g., --uninstall, --query, --action).
                If a specified PACKAGE is '-', additional PACKAGEs are read
                from stdin.  If --package is left out entirely, packages are
                expected on stdin.""")
+
+p.add_argument('--src', metavar='SRC',
+               help="""Specifies the source dir or source tarball to be
+               used for --build.""")
+
+p.add_argument('--extra', metavar='DIR',
+               help="""Specified an alternate basedir for paths referenced
+               in the NOTES file (e.g., extra_content).""")
+
+p.add_argument('--intree', action='store_true',
+               help="""Do not attempt to build out-of-tree.  By default,
+               packages are built out-of-tree unless specified as tarballs
+               or this flag is set.""")
+
+p.add_argument('--options', metavar='OPTIONS',
+               help="""Comma delimited list of extra options to pass into
+               --build, --install, or --uninstall.""")
 
 
 # once we parse our command line arguments, we'll store the results globally
@@ -211,25 +224,24 @@ def main():
 
     print("do_init_output(level={})".format(args.verbose))
 
-    if args.install != None:
-        if args.install != []:
-            args.install = args.install.split(',')
+    if args.install:
         for x in get_package_list():
             print("do_install(package={}, flags={})".format(x, args.install))
             do_install(x, args.install)
 
-    elif args.uninstall != None:
-        if args.uninstall != []:
-            args.uninstall = args.uninstall.split(',')
+    elif args.uninstall:
         for x in get_package_list():
             print("do_uninstall(package={}, flags={})".format(x, args.uninstall))
 
-    elif args.build != None:
+    elif args.build:
+        # check for --src and possibly --extra, --intree
+
         # FIXME: old create/build behavior allowed us to pass
         #        --build=options where now we have --build=path_to_notes and
         #        no way to pass in build options...
-        print("do_build(notes={}, flags={})".format(args.build, []))
-        do_build(args.build, [])
+        print("do_build(notes={}, src={}, extra={}, options={})".
+              format(args.build, args.src, args.extra, args.options))
+        #do_build()
 
     elif args.action:
         for x in get_package_list():

@@ -13,9 +13,6 @@ version = 3.0.0
 # source.
 pkg_rev = 1
 
-# FIXME: still need this?
-#source_filename = srp-example-3.0.0.tar.bz2
-
 # The description can be multiple lines, as long as the wrapped lines are
 # indented further than the "description" key was.
 description = The example package of doom.  This is a really lame example
@@ -31,10 +28,11 @@ srp_min_version_major = 3
 srp_min_version_minor = 0
 srp_min_version_micro = 0
 
-# List of paths to extra files to include in source package (usually patches or
-# more source tarballs).
+# List of paths to extra files needed to build the package (usually patches
+# or more source tarballs).
 #
-# NOTE: These paths are relative to the location of the NOTES file
+# NOTE: These paths are relative to the location of the NOTES file (unless
+#       overriden on the command line)
 #
 # NOTE: This is so we can error-check that the files are available prior to
 #       running our build methods.
