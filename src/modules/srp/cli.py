@@ -166,7 +166,7 @@ p.add_argument('--intree', action='store_true',
                packages are built out-of-tree unless specified as tarballs
                or this flag is set.""")
 
-p.add_argument('--options', metavar='OPTIONS',
+p.add_argument('--options', metavar='OPTIONS', default=[],
                help="""Comma delimited list of extra options to pass into
                --build, --install, or --uninstall.""")
 
@@ -224,6 +224,12 @@ def main():
 
     print("do_init_output(level={})".format(args.verbose))
 
+    # stand-alone arguments/flags
+    if args.options != []:
+        # parse --options into a list
+        args.options = args.options.split(',')
+
+    # mutually-exclusive arguments/flags
     if args.install:
         for x in get_package_list():
             print("do_install(package={}, flags={})".format(x, args.install))
@@ -234,14 +240,13 @@ def main():
             print("do_uninstall(package={}, flags={})".format(x, args.uninstall))
 
     elif args.build:
-        # check for --src and possibly --extra, --intree
+        # check for other required flags
+        if not args.src:
+            p.error("argument --build: requires --src")
 
-        # FIXME: old create/build behavior allowed us to pass
-        #        --build=options where now we have --build=path_to_notes and
-        #        no way to pass in build options...
-        print("do_build(notes={}, src={}, extra={}, options={})".
-              format(args.build, args.src, args.extra, args.options))
-        #do_build()
+        print("do_build(notes={}, src={}, extra={}, intree={}, options={})".
+              format(args.build, args.src, args.extra, args.intree, args.options))
+        do_build(args.build, args.src, args.extra, args.intree, args.options)
 
     elif args.action:
         for x in get_package_list():
@@ -290,9 +295,9 @@ def verify_sha(tar):
     return x
 
 
-def do_build(fname, options):
+def do_build(fname, src, extradir, intree, options):
     with open(fname, 'rb') as fobj:
-        n = srp.notes.notes_file(fobj)
+        n = srp.notes.notes_file(fobj, src, extradir, intree)
 
     # add brp section to NOTES instance
     n.brp = srp.notes.notes_brp()

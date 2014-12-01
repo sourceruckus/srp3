@@ -157,7 +157,7 @@ class notes_file:
 
     NOTE: We implement sub-classes in here to handle each section of the file.
     """
-    def __init__(self, fobj):
+    def __init__(self, fobj, src, extradir=None, intree=False):
         # check for open mode
         #
         # NOTE: We do this here so that we can assume the file has been
@@ -171,7 +171,8 @@ class notes_file:
         if type(fobj.read(0)) != bytes:
             raise Exception("{}(fobj): fobj must be opened in binary mode".format(self.__class__.__name__))
 
-        __path = os.path.dirname(fobj.name)
+        if not extradir:
+            extradir = os.path.dirname(fobj.name)
 
         # NOTE: We pass the actual buffer read from file through buffencode,
         #       which encodes specified sections and allows the configparser to
@@ -183,10 +184,14 @@ class notes_file:
         c.read_string(buf)
 
         # populate sub-section instances
-        self.header = notes_header(c["header"], __path)
-        self.script = notes_script(c["script"], __path)
+        self.header = notes_header(c["header"], extradir)
+        self.script = notes_script(c["script"], extradir)
         self.brp = None
         self.installed = None
+
+        # add cli-specified header fields
+        self.header.src = src
+        self.header.build_intree = intree
 
         # add features for unclaimed sections
         #
@@ -198,7 +203,7 @@ class notes_file:
             if s not in ["header", "script", "brp", "installed", "DEFAULT"]:
                 self.header.features.append(s)
                 # instantiate special feature subsections
-                setattr(self, s, globals()["notes_"+s](c[s], __path))
+                setattr(self, s, globals()["notes_"+s](c[s], extradir))
 
         # check package requirements
         self.check()
@@ -296,8 +301,19 @@ class notes_file:
             raise Exception(err)
 
         # check for needed files (source tree, patches, etc)
-        #
-        # FIXME: do this
+        flist = []
+        # source dir/tarball
+        flist.append(self.header.src)
+        # extra content
+        flist.extend(self.header.extra_content)
+
+        print(os.getcwd())
+        print(flist)
+        for fname in flist:
+            # fname may be a file or a dir, so we just check for existence
+            if not os.path.exists(fname):
+                raise Exception("missing required file/dir: " + fname)
+
 
 
     # used to update features on the command line

@@ -129,32 +129,6 @@ def build_func(work):
 
     n = work["notes"]
 
-    # locate all needed files
-    #
-    # NOTE: We expect these to all be relative to the directory containing
-    #       the notes file.
-    #
-    # FIXME: perhaps this whole assertion should be done from the notes
-    #        constructor...?
-    flist = []
-    # source dir/tarball
-    if n.header.source_dir:
-        flist.append(n.header.source_dir)
-    else:
-        flist.append(n.header.source_filename)
-    # extra content
-    # FIXME: the extradir expansion should get done in notes constructor...
-    if n.header.extra_dir:
-        for x in n.header.extra_content:
-            flist.append(os.path.join(n.header.extra_dir, x))
-    else:
-        flist.extend(n.header.extra_content)
-
-    for fname in flist:
-        # fname may be a file or a dir, so we just check for existence
-        if not os.path.exists(fname):
-            raise Exception("Missing required file/dir: " + fname)
-
     # FIXME: should i make a symlink forest in dir/package so that build
     #        scripts can assume all their files are relative to there?
     #        would be easy enough, and would add a bit of backwards
