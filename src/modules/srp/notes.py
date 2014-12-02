@@ -190,7 +190,7 @@ class notes_file:
         self.installed = None
 
         # add cli-specified header fields
-        self.header.src = src
+        self.header.src = os.path.abspath(src)
         self.header.build_intree = intree
 
         # add features for unclaimed sections

@@ -45,11 +45,6 @@ def partition_list(full_list, n):
 
 def create_tmp_ruckus():
     d = tempfile.mkdtemp(prefix="srp-")
-
-    # create ruckus dir tree
-    for x in ["package", "build", "tmp"]:
-        os.makedirs(d + "/" + x)
-
     return d
 
 
@@ -141,26 +136,40 @@ def build_func(work):
     #
     # FIXME: NOT true if we're removing the conecpt of a source package!
 
-    blargedyblargleftoffhere
-
-    # extract package contents
+    # setup build dir(s)
     #
-    # NOTE: This is needed so that build scripts can access other misc files
-    #       they've included in the srp (e.g., apply a patch, install an
-    #       externally maintained init script)
-    with tarfile.open(work["fname"]) as f:
-        f.extractall(work['dir'] + "/package")
-
-    # extract source tarball
-    with tarfile.open(work['dir'] + "/package/" + work['notes'].header.source_filename) as f:
-        sourcedir=f.firstmember.name
-        f.extractall(work['dir'] + "/build")
+    # NOTE: If src is a dir, we will attempt to build out-of-tree using a
+    #       seperate build dir.  If --intree was specified, we'll make a
+    #       copy of src in the build dir.  If src is a source tarball, we'll
+    #       extract it in dir.
+    if os.path.isfile(n.header.src):
+        with tarfile.open(n.header.src) as f:
+            f.extractall(work['dir'] + '/build')
+    elif n.header.build_intree:
+        shutil.copytree(n.header.src, work['dir'] + '/build')
+    else:
+        # build out-of-tree in build dir.  we do this by creating a wrapper
+        # script build/configure which simply executes the srcdir/configure
+        # script via absolute path with the specified args
+        #
+        # FIXME: we could detect a missing configure script and fall back to
+        #        build_intree...
+        #
+        # FIXME: if i do that, i have to wory about bootstrapping the source
+        #        dir... how am i gonna handle that?
+        #
+        # FIXME: and what if the tree isn't clean?  make distclean?
+        os.mkdir(work['dir'] + '/build')
+        with open(work['dir'] + '/build/configure', 'w') as f:
+            f.write("#!/bin/sh\n{}/configure $* || exit 1".format(n.header.src))
+            os.chmod(f.name,
+                     stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # create build script
     #
     # FIXME: do i really need to create an executable script file?  or can i
     #        just somehow spawn a subprocess using the contents of the buf?
-    with open(work['dir'] + "/build/srp_go", 'w') as f:
+    with open(work['dir'] + "/srp_go", 'w') as f:
         f.write(work['notes'].script.buffer)
         os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
@@ -195,11 +204,15 @@ def build_func(work):
     #        output from the build until it's all finished, then spamming it
     #        all to the screen...
     new_env = dict(os.environ)
-    new_env['SRP_ROOT'] = work['dir']+"/tmp"
-    new_env['PACKAGE_DIR'] = work['dir']+"/package"
+    # FIXME: SRP_ROOT and PACKAGE_DIR are deprecated NOW if we ditch source
+    #        packages
+    #
+    #new_env['SRP_ROOT'] = work['dir']+"/tmp"
+    #new_env['PACKAGE_DIR'] = work['dir']+"/package"
     new_env['BUILD_DIR'] = work['dir']+"/build"
     new_env['PAYLOAD_DIR'] = work['dir']+"/tmp"
-    subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/'+sourcedir, env=new_env)
+    os.mkdir(work['dir'] + '/tmp')
+    subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/', env=new_env)
 
     # create manifest
     #
