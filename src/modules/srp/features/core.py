@@ -9,6 +9,7 @@ import io
 import os
 import pickle
 import pwd
+import shutil
 import socket
 import stat
 import subprocess
@@ -49,73 +50,6 @@ def create_tmp_ruckus():
 
 
 
-# FIXME: migrate bits of this to build_func, then remove
-def create_func(work):
-    """create tar of NOTES, source, SHA"""
-
-    n = work["notes"]
-
-    # locate all needed files
-    #
-    # NOTE: We expect these to all be relative to the directory containing
-    #       the notes file.
-    flist = [n.header.source_filename]
-    flist.extend(n.header.extra_content)
-
-    # cleanup paths in notes_file
-    #
-    # NOTE: Files get added to the toplevel of the pkg, so we need to remove
-    #       path info from associated entries in notes_file so we can find
-    #       the files in the pkg later
-    n.header.source_filename = os.path.basename(n.header.source_filename)
-    for x in n.header.extra_content[:]:
-        n.header.extra_content.remove(x)
-        n.header.extra_content.append(os.path.basename(x))
-
-    # create tarball
-    #
-    # NOTE: We add the pickled notes_file instance, the source tarball, any
-    #       extra files specified in the NOTES file, and a SHA file
-    #       containing a single checksum of the archive (all files
-    #       concatenated together into a single stream).
-    sha = hashlib.new("sha1")
-    tar = tarfile.open(work["pname"], mode="w")
-
-    # pickle our notes_file instance and add it to the pkg
-    with tempfile.TemporaryFile() as f:
-        pickle.dump(n, f)
-        # rewind for tar.addfile
-        f.seek(0)
-        tar.addfile(tar.gettarinfo(arcname="NOTES", fileobj=f),
-                    fileobj=f)
-        # rewind and generate a SHA entry
-        f.seek(0)
-        sha.update(f.read())
-
-    # add all the files in flist
-    for fname in flist:
-        # create an open file object
-        with open(fname, mode='rb') as f:
-            # we need to remove all leading path segments so that all
-            # files end up at the toplevel of the pkg file
-            arcname = os.path.basename(fname)
-            #print("adding {} as {}".format(f.name, arcname))
-            tar.addfile(tar.gettarinfo(arcname=arcname, fileobj=f),
-                        fileobj=f)
-            # rewind and generate a SHA entry
-            f.seek(0)
-            sha.update(f.read())
-
-    # create the SHA file and add it to the pkg
-    with tempfile.TemporaryFile() as f:
-        f.write(sha.hexdigest().encode())
-        f.seek(0)
-        tar.addfile(tar.gettarinfo(arcname="SHA", fileobj=f),
-                    fileobj=f)
-
-    tar.close()
-
-
 def build_func(work):
     """run build script to populate payload dir, then create TarInfo objects for
     all files"""
@@ -124,18 +58,6 @@ def build_func(work):
 
     n = work["notes"]
 
-    # FIXME: should i make a symlink forest in dir/package so that build
-    #        scripts can assume all their files are relative to there?
-    #        would be easy enough, and would add a bit of backwards
-    #        compatibility in old build scripts.
-
-
-    # FIXME: make sure system default features are enabled.  defaults were
-    #        populated when the notes_file was instantiated during creation,
-    #        but we may now be on a different host with different defaults.
-    #
-    # FIXME: NOT true if we're removing the conecpt of a source package!
-
     # setup build dir(s)
     #
     # NOTE: If src is a dir, we will attempt to build out-of-tree using a
@@ -143,27 +65,81 @@ def build_func(work):
     #       copy of src in the build dir.  If src is a source tarball, we'll
     #       extract it in dir.
     if os.path.isfile(n.header.src):
+        print("extracting source tarball {}".format(n.header.src))
         with tarfile.open(n.header.src) as f:
             f.extractall(work['dir'] + '/build')
-    elif n.header.build_intree:
-        shutil.copytree(n.header.src, work['dir'] + '/build')
+
+        # put source dir in build, not build/source-x.y.z/
+        #
+        # FIXME: This means if the source tarball is some odd tar that isn't
+        #        all contained in a toplevel dir, we have problems...
+        d = os.listdir(work["dir"] + "/build")
+        if len(d) == 1:
+            d = d[0]
+            for x in os.listdir(work["dir"] + "/build/" + d):
+                os.rename(work["dir"] + "/build/" + d + "/" + x,
+                          work["dir"] + "/build/" + x)
+            os.rmdir(work["dir"] + "/build/" + d)
+
     else:
-        # build out-of-tree in build dir.  we do this by creating a wrapper
-        # script build/configure which simply executes the srcdir/configure
-        # script via absolute path with the specified args
+        # src is a source tree, do we need to bootstrap?
         #
-        # FIXME: we could detect a missing configure script and fall back to
-        #        build_intree...
+        # NOTE: If this source tree doesn't use autotools, this block should
+        #       just quietly boil down to a no-op.
+        if not os.path.exists(n.header.src + "/configure"):
+            # try to bootstrap source tree
+            #
+            # NOTE: Each of these subprocess calls uses sets NOCONFIGURE in
+            #       the environment because it's fairly common for
+            #       bootstrap/autogen scripts to invoke configure when
+            #       they're finished and we don't want that.
+            #
+            # FIXME: src tree could be pre-configured, which will break
+            #        out-of-tree building
+            new_env = dict(os.environ)
+            new_env['NOCONFIGURE'] = "1"
+            if os.path.exists(n.header.src + "/bootstrap.sh"):
+                subprocess.check_call(["./bootstrap.sh"],
+                                      cwd=n.header.src, env=new_env)
+
+            elif os.path.exists(n.header.src + "/bootstrap"):
+                subprocess.check_call(["./bootstrap"],
+                                      cwd=n.header.src, env=new_env)
+
+            elif os.path.exists(n.header.src + "/autogen.sh"):
+                subprocess.check_call(["./autogen.sh"],
+                                      cwd=n.header.src, env=new_env)
+
+            elif (os.path.exists(n.header.src + "/configure.in") or
+                  os.path.exists(n.header.src + "/configure.ac")):
+                subprocess.check_call(["autoreconf", "--force", "--install"],
+                                      cwd=n.header.src, env=new_env)
+
+        # attempt to make sure srcdir is clean before we start
         #
-        # FIXME: if i do that, i have to wory about bootstrapping the source
-        #        dir... how am i gonna handle that?
+        # NOTE: Specifically, building out-of-tree requires that the source
+        #       tree be bootstrapped but NOT configured.
         #
-        # FIXME: and what if the tree isn't clean?  make distclean?
-        os.mkdir(work['dir'] + '/build')
-        with open(work['dir'] + '/build/configure', 'w') as f:
-            f.write("#!/bin/sh\n{}/configure $* || exit 1".format(n.header.src))
-            os.chmod(f.name,
-                     stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
+        # FIXME: This could use subprocess.DEVNULL to hide output, but that
+        #        would requier Python >= 3.3
+        subprocess.call(["make", "distclean"], cwd=n.header.src)
+
+        # copy source tree if not building out-of-tree
+        if n.header.build_intree:
+            print("copying sourcetree for in-tree building...")
+            shutil.copytree(n.header.src, work['dir'] + '/build')
+
+        else:
+            # build out-of-tree in build dir.  we do this by creating a
+            # wrapper script build/configure which simply executes the
+            # srcdir/configure script via absolute path with the specified
+            # args
+            os.mkdir(work['dir'] + '/build')
+            with open(work['dir'] + '/build/configure', 'w') as f:
+                f.write("#!/bin/sh\n")
+                f.write("{}/configure $* || exit 1\n".format(n.header.src))
+                os.chmod(f.name,
+                         stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # create build script
     #
@@ -172,6 +148,14 @@ def build_func(work):
     with open(work['dir'] + "/srp_go", 'w') as f:
         f.write(work['notes'].script.buffer)
         os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
+
+    # create extra_content dir
+    #
+    # NOTE: The extra_content files are not symlinks, so that bogus build
+    #       scripts can't mangle system files
+    os.mkdir(work['dir'] + "/extra_content")
+    for x in n.header.extra_content:
+        shutil.copy(x, work['dir'] + "/extra_content")
 
     # run build script
     #
@@ -211,6 +195,7 @@ def build_func(work):
     #new_env['PACKAGE_DIR'] = work['dir']+"/package"
     new_env['BUILD_DIR'] = work['dir']+"/build"
     new_env['PAYLOAD_DIR'] = work['dir']+"/tmp"
+    new_env['EXTRA_DIR'] = work['dir']+"/extra_content"
     os.mkdir(work['dir'] + '/tmp')
     subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/', env=new_env)
 
