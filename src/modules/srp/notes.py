@@ -18,11 +18,12 @@ import time
 # FIXME: we should implement a v2->v3 translator here.  it should translate
 #        the following variables in the build script:
 #
-#        SRP_ROOT/../package -> PACKAGE_DIR
+#        $SRP_ROOT/../package -> $EXTRA_DIR
 #
-#        SRP_ROOT -> PAYLOAD_DIR
+#        $SRP_ROOT -> PAYLOAD_DIR
 #
-#        it should also issue warnings about SRP_ROOT being deprecated.
+#        it should also issue warnings about removed features in v3 (e.g.,
+#        PREPOSTLIB, CHAIN).
 #
 
 # NOTE: This is a bit hairy because bufferfixer expects a str and returns a
@@ -229,45 +230,6 @@ class notes_file:
                 else:
                     ret += "{}.{}: ".format(s.__class__.__name__, k) + str(getattr(s, k)) + "\n"
         return ret.strip()
-
-
-    # FIXME: haven't rewritten this yet, is it still needed if we pickle
-    #        into the srp file?
-    def write(self, fobj):
-        # we accomplish this by re-populating a new configparser instance
-        # with all our data (namedtuples and items from self.additions),
-        # then have the configparser write to a file object
-        c = configparser.ConfigParser()
-
-        # our namedtuple data originally read from the NOTES file
-        for s in self.sections:
-            c[s] = {}
-            for k in self.sections[s]:
-                if getattr(getattr(self, s), "encoded", False) and k == "buf":
-                    c[s][k] = base64.b64encode(getattr(getattr(self, s), k).encode()).decode()
-                else:
-                    c[s][k] = str(getattr(getattr(self, s), k))
-
-        # now add items from self.additions
-        for s in self.additions:
-            c[s] = {}
-            for k in self.additions[s]:
-                c[s][k] = self.additions[s][k]
-
-        # fix fobj mode
-        #
-        # NOTE: ConfigParser.write requires a fobj that was opened in txt
-        #       mode, but everywhere else we (or other python objects) are
-        #       forcing binary mode.  I'm working around this by writing
-        #       config to a temp txt file, then read/writing into the passed
-        #       in binary mode fobj.
-        #
-        # FIXME: max_size should be common w/ all our other
-        #        SpooledTemporaryFile instances.
-        with tempfile.TemporaryFile(mode="w+") as wtf:
-            c.write(wtf)
-            wtf.seek(0)
-            fobj.write(wtf.read().encode())
 
 
     def check(self):

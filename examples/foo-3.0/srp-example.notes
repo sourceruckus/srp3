@@ -34,7 +34,8 @@ srp_min_version_micro = 0
 # NOTE: These paths are relative to the location of the NOTES file (unless
 #       overriden on the command line)
 #
-# NOTE: This is so we can error-check that the files are available prior to
+# NOTE: This isn't technically needed by srp in order to build, but is in
+#       here so we can error-check that the files are available prior to
 #       running our build methods.
 extra_content = docs/docs1 docs/docs2
 

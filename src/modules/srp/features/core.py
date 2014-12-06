@@ -93,9 +93,6 @@ def build_func(work):
             #       the environment because it's fairly common for
             #       bootstrap/autogen scripts to invoke configure when
             #       they're finished and we don't want that.
-            #
-            # FIXME: src tree could be pre-configured, which will break
-            #        out-of-tree building
             new_env = dict(os.environ)
             new_env['NOCONFIGURE'] = "1"
             if os.path.exists(n.header.src + "/bootstrap.sh"):
@@ -163,18 +160,15 @@ def build_func(work):
     #        to build scripts.  v2 just added RUCKUS_DIR.  i think we should
     #        add the following:
     #
-    #        SRP_ROOT: The tmp payload dir (just like in v2). This is
-    #            DEPRECATED (to go away in 3.1?) and is just here for
-    #            backwards compatibility with v2 build scripts (it's used to
-    #            get at misc package files SRP_ROOT/../package)
+    #        BUILD_DIR: Toplevel dir of the source tree.
     #
-    #        PACKAGE_DIR: The package dir (where the srp got extracted).
-    #
-    #        BUILD_DIR: Parent dir of the extracted source tarball.
+    #        EXTRA_DIR: Directory where extra_content is located (e.g.,
+    #            patches).
     #
     #        PAYLOAD_DIR: The tmp payload dir (was called SRP_ROOT in v2).
-    #            This is the preferred way to refer to the payload dir.
-    #            SRP_ROOT is deprecated.
+    #            This is where files must get installed (e.g., w/
+    #            DESTDIR=$PAYLOAD_DIR) in build scripts.  The SRP_ROOT
+    #            variable has been removed in v3.
     #
     # FIXME: the v2 code is really bad at keeping output synchronized when
     #        redirecting stdout to a logfile (i.e., output coming directly
@@ -187,12 +181,11 @@ def build_func(work):
     #        parent process and then printing it... but that will lead to no
     #        output from the build until it's all finished, then spamming it
     #        all to the screen...
-    new_env = dict(os.environ)
-    # FIXME: SRP_ROOT and PACKAGE_DIR are deprecated NOW if we ditch source
-    #        packages
     #
-    #new_env['SRP_ROOT'] = work['dir']+"/tmp"
-    #new_env['PACKAGE_DIR'] = work['dir']+"/package"
+    #        in C i'd say to use popen and read chunks of stdout from the
+    #        resulting pipe... can we do that easily using subprocess
+    #        module?
+    new_env = dict(os.environ)
     new_env['BUILD_DIR'] = work['dir']+"/build"
     new_env['PAYLOAD_DIR'] = work['dir']+"/tmp"
     new_env['EXTRA_DIR'] = work['dir']+"/extra_content"
@@ -219,46 +212,6 @@ def build_func(work):
     work['manifest'] = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
 
 
-# FIXME: dead code.  db init is done in db module now and we've unregistered
-#        this func in the feature_struct
-def install_func(work):
-    """prep db stuff"""
-    # NOTE: In order to test this (and later on, to test new packages) as an
-    #       unprivileged, we need to have to have some sort of fake root
-    #       option (e.g., the old SRP_ROOT_PREFIX trick).
-    #
-    #       I'm waffling between using a DESTDIR environment variable
-    #       (because that's what autotools and tons of other Makefiles use)
-    #       and adding a --root command line arg (because that's what RPM
-    #       does and it's easier to document)
-    #
-    # FIXME: For now, it's DESTDIR.  Perhaps revisit this later...
-    try:
-        work["DESTDIR"] = os.environ["DESTDIR"]
-    except:
-        work["DESTDIR"] = "/"
-
-    m = work['manifest']
-
-    n = work["notes"]
-
-    # setup the db dir for later
-    #
-    # FIXME: /var/lib/srp should probably be configurable...
-    #
-    # FIXME: is this really where we should be doing this?  shouldn't some
-    #        method in the db module take care of it?
-    #
-    # FIXME: and that's the wrong sha... that's the sha of the brp we're
-    #        installing from... don't we want to calc a final sha?
-    path = "/var/lib/srp/"+n.header.name+"/"+n.installed.installed_from_sha
-    # FIXME: DESTDIR or --root.  see FIXME in core.install_func...
-    work["db"] = work["DESTDIR"] + path
-
-    # FIXME: if sha already installed, this will throw OSError
-    os.makedirs(work["db"])
-
-
 def install_iter(work, fname):
     """install a file"""
     # FIXME: can we make blob() take a previously read manifest to speed
@@ -269,7 +222,7 @@ def install_iter(work, fname):
 
 def uninstall_func():
     """remove files listed in pkg manifest"""
-    # FIXME: MULTI: why not?  i guess directory removal might git odd, but
+    # FIXME: MULTI: why not?  i guess directory removal might get odd, but
     #        that's already a hard question... where does the removal of
     #        /usr/local/share/foo happen?  when i remove the last file in
     #        foo?  what keeps us from accidentally removing share when i

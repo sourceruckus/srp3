@@ -1,4 +1,4 @@
--*- mode: outline -*-
+-*- mode: org; mode: flyspell -*-
 
 Let's keep the goals really high-level (i.e., from the user's standpoint)
 and not get into implementation details.
@@ -10,9 +10,6 @@ and not get into implementation details.
   This means normal users should be able to build and inspect packages.
   Only installing should require special permissions.
 
-  NOTE: Either write in a /tmp dir or parse through the tarball without extracting
-        anywhere.  Or both.  I think we're already doing this...
-
 ** clean output handling
 
   SRP's output handling has historically been horrible, especially when
@@ -22,29 +19,31 @@ and not get into implementation details.
 
   NOTE: Using syslog might be a nice solution for some of this...
 
-** Handle source package creation
+  NOTE: Using the logging module might be a good idea, too.
 
-  Users should be able to use srp to create an srp file.  Historically, you
-  had to put them together using tar.
+** No more source packages
 
-  This version should introduce the concept of assembling a source package,
-  complete with dependency tracking (i.e., know when a rebuild is needed;
-  Makfile-ish).
+  Odd sounding, I know.  Remove source packages from the Source Ruckus
+  Packager?  Wasn't one of the original goals to actually distribute source
+  packages and install directly from them, building implicitly?!?  Yeah, it
+  was.  And it lead to lots of garbage duplicate code.  And that feature is
+  hardly ever used (at least in my experience).  And it's slow.
 
-  NOTE: I think we were already doing this with the old v3 developmental
-        tree.
+  Additionally, the process of building a brp from an srp from a dist
+  tarball is pretty limiting in 2015 where mostly everything is available
+  via some distributed source control tool, which I happen to prefer to
+  source tarballs for the most part.
 
-** Build binary packages w/out dist tarball
-*** Should we remove the entire concept of a source package?
+  If you've already got an extracted source tree on disk, you shouldn't have
+  to make a dist tarball and create a source package before you start
+  building.
 
-  If you've already got an extracted source tree on disk, you shouldn't have to
-  make a dist tarball and create a source package before you start building.
-  Just have the notes file specify path to source tree in it (or pass it in on
-  the command line?), then attempt to build out-of-tree (or in a copy of the
-  tree, if out-of-tree isn't supported).
+  So, will remove the entire concept of a "source package".  We will specify
+  on the command line the path to "source" (which can be either a source
+  tarball or a source tree) and handle things appropriately, building a brp
+  directly from a NOTES file and source tree/archive.
 
-  srp -b foo.notes --srctree=/path/to/src
-
+  Example: srp -b foo.notes --src=/path/to/src
 
 ** Repairable pacakges (optionally)
 
@@ -99,7 +98,7 @@ and not get into implementation details.
   These were useful, but their primary use turned out to be for hackish
   workarounds that should have really been fixed in SRP itself.  The libs that I
   used all over the place (i.e., for common tasks like adding users or services)
-  should all get implemented in the core SRP code as Features.
+  should all get implemented in the core SRP code as Features (see below).
 
   We may need to have some very simple post func capability... but let's
   keep it as light-weight and simple as possible, if we need it at all.
@@ -118,17 +117,46 @@ and not get into implementation details.
   gettext: strip_translations
   texlive: latex_mod
 
-
 ** take full advantage of SMP
 
   Make absolutely sure that we're spreading our computational load out
   accross multiple processors as much as possible.  In theory, we should be
   I/O bound.  SRPv2, however, is definately not...
 
+  NOTE: Will have to look into multiprocessing here, as multithreaded
+        performance in Python is limited by the Global Interpreter Lock (GIL).
+
+** be zoom zoom fast!
+
+  We need to pay attention and keep our eyes open for unnecessary bottlenecks
+  in the code.  Anything that turns out to be "too slow" simply because it's
+  in Python should get re-implemented in C.
+
+** srprc for user-specific configurables
+
+  Read user info (e.g., name, email, overridden global prefs) from ~/.srprc,
+  global config (e.g., compression algorithm, default features) from
+  /etc/srp.conf.
+
+** revamped documentation
+
+  The existing info pages started out half-baked and became pretty outdated
+  pretty quickly.  We should probably delete them and start over.
+
+  Perhaps write a nice user manual in LaTeX?  Distribute as built PDF?
+
+  Perhaps generate manpage via help2man?
+
 
 * Implementation Goals
 
-** clean, modular, object oriented design.
+** update to Python 3
+
+  Shouldn't be too hard, and is pretty much a no brainer.  I would like to
+  use Python >= 3.3 so that I can depend on XZ compression (lzma module),
+  subprocess.DEVNULL, and a few other things added in 3.3.
+
+** clean, modular, straight forward design.
 
   Original v3 work was making too much use of metaclasses... and got pretty
   much derailed going crazy trying to implement protected member data via
