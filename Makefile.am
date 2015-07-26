@@ -12,5 +12,5 @@ all-local:
 
 install-data-local:
 	$(MKDIR_P) $(DESTDIR)$(pkgdatadir)
-	$(INSTALL_DATA) examples/foo-3.0/*.tar.* $(DESTDIR)$(pkgdatadir)/
-	$(INSTALL_DATA) examples/foo-3.0/*.notes $(DESTDIR)$(pkgdatadir)/
+	$(INSTALL_DATA) $(srcdir)/examples/foo-3.0/*.tar.* \
+	    $(srcdir)/examples/foo-3.0/*.notes $(DESTDIR)$(pkgdatadir)/
