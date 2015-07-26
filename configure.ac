@@ -16,7 +16,7 @@ AC_SUBST(SRP_MAJOR_VERSION, srp_major_version)
 AC_SUBST(SRP_MINOR_VERSION, srp_minor_version)
 AC_SUBST(SRP_MICRO_VERSION, srp_micro_version)
 AC_SUBST(SRP_DEVTAG, srp_devtag_version)
-AC_SUBST(SRP_BUILD_YEAR, 2014)
+AC_SUBST(SRP_BUILD_YEAR, 2015)
 
 AM_INIT_AUTOMAKE(dist-bzip2 no-dist-gzip)
 
