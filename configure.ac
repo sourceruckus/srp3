@@ -18,7 +18,7 @@ AC_SUBST(SRP_MICRO_VERSION, srp_micro_version)
 AC_SUBST(SRP_DEVTAG, srp_devtag_version)
 AC_SUBST(SRP_BUILD_YEAR, 2015)
 
-AM_INIT_AUTOMAKE(dist-bzip2 no-dist-gzip)
+AM_INIT_AUTOMAKE(dist-xz no-dist-gzip tar-pax foreign subdir-objects color-tests)
 
 AC_PROG_INSTALL
 AC_PROG_MKDIR_P
@@ -26,8 +26,12 @@ AC_PROG_LN_S
 
 LT_INIT([disable-static])
 
-# FIXME: I want to eventually use xz for compression, so this will become 3.3
-AM_PATH_PYTHON(3.2.0)
+# NOTE: I've tested w/ 3.2 enough to be pretty sure it works.  We have
+#       switched to using xz compression, though, and the lzma module
+#       wasn't officially added until 3.3.  Theoretically, you could
+#       backport lzma to 3.2 and it would work...
+#
+AM_PATH_PYTHON(3.3.0)
 AM_CHECK_PYTHON_HEADERS()
 
 PYTHON_CFLAGS=$($PYTHON-config --cflags)
@@ -35,13 +39,24 @@ AC_SUBST(PYTHON_CFLAGS)
 PYTHON_LDFLAGS=$($PYTHON-config --ldflags)
 AC_SUBST(PYTHON_LDFLAGS)
 
-# FIXME: These macros can be used to disable functionality... but I don't
-#        think they're really needed here.  Although, I could require >3.2
-#        and then check explicitly for xz module.
-#AM_CHECK_PYMOD(tarfile)
-#AM_CHECK_PYMOD(multiprocessing)
-#AM_CHECK_PYMOD(asdfooo)
-#AM_CHECK_PYMOD()
+# check for required python modules
+#
+# NOTE: By setting the Python requirement to >= 3.3 above, we *should*
+#       have all these.  But let's double-check just to be absolutely
+#       sure.  Specifically, lzma could have been left out of the system's
+#       Python compilation if the lzma libraries were missing.
+#
+AC_DEFUN([NEEDED_MODS],
+  [dnl NOTE: comment out via dnl inside AC_DEFUN
+   tarfile
+   multiprocessing
+   lzma
+  ])
+m4_foreach_w([M], NEEDED_MODS,
+  [AM_CHECK_PYMOD(M, [],
+     [],
+     [AC_MSG_ERROR([Missing required Python module: M])])
+  ])
 
 # check for sed /w --in-place
 #

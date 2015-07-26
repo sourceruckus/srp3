@@ -4,19 +4,13 @@ AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_SRCDIR([src/foo.cpp])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE(dist-bzip2 no-dist-gzip)
+AM_INIT_AUTOMAKE(dist-xz no-dist-gzip foreign)
 
 AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_MKDIR_P
 AC_PROG_LN_S
-
-# look for pkg-config
-PKG_PROG_PKG_CONFIG
-
-# detect python
-PKG_CHECK_MODULES(PYTHON, python3)
 
 # NOTE: It would appear that libreadline.so has undefined references unless
 #       you also link against libncurses.  I think that means that
