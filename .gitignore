@@ -61,3 +61,6 @@ FOO
 /examples/foo-3.0/src/foo
 /examples/foo-3.0/src/pizza
 /examples/foo-3.0/stamp-h1
+
+# the example dist tarball(s)
+/examples/foo*/*.tar.*

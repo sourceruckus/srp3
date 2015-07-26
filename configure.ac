@@ -43,6 +43,25 @@ AC_SUBST(PYTHON_LDFLAGS)
 #AM_CHECK_PYMOD(asdfooo)
 #AM_CHECK_PYMOD()
 
+# check for sed /w --in-place
+#
+# NOTE: Using sed -i in makefiles is frowned upon because it's not
+#       portable.  We make 'sed -i' a requirement and check for it here
+#       because... I like it and I think pretty much everyone has it.  But
+#       I do want to get bonked upside the head if it's going to cause
+#       problems.
+AC_PROG_SED
+AS_TMPDIR(srp-)
+AC_CACHE_CHECK([whether $ac_cv_path_SED supports -i], [srp_cv_sed_i],
+  [AS_IF([touch $tmp/sed && $ac_cv_path_SED -i 's|||' $tmp/sed 2>/dev/null],
+      srp_cv_sed_i=yes,
+      srp_cv_sed_i=no)])
+rm -f $tmp/sed && rmdir $tmp
+if test $srp_cv_sed_i != yes; then
+    AC_MSG_ERROR([SRP requires sed -i])
+fi
+
+
 AC_CONFIG_FILES([Makefile
 		 src/Makefile
 		 src/modules/Makefile
