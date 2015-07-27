@@ -2,7 +2,7 @@ AM_DEFAULT_SOURCE_EXT = .cpp
 
 bin_PROGRAMS = foo pizza
 
-pizza_LDFLAGS = $(PYTHON_LIBS)
+pizza_LDADD = $(PTHREAD_LIBS)
 
 install-exec-hook:
 	$(RM) -f $(DESTDIR)$(bindir)/bar
