@@ -19,14 +19,6 @@ AC_PROG_LN_S
 AC_CHECK_LIB(ncurses, main, [], AC_MSG_FAILURE(ncurses test failed))
 AC_CHECK_LIB([readline], [main], [], [AC_MSG_FAILURE([readline test failed])], [-lncurses])
 
-AC_ARG_ENABLE([srp-dist],
-    AS_HELP_STRING([--disable-srp-dist], [Actually build stuff]),
-    [srp_dist=$enableval],
-    [srp_dist=yes])
-
-AM_CONDITIONAL([DIST_ONLY], [test x$srp_dist = xyes])
-
-
 AC_CONFIG_FILES([Makefile \
 		 src/Makefile \
 		 docs/Makefile \
