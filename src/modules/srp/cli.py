@@ -25,7 +25,7 @@ desc = """\
 epi = """\
 example: srp -v --build=foo.notes --src=/path/to/src --intree
 
-example: srp --build=foo.notes --src=foo.tar.bz2 --extra=/path/to/extra/files
+example: srp --build=foo.notes --src=foo.tar.xz --extra=/path/to/extra/files
 
 example: srp --install=strip_debug,strip_docs,strip_man -p foo.i686.brp
 
@@ -377,12 +377,19 @@ def do_build(fname, src, extradir, intree, options):
     #
     # FIXME: compression should be configurable globally and also via
     #        the command line when building.
+    #
+    # FIXME: lzma's xz compressor probably needs to be tweaked... just
+    #        using tarfile w:xz will result in default compression settings.
+    #
+    # FIXME: should we create a tarfile on disk, then crompress it at the
+    #        end?  or should we tarfile to stdout piped to compressor that
+    #        writes to disk... somehow?
     mach = platform.machine()
     if not mach:
         mach = "unknown"
     pname = "{}-{}-{}.{}.brp".format(n.header.name, n.header.version,
                                      n.header.pkg_rev, mach)
-    comp = 'bz2'
+    comp = 'xz'
     # FIXME: we should remove this file if we fail...
     brp = tarfile.open(pname, mode="w:"+comp)
     sha = hashlib.new("sha1")
