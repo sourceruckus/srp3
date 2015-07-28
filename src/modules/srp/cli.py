@@ -389,9 +389,14 @@ def do_build(fname, src, extradir, intree, options):
         mach = "unknown"
     pname = "{}-{}-{}.{}.brp".format(n.header.name, n.header.version,
                                      n.header.pkg_rev, mach)
-    comp = 'xz'
     # FIXME: we should remove this file if we fail...
-    brp = tarfile.open(pname, mode="w:"+comp)
+    import lzma
+    __brp = lzma.LZMAFile(pname, mode="w", preset=0)
+    #import bz2
+    #__brp = bz2.BZ2File(pname, mode="w", compresslevel=9)
+    #import gzip
+    #__brp = gzip.GzipFile(pname, mode="w", compresslevel=9)
+    brp = tarfile.open(fileobj=__brp, mode="w|")
     sha = hashlib.new("sha1")
 
     # populate the BLOB archive
@@ -436,6 +441,7 @@ def do_build(fname, src, extradir, intree, options):
 
     # close the toplevel brp archive
     brp.close()
+    __brp.close()
 
 
 def do_install(fname, options):
