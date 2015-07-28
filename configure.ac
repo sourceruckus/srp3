@@ -26,88 +26,55 @@ AC_PROG_LN_S
 
 LT_INIT([disable-static])
 
-AC_ARG_WITH(compressor,
-  AS_HELP_STRING(--with-compressor=,
-    [Select compression algorithm: gzip, bzip2, lzma [default: lzma]]),
-  COMPRESSOR_VALUE="$withval",
-  COMPRESSOR_VALUE=default)
+# enable/disable different compressors
+#
+min_python=3.2.0
+AC_ARG_ENABLE(gzip,
+  AS_HELP_STRING(--enable-gzip=LEVEL,
+    [Enable gzip compressor with specified default compression level
+     [default: 9]]),
+  comp_gzip=$enableval,
+  comp_gzip=9)
+AS_IF([test x$comp_gzip = xyes], comp_gzip=9)
+AS_IF([test x$comp_gzip != xno], comp_mod_gzip=gzip)
 
-# NOTE: We decide on MIN_PYTHON based on desired compressor.  The lzma
+AC_ARG_ENABLE(bzip2,
+  AS_HELP_STRING(--enable-bzip2=LEVEL,
+    [Enable bzip2 compressor with specified default compression level
+     [default: 9]]),
+  comp_bzip2=$enableval,
+  comp_bzip2=9)
+AS_IF([test x$comp_bzip2 = xyes], comp_bzip2=9)
+AS_IF([test x$comp_bzip2 != xno], comp_mod_bzip2=bz2)
+
+AC_ARG_ENABLE(lzma,
+  AS_HELP_STRING(--enable-lzma=LEVEL,
+    [Enable lzma compressor with specified default compression level
+     [default: 0]]),
+  comp_lzma=$enableval,
+  comp_lzma=0)
+AS_IF([test x$comp_lzma = xyes], comp_lzma=0)
+AS_IF([test x$comp_lzma != xno],
+  [comp_mod_lzma=lzma
+   min_python=3.3.0])
+
+AC_ARG_WITH(default-compressor,
+  AS_HELP_STRING(--with-default-compressor=COMP,
+    [Use COMP as default compressor [default: lzma]]),
+  comp_default=$withval,
+  AS_IF([test x$comp_lzma != xno], comp_default=lzma,
+    AS_IF([test x$comp_bzip2 != xno], comp_default=bzip2,
+      AS_IF([test x$comp_gzip != xno], comp_default=gzip,
+        AC_MSG_ERROR([No suitable compressor sellected])))))
+
+
+# check for python
+#
+# NOTE: We decide on min_python based on desired compressor.  The lzma
 #       module wasn't added until 3.3.0, otherwise 3.2.0 would work for
 #       us.
 #
-# NOTE: We also set the default compression level based on compressor,
-#       since they differ slightly.
-#
-case "$COMPRESSOR_VALUE" in
-
-default)
-  MIN_PYTHON=3.3.0
-  COMPRESSOR_VALUE=lzma
-  COMPRESSOR_MODULE=lzma
-  # NOTE: Experience with compressing backups of source ruckus bootstrap
-  #       builds was that level0 lzma is as fast as gzip and results in
-  #       files compressord better than bzip2.  I want our default to be
-  #       fast w/ good compression and also not super resource intensive.
-  #       We can experiment with cranking the compression level up to
-  #       decrease the resuling package file size, but it will:
-  #
-  #         - increase RAM usage (bad for embedded systems)
-  #
-  #         - increase package build and installation time (bad for anyone
-  #           who values their time)
-  #
-  DEFAULT_COMPRESSION_LEVEL=0
-  ;;
-
-lzma)
-  MIN_PYTHON=3.3.0
-  COMPRESSOR_MODULE=lzma
-  DEFAULT_COMPRESSION_LEVEL=6
-  ;;
-
-bzip2)
-  MIN_PYTHON=3.2.0
-  COMPRESSOR_MODULE=bz2
-  DEFAULT_COMPRESSION_LEVEL=9
-  ;;
-
-gzip)
-  MIN_PYTHON=3.2.0
-  COMPRESSOR_MODULE=gzip
-  DEFAULT_COMPRESSION_LEVEL=9
-  ;;
-
-*)
-  AC_MSG_ERROR([
-		*************************************************************
-		Invalid compressor: $COMPRESSOR_VALUE
-		*************************************************************])
-esac
-
-
-# FIXME: technically, i don't think 0 is valid for bzip2... and for gzip
-#        is means NO compression... whereas it's perfectly valid for lzma
-#
-AC_ARG_WITH(compression-level,
-  AS_HELP_STRING(--with-compression-level=,
-    [Select compression level: 0-9 [default: depends on compressor]]),
-  COMPRESSION_LEVEL="$withval",
-  COMPRESSION_LEVEL=$DEFAULT_COMPRESSION_LEVEL)
-
-# double-check for invalid compression level
-case $COMPRESSION_LEVEL in
-0|1|2|3|4|5|6|7|8|9)
-  ;;
-*)
-  AC_MSG_ERROR([
-		*************************************************************
-		Invalid compression level: $COMPRESSION_LEVEL
-		*************************************************************])
-esac
-
-
-AM_PATH_PYTHON($MIN_PYTHON)
+AM_PATH_PYTHON($min_python)
 AM_CHECK_PYTHON_HEADERS()
 
 PYTHON_CFLAGS=$($PYTHON-config --cflags)
@@ -126,13 +93,17 @@ AC_DEFUN([NEEDED_MODS],
   [dnl NOTE: comment out via dnl inside AC_DEFUN
    tarfile
    multiprocessing
-   dnl $COMPRESSOR_MODULE
+   $comp_mod_gzip
+   $comp_mod_bzip2
+   $comp_mod_lzma
   ])
 m4_foreach_w([M], NEEDED_MODS,
-  [AM_CHECK_PYMOD(M, [],
-     [],
-     [AC_MSG_ERROR([Missing required Python module: M])])
+  [AS_IF([test "M" != ""],
+     AM_CHECK_PYMOD(M, [],
+       [],
+       [AC_MSG_ERROR([Missing required Python module: "M"])]))
   ])
+
 
 # check for sed /w --in-place
 #
@@ -141,6 +112,7 @@ m4_foreach_w([M], NEEDED_MODS,
 #       because... I like it and I think pretty much everyone has it.  But
 #       I do want to get bonked upside the head if it's going to cause
 #       problems.
+#
 AC_PROG_SED
 AS_TMPDIR(srp-)
 AC_CACHE_CHECK([whether $ac_cv_path_SED supports -i], [srp_cv_sed_i],
@@ -175,9 +147,13 @@ echo "Configuration Options Summary:"
 echo
 echo "Python.................: $PYTHON ($PYTHON_VERSION)"
 echo
+echo "Compressors (disabled or default compression level):"
+echo "  gzip.................: $comp_gzip"
+echo "  bzip2................: $comp_bzip2"
+echo "  lzma.................: $comp_lzma"
+echo
 echo "Options:"
-echo "  Compressor...........: $COMPRESSOR_VALUE"
-echo "  Compression Level....: $COMPRESSION_LEVEL"
+echo "  Default Compressor...: $comp_default"
 echo
 echo "Installation:"
 echo "  prefix...............: $prefix"
