@@ -15,7 +15,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_SUBST(SRP_MAJOR_VERSION, srp_major_version)
 AC_SUBST(SRP_MINOR_VERSION, srp_minor_version)
 AC_SUBST(SRP_MICRO_VERSION, srp_micro_version)
-AC_SUBST(SRP_DEVTAG, srp_devtag_version)
+AC_SUBST(SRP_DEVTAG, srp_devtag)
 AC_SUBST(SRP_BUILD_YEAR, 2015)
 
 AM_INIT_AUTOMAKE(dist-xz no-dist-gzip tar-pax foreign subdir-objects color-tests)
@@ -36,7 +36,8 @@ AC_ARG_ENABLE(gzip,
   comp_gzip=$enableval,
   comp_gzip=9)
 AS_IF([test x$comp_gzip = xyes], comp_gzip=9)
-AS_IF([test x$comp_gzip != xno], comp_mod_gzip=gzip)
+AS_IF([test x$comp_gzip != xno], comp_mod_gzip=gzip, comp_gzip=-1)
+AC_SUBST(COMP_GZIP, $comp_gzip)
 
 AC_ARG_ENABLE(bzip2,
   AS_HELP_STRING(--enable-bzip2=LEVEL,
@@ -45,7 +46,8 @@ AC_ARG_ENABLE(bzip2,
   comp_bzip2=$enableval,
   comp_bzip2=9)
 AS_IF([test x$comp_bzip2 = xyes], comp_bzip2=9)
-AS_IF([test x$comp_bzip2 != xno], comp_mod_bzip2=bz2)
+AS_IF([test x$comp_bzip2 != xno], comp_mod_bzip2=bz2, comp_bzip2=-1)
+AC_SUBST(COMP_BZIP2, $comp_bzip2)
 
 AC_ARG_ENABLE(lzma,
   AS_HELP_STRING(--enable-lzma=LEVEL,
@@ -56,17 +58,19 @@ AC_ARG_ENABLE(lzma,
 AS_IF([test x$comp_lzma = xyes], comp_lzma=0)
 AS_IF([test x$comp_lzma != xno],
   [comp_mod_lzma=lzma
-   min_python=3.3.0])
+   min_python=3.3.0],
+  [comp_lzma=-1])
+AC_SUBST(COMP_LZMA, $comp_lzma)
 
 AC_ARG_WITH(default-compressor,
   AS_HELP_STRING(--with-default-compressor=COMP,
     [Use COMP as default compressor [default: lzma]]),
   comp_default=$withval,
-  AS_IF([test x$comp_lzma != xno], comp_default=lzma,
-    AS_IF([test x$comp_bzip2 != xno], comp_default=bzip2,
-      AS_IF([test x$comp_gzip != xno], comp_default=gzip,
+  AS_IF([test $comp_lzma -ne -1], comp_default=lzma,
+    AS_IF([test $comp_bzip2 -ne -1], comp_default=bzip2,
+      AS_IF([test $comp_gzip -ne -1], comp_default=gzip,
         AC_MSG_ERROR([No suitable compressor sellected])))))
-
+AC_SUBST(COMP_DEFAULT, $comp_default)
 
 # check for python
 #

@@ -4,4 +4,14 @@ version = "@PACKAGE_VERSION@"
 version_major = @SRP_MAJOR_VERSION@
 version_minor = @SRP_MINOR_VERSION@
 version_micro = @SRP_MICRO_VERSION@
+version_devtag = "@SRP_DEVTAG@"
 build_year = "@SRP_BUILD_YEAR@"
+
+# compressor settings
+compressors = {
+    "gzip": @COMP_GZIP@,
+    "bz2": @COMP_BZIP2@,
+    "lzma": @COMP_LZMA@,
+}
+
+default_compressor = "@COMP_DEFAULT@"

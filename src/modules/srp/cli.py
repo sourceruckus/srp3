@@ -389,13 +389,25 @@ def do_build(fname, src, extradir, intree, options):
         mach = "unknown"
     pname = "{}-{}-{}.{}.brp".format(n.header.name, n.header.version,
                                      n.header.pkg_rev, mach)
+
     # FIXME: we should remove this file if we fail...
-    import lzma
-    __brp = lzma.LZMAFile(pname, mode="w", preset=0)
-    #import bz2
-    #__brp = bz2.BZ2File(pname, mode="w", compresslevel=9)
-    #import gzip
-    #__brp = gzip.GzipFile(pname, mode="w", compresslevel=9)
+    if srp.config.default_compressor == "lzma":
+        import lzma
+        __brp = lzma.LZMAFile(pname, mode="w",
+                              preset=srp.config.compressors["lzma"])
+    elif srp.config.default_compressor == "bzip2":
+        import bz2
+        __brp = bz2.BZ2File(pname, mode="w",
+                            compresslevel=srp.config.compressors["bz2"])
+    elif srp.config.default_compressor == "gzip":
+        import gzip
+        __brp = gzip.GzipFile(pname, mode="w",
+                              compresslevel=srp.config.compressors["gzip"])
+    else:
+        # shouldn't really ever happen
+        raise Exception("invalid default compressor: {}".format(
+            srp.config.default_compressor))
+
     brp = tarfile.open(fileobj=__brp, mode="w|")
     sha = hashlib.new("sha1")
 
