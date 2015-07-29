@@ -149,7 +149,9 @@ echo "------------------------------------------------------------------------"
 echo
 echo "Configuration Options Summary:"
 echo
-echo "Python.................: $PYTHON ($PYTHON_VERSION)"
+echo "Python:"
+echo "  Interpreter..........: $PYTHON"
+echo "  Version..............: $PYTHON_VERSION"
 echo
 echo "Compressors (disabled or default compression level):"
 echo "  gzip.................: $comp_gzip"
@@ -161,4 +163,6 @@ echo "  Default Compressor...: $comp_default"
 echo
 echo "Installation:"
 echo "  prefix...............: $prefix"
+echo "  exec_prefix..........: $exec_prefix"
+echo "  pyexecdir............: $pyexecdir"
 echo

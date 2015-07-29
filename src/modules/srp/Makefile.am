@@ -1,17 +1,17 @@
-pkgpython_PYTHON =
-pkgpython_PYTHON += __init__.py
-pkgpython_PYTHON += blob.py
-pkgpython_PYTHON += cli.py
-pkgpython_PYTHON += notes.py
-pkgpython_PYTHON += db.py
+pkgpyexec_PYTHON =
+pkgpyexec_PYTHON += __init__.py
+pkgpyexec_PYTHON += blob.py
+pkgpyexec_PYTHON += cli.py
+pkgpyexec_PYTHON += notes.py
+pkgpyexec_PYTHON += db.py
 
-nodist_pkgpython_PYTHON = config.py
+nodist_pkgpyexec_PYTHON = config.py
 
 SUBDIRS =
 SUBDIRS += features
 
-pkgpython_LTLIBRARIES =
-pkgpython_LTLIBRARIES += _blob.la
+pkgpyexec_LTLIBRARIES =
+pkgpyexec_LTLIBRARIES += _blob.la
 
 _blob_la_CFLAGS = $(PYTHON_CFLAGS)
 _blob_la_LDFLAGS = $(PYTHON_LDFLAGS) -module -avoid-version

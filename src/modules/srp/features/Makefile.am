@@ -1,4 +1,4 @@
-featuresdir = $(pkgpythondir)/features
+featuresdir = $(pkgpyexecdir)/features
 
 features_PYTHON =
 features_PYTHON += __init__.py
