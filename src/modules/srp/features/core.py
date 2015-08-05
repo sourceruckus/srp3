@@ -119,7 +119,12 @@ def build_func(work):
         #
         # FIXME: This could use subprocess.DEVNULL to hide output, but that
         #        would requier Python >= 3.3
-        subprocess.call(["make", "distclean"], cwd=n.header.src)
+        #
+        # FIXME: Should we really be doing this here?  What if not using
+        #        autotools?  This is really the responsibility of the
+        #        user, not us, I think...
+        #
+        #subprocess.call(["make", "distclean"], cwd=n.header.src)
 
         # copy source tree if not building out-of-tree
         if n.header.build_intree:

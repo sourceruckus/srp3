@@ -105,6 +105,7 @@ dbpath+="/var/lib/srp/db"
 
 def commit():
     """re-pickle __db to disk"""
+    # FIXME: should we keep a backup of the last pickle, just in case?
     os.makedirs(os.path.dirname(dbpath), exist_ok=True)
     with open(dbpath, "wb") as f:
         pickle.dump(__db, f)
