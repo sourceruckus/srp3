@@ -375,22 +375,16 @@ def do_build(fname, src, extradir, intree, options):
 
     # create the toplevel brp archive
     #
-    # FIXME: compression should be configurable globally and also via
-    #        the command line when building.
-    #
-    # FIXME: lzma's xz compressor probably needs to be tweaked... just
-    #        using tarfile w:xz will result in default compression settings.
-    #
-    # FIXME: should we create a tarfile on disk, then crompress it at the
-    #        end?  or should we tarfile to stdout piped to compressor that
-    #        writes to disk... somehow?
+    # FIXME: we should remove this file if we fail...
     mach = platform.machine()
     if not mach:
         mach = "unknown"
     pname = "{}-{}-{}.{}.brp".format(n.header.name, n.header.version,
                                      n.header.pkg_rev, mach)
 
-    # FIXME: we should remove this file if we fail...
+    # FIXME: compression should be configurable globally and also via
+    #        the command line when building.
+    #
     if srp.config.default_compressor == "lzma":
         import lzma
         __brp = lzma.LZMAFile(pname, mode="w",
