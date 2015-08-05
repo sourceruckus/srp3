@@ -1,8 +1,26 @@
--*- mode: outline -*-
+# -*- mode: org; mode: flyspell -*-
 
-* add --root flag (instead of DESTDIR or SRP_ROOT_PREFIX)
+* move functions from bootstrap-early in here
+Clean them up and make them available to build scripts
 
-* finish implementing planned feature modules
+* hardcoded path to db file in srp.db
+
+* cli additions [0/3]
+  - [ ] --srcdir
+  - [ ] --compressor=[gzip,bz2,lzma]
+  - [ ] --compression-level=N
+  - [ ] --root flag (instead of DESTDIR or SRP_ROOT_PREFIX)
+
+* finish implementing planned feature modules [0/9]
+  - [ ] core
+  - [ ] size
+  - [ ] upgrade
+  - [ ] user
+  - [ ] ldupdate
+  - [ ] ldpath
+  - [ ] repairable
+  - [ ] strip_debug
+  - [ ] strip_docs
 
 * make sure we can pass options into --create, --build, --install
 
@@ -15,19 +33,30 @@
 * uninstall
 
 * exception handling clean up
-**should we do this:
-*** this one prints a good error message including the exception details, then prints a traceback when exception is re-raised
+** should we do this:
 
+*NOTE:* this one prints a good error message including the exception details,
+        then prints a traceback when exception is re-raised
+
+#+BEGIN_EXAMPLE
 try:
     blarg
 except Exception as e:
     print("bad things:", e)
     raise
+#+END_EXAMPLE
 
-**or this:
-*** this one chains the exceptions together... which i don't really like
+** or this:
 
+*NOTE:* this one chains the exceptions together... which i don't really like
+
+#+BEGIN_EXAMPLE
 try:
     blarg
 except Exception:
     raise Exception("bad things")
+#+END_EXAMPLE
+
+
+#  LocalWords:  flyspell cli srcdir gzip bz lzma ldupdate ldpath uninstall srp
+#  LocalWords:  blarg hardcoded

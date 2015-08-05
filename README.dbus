@@ -1,0 +1,75 @@
+# -*- mode: org; mode: flyspell -*-
+
+Maybe we should implement a daemon to serialize requests to access the
+installed package database...?
+
+And perhaps we should use D-Bus for IPC?
+
+This would provide us with the ability to build and/or install multiple
+packages in parallel with a single process policing access to the db.
+
+In the following example, we should be able to build and install the libraries
+in parallel but wait for them to all be installed prior to building the
+application that uses them.
+
+: srp --srcdir=. --install libfoo.notes libbar.notes libbaz.notes myapp.notes
+
+We'll need to add a =requires= or =build-frst= entry to the notes file in order
+to track build dependencies... but that shouldn't be hard (although maintaining
+it could get tedious).
+
+*NOTE*: We probably don't want =requires= to be enforced at brp
+        install-time... just at build time.  At brp install-time we'll defer to
+        our more appropriate generated library dependencies.  Even printing a
+        warning if a =requires= is missing at install-time could be overkill.
+        For example, if building of libfoo requires some code generator
+        supplied by the mymagic package, but using libfoo after it's built no
+        longer requires mymagic.
+
+*NOTE*: Actually, =cli= doesn't currently allow us to --install a notes file
+        (i.e., implicit package build and install).  The ability to build
+        multiple packages in parallel would make adding --install=.notes worth
+        it.
+
+*NOTE*: If we do use D-Bus, we'll need to add =dbus=, =glib=, =libffi=,
+        =gobject-introspection=, and =pygobject= to bootstrap-stage2 prior to
+        building =srp=.
+
+        Alternatively, =dbus=, =dbus-python=, but I think that still requires
+        =glib= and =pygobject= for glib mainloop usage.
+
+
+* TODO [0/3]
+  - [ ] change =--srcdir= to refer to directory containing dist tarball and
+    patches OR a source tree and make it apply to multiple packages (i.e.,
+    =SRCDIR/gcc= should be a directory containing =gcc-x.y.z.tar.xz= and
+    patches while =SRCDIR/ruckusrd= is a source tree.
+  - [ ] --install directly from notes file
+  - [ ] start tracking =requires= in notes file
+
+
+* Methods
+** query(name)
+Return version of package currently installed or None.
+
+Perhaps return Proxy Object for the db entry instead of just the name?
+
+If we do a Proxy Object, would it be significantly faster to also have a
+simple bool installed(name) method?
+
+** add(name, entry)
+Add entry to db.  The =entry= is a path to a pickled object to be added.
+
+** update(name, entry)
+Update specified =entry= in the db.
+
+** remove(name)
+Remove all entries for specified name.
+Perhaps remove specified =entry=?
+
+* Proxy Objects
+** InstalledPkg
+Object representing an installed package.  Not really sure this is needed...
+
+#  LocalWords:  flyspell IPC brp libfoo mymagic bool
+#  LocalWords:  InstalledPkg mainloop
