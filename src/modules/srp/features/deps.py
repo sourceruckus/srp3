@@ -60,6 +60,29 @@ def build_func(work, fname):
             continue
         if line[0] == "NEEDED":
             deps.append(line[1])
+            # FIXME: what if needed lib is provided by this package?
+            #
+            # 1. readelf -h Class: ELF32 or ELF64
+            #
+            # 2. if lib is already on sys, it's a requirement.  if not, we
+            #    MUST be providing it.  but our python interpreter cannot
+            #    dlopen 32bit if we're running 64...  BUT, we could
+            #    compile a 32bit libexec binary to check via dlopen and a
+            #    64bit one as well...
+            #
+            #    that doesn't work if lib is being replaced by our package
+            #    (i.e., it's installed in /tools/lib64 and we're
+            #    installint it in /lib64).
+            #
+            #    ok, new idea.  Go look for any file named libfoo.so in
+            #    our PAYLOAD_DIR, if found check via readelf -h that class
+            #    matches, if found and matches remove from deps
+
+            # FIXME: Alternatively, could also add a provides[Class][]
+            #        array iteratively and have the check/install method
+            #        do the weeding out.  Would need to detect shared
+            #        libs... Type: DYN (Shared object file) vs EXEC
+            #        (Executable file)
 
     print("needed:", deps)
 
@@ -118,6 +141,8 @@ def install_func(work):
     missing = []
     for d in deps:
         try:
+            # FIXME: this is not gonna work when checking for 32bit libs
+            #        from within a 64bit python interpreter...
             ctypes.cdll.LoadLibrary(d)
         except:
             missing.append(d)
