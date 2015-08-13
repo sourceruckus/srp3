@@ -161,6 +161,14 @@ class blob:
         except:
             pass
 
+        # delete file if already present
+        #
+        # FIXME: add srpbak support
+        try:
+            os.remove(target)
+        except:
+            pass
+
         # create target file
         #
         # NOTE: Regular files are the only ones with real data, everything
@@ -188,17 +196,19 @@ class blob:
 
         elif x.islnk():
             # NOTE: This will fail if the archived link is being extracted
-            #       prior to the file it links to.  I'm not worried about
-            #       this, because we'll be iterating over the files in order
-            #       via extractall()
+            #       prior to the file it links to.  I guess if we're
+            #       extracting a link to a nonexistent file, we'd better
+            #       follow the link in the archive and extract that file
+            #       too.
             #
-            # FIXME: Woah, not true if we're running with multiple procs!
-            #        I need to handle this case.  I guess if we're
-            #        extracting a link to a nonexistent file, we'd better
-            #        follow the link in the archive and extract that file
-            #        too?  What happens when the other file gets extracted
-            #        in the other thread?
-            os.link(os.path.join(path, x.linkname), target)
+            # FIXME: What happens if the other file gets extracted in
+            #        another thread?  I think it'll still be fine... but
+            #        this might be a corner case we need to fix later.
+            try:
+                os.link(os.path.join(path, x.linkname), target)
+            except:
+                self.extract(os.path.sep + x.linkname, path)
+                os.link(os.path.join(path, x.linkname), target)
 
         elif x.ischr():
             os.mknod(target, x.mode | stat.S_IFCHR,
