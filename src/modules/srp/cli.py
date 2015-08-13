@@ -27,7 +27,7 @@ example: srp -v --build=foo.notes --src=/path/to/src --intree
 
 example: srp --build=foo.notes --src=foo.tar.xz --extra=/path/to/extra/files
 
-example: srp --install=strip_debug,strip_docs,strip_man -p foo.i686.brp
+example: srp --install --options=strip_debug,strip_docs,strip_man -p foo.i686.brp
 
 example: srp --query=info,size -p foo
 
@@ -232,12 +232,12 @@ def main():
     # mutually-exclusive arguments/flags
     if args.install:
         for x in get_package_list():
-            print("do_install(package={}, flags={})".format(x, args.install))
-            do_install(x, args.install)
+            print("do_install(package={}, options={})".format(x, args.options))
+            do_install(x, args.options)
 
     elif args.uninstall:
         for x in get_package_list():
-            print("do_uninstall(package={}, flags={})".format(x, args.uninstall))
+            print("do_uninstall(package={}, options={})".format(x, args.options))
 
     elif args.build:
         # check for other required flags
@@ -444,6 +444,8 @@ def do_build(fname, src, extradir, intree, options):
         f.seek(0)
         brp.addfile(brp.gettarinfo(arcname="SHA", fileobj=f),
                     fileobj=f)
+
+    # FIXME: all the files are still left in /tmp/srp-asdf...
 
     # close the toplevel brp archive
     brp.close()
