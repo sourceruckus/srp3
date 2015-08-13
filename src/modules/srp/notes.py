@@ -62,8 +62,11 @@ class notes_header:
 
         # prepend path segments to each element in this list
         self.extra_content = []
-        for x in config["extra_content"].split():
-            self.extra_content.append(os.path.join(path, x))
+        try:
+            for x in config["extra_content"].split():
+                self.extra_content.append(os.path.join(path, x))
+        except:
+            pass
 
         # if any segments of srp_min_version aren't defined, fallback to the
         # version being used to create the package.
@@ -73,16 +76,19 @@ class notes_header:
             self.srp_min_version_micro = int(config["srp_min_version_micro"])
 
         except:
-            self.srp_min_version_major = config.version_major
-            self.srp_min_version_minor = config.version_minor
-            self.srp_min_version_micro = config.version_micro
+            self.srp_min_version_major = srp.config.version_major
+            self.srp_min_version_minor = srp.config.version_minor
+            self.srp_min_version_micro = srp.config.version_micro
 
         self.srp_min_version = "{}.{}.{}".format(
             self.srp_min_version_major,
             self.srp_min_version_minor,
             self.srp_min_version_micro)
 
-        self.features = config["features"].split()
+        try:
+            self.features = config["features"].split()
+        except:
+            self.features = []
 
         # populate features with our defaults
         f = srp.features.default_features[:]
