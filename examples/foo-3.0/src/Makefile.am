@@ -1,8 +1,14 @@
-AM_DEFAULT_SOURCE_EXT = .cpp
-
 bin_PROGRAMS = foo pizza
 
-pizza_LDADD = $(PTHREAD_LIBS)
+foo_SOURCES = foo.cpp
+
+pizza_CFLAGS = -I$(top_srcdir)/headers
+pizza_LDADD = $(builddir)/libcrust.la
+pizza_LDFLAGS = $(PTHREAD_LIBS)
+
+lib_LTLIBRARIES = libcrust.la
+libcrust_la_LDFLAGS = -release $(VERSION) -no-undefined
+
 
 install-exec-hook:
 	$(RM) -f $(DESTDIR)$(bindir)/bar

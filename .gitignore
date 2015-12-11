@@ -16,6 +16,7 @@ FOO
 # autotools stuff
 /aclocal.m4
 /autom4te.cache/
+/compile
 /config.guess
 /config.log
 /config.status
@@ -40,12 +41,17 @@ FOO
 /examples/foo-3.0/Makefile.in
 /examples/foo-3.0/aclocal.m4
 /examples/foo-3.0/autom4te.cache/
+/examples/foo-3.0/compile
+/examples/foo-3.0/config.guess
+/examples/foo-3.0/config.sub
 /examples/foo-3.0/config.h.in
 /examples/foo-3.0/configure
 /examples/foo-3.0/depcomp
 /examples/foo-3.0/docs/Makefile.in
 /examples/foo-3.0/headers/Makefile.in
 /examples/foo-3.0/install-sh
+/examples/foo-3.0/libtool
+/examples/foo-3.0/ltmain.sh
 /examples/foo-3.0/missing
 /examples/foo-3.0/src/Makefile.in
 
@@ -61,6 +67,3 @@ FOO
 /examples/foo-3.0/src/foo
 /examples/foo-3.0/src/pizza
 /examples/foo-3.0/stamp-h1
-
-# the example dist tarball(s)
-/examples/foo*/*.tar.*

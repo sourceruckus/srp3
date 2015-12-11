@@ -17,6 +17,8 @@ AC_CHECK_LIB(pthread, main,
   [AC_MSG_FAILURE(cannot find libpthread)])
 AC_SUBST(PTHREAD_LIBS)
 
+LT_INIT
+
 # NOTE: It would appear that libreadline.so has undefined references unless
 #       you also link against libncurses.  I think that means that
 #       libreadline itself should be linked against libncurses, but
