@@ -1,0 +1,306 @@
+# -*- mode: sh -*-
+
+# !!!!!!!!!!!!!!! super important compatability warning of doom !!!!!!!!!!!!!!!
+#
+# The Source Ruckus bootstrap-stage2 scripts run using busybox's ash shell (at
+# least until bash is installed).  That means there are a few bash-isms that we
+# MUST avoid using.  It also runs using the busybox versions of the GNU
+# userspace (e.g., sed, awk, grep), which may not have identical usage.
+#
+# Things to avoid:
+#
+# - No += support, so OPTS+=' --foo' has to be OPTS="$OPTS --foo".
+#
+# - Don't use shopt for special options (e.g., nullglob, dotglob), unless it's
+#   to DISABLE a default bash-ism (e.g., command hashing), in which case you
+#   must check the $BASH variable.
+#
+# - Can't use {} globbing (e.g., cp foo{,orig})
+#
+# - Cannot trap ERR.  The kernel's link-vmlinux.sh uses this (called during
+#   mrproper)...
+#
+# Things that are still OK:
+#
+# - $() subshell expansion
+# - wc -l usage
+# - sed -i usage
+# - cp, mv, rm, mkdir, rmdir, ln now support -v for verbose output
+# - pushd/popd are made available here
+# - sudo is made available (sort-of) here
+#
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+# these variables will be used by default to determine the number of jobs to
+# pass into make.
+#
+export CPUCOUNT=$(grep "^processor" /proc/cpuinfo | wc -l)
+export JOBCOUNT=$((CPUCOUNT+1))
+export JOBCOUNT_KBUILD=$((CPUCOUNT*4))
+
+# turn off bash's hash function.  we don't want bash caching PATH lookups
+# while we're installing things all over the place...
+#
+# NOTE: This is a bash-only issue documented in the CLFS books.  The stage2
+#       builder at least starts out using ash, which doesn't support hashing at
+#       all (from what I can tell).  Later during the build, bash may start
+#       getting used (after it gets installed), so we still need this
+#       conditionally set.
+#
+if [ -n "$BASH" ]; then
+    set +h
+fi
+
+# make sure we have pushd/popd, since we use it all over the place
+#
+# NOTE: these two aliases are only set if a check for pushd fails.
+need_pushd=0
+pushd / >/dev/null 2>&1 && popd >/dev/null || need_pushd=1
+if [ $need_pushd -eq 1 ]; then
+    alias pushd='wd="$(pwd) ${wd}" && cd'
+    alias popd='cd ${wd%% *} && wd=${wd#* }'
+else
+    # make bash's pushd/popd be quiet
+    alias pushd='pushd >/dev/null'
+    alias popd='popd >/dev/null'
+fi
+
+
+# most packages probably aren't this simple... but same might be!  args are
+# passed into configure.
+#
+# FIXME: wait... can i make one of these that does BUILD32 BUILD64 logic?
+build_generic()
+{
+    setup_generic generic &&
+    configure_generic $* &&
+    compile_generic || exit 1
+}
+
+# FIXME: maaaaybe... but the 2nd pass will need to change libdir... maybe
+#        require =prefix= to be set in environment so we can figure out what to
+#        set --libdir to for the 2nd pass?
+#
+#        how about =pass2= must specify additional configure flags?
+#
+#        ex:  pass2="--libdir=/usr/lib64" build_multi --prefix=/usr \
+#                 --with-bogeys --enable-foo || exit 1
+#
+build_multi()
+{
+    # ========== pass1 ==========
+    setup_generic pass1 || exit 1
+
+    OPTS=$*
+
+    if [ -n "$BUILD32" ]; then
+        # x86_64 multilib
+        OPTS="$OPTS --host=${CLFS_TARGET32}"
+    #elif [ -n "$BUILD64" ]; then
+        # pure64
+    fi
+
+    # NOTE: CLFS only specifies CC and CXX during the 32bit portion of a
+    #       multilib build, but it essentially expands to a no-op in the other
+    #       configs, so we just let it.
+    #
+    CC="gcc ${BUILD32}" CXX="g++ ${BUILD32}" \
+        configure_generic $OPTS &&
+    compile_generic || exit 1
+
+    # ========== pass2 ==========
+    if [ -n "$BUILD32" ]; then
+        # 2nd pass of multilib build
+        #
+        # FIXME: this doesn't work for lib/lib32 does it... just lib/lib64?
+        #
+
+        setup_generic pass2 || exit1
+
+        OPTS="$* $pass2"
+
+        CC="gcc ${BUILD64}" CXX="g++ ${BUILD64}" \
+            configure_generic $OPTS &&
+        compile_generic || exit 1
+    fi
+}
+
+
+# Takes a =build_id= as arg, creates a builddir for it.  Will use =SOURCE_DIR=
+# for out-of-tree building by default.  If needed, the source dir will
+# automatically get bootstrapped (via bootstrap_generic).  Sets the following
+# variables in the environment:
+#
+#   =sourcedir= - The directory the sources live in.  By default, same as
+#     =SOURCE_DIR=, but may be different if =checkout=, =copy=, or =patches=
+#     variables are set.  See Options.
+#
+#   =builddir= - The working directory of the build.  By default, this is a
+#     seperate directory for out-of-tree building.  Will be the same as
+#     =sourcedir= (or a symlink to it) if =build_in_tree= variable is set.
+#
+#   =configure= - The absolute path to the configure script.
+#
+# Options:
+#
+#   =checkout= - If =SOURCE_DIR= is actually a git repo, specifying
+#     checkout=tagname will cause a new source dir to be checked out using the
+#     specified tagname.  The =source= variable will get set to the freshly
+#     cloned tree.
+#
+#   =copy= - The =SOURCE_DIR= will get copied into a new directory.  The
+#     =source= variable will get set to the new directory.
+#
+#   =build_in_tree= - The build will happen directly in the source tree.  Some
+#     packages do not support out-of-tree building (or have buggy automake
+#     files) and must be built in-tree.  This will generally be done in
+#     conjunction with =copy= or =checkout=, unless the provided source is a
+#     dist tarball.
+#
+#   =patches= - The =SOURCE_DIR= will get copied and the supplied list of
+#     patches will be applied.  This implies =copy=.  The patches must be
+#     specified with absolute paths, but shell globs can be used.
+#
+#   =use_configure= - The specified script will be checked for instead of the
+#     default =configure= when deciding if bootstrapping is needed.  This is
+#     for packages (e.g., perl) that have a configure.gnu script.
+#
+#
+# NOTE: Unlike the setup_generic in the Source Ruckus boostrap builder, this
+#       function gets executed AFTER the source tarball has been extracted (if
+#       one was specified).
+#
+setup_generic()
+{
+    build_id=$1
+    shift
+    # defaults
+    builddir=$BUILD_DIR/$build_id
+    sourcedir=$SOURCE_DIR
+
+    # allow user to override the name of the configure script
+    #
+    # NOTE: Added this specifically for perl, which uses configure.gnu
+    [ -n "$use_configure" ] || use_configure="configure"
+
+    # check for sourcedir modifiers
+    #
+    # FIXME: might not want patches implying copy...  this made sense in the
+    #        ruckus bootstrap builder, but inside an srp build script we may
+    #        just have a patch for the tarball we've extracted and not care
+    #        about making a copy of the source tree (e.g., because we're just
+    #        building a single pass for x86 or x86_64-64)
+    #
+    #        that being said, we cannot guarantee that the user didn't hand us
+    #        patches for an external source tree that we really SHOULD make a
+    #        copy of before we muck with it...
+    #
+    if [ -n "$copy" ] || [ -n "$patches" ]; then
+        sourcedir=$BUILD_DIR/../source-$build_id
+        echo "copying source tree from $SOURCE_DIR to $sourcedir..."
+        cp -a $SOURCE_DIR $sourcedir || exit 1
+
+        # fix relative paths in copied .git file(s)
+        find $sourcedir -name .git -exec \
+            sed -i "s|^gitdir: [./]*|gitdir: $SOURCE_DIR/.|" {} \;
+
+    elif [ -n "$checkout" ]; then
+        sourcedir=$SOURCE_DIR-$build_id
+        echo -n "creating local checkout of $checkout from $SOURCE_DIR in" \
+            "$sourcedir..."
+        git clone --shared --branch $checkout $SOURCE_DIR $sourcedir || exit 1
+
+    fi
+
+    if [ -n "$build_in_tree" ]; then
+        builddir=$sourcedir
+    fi
+
+    # apply additional patches, if specified
+    if [ -n "$patches" ]; then
+        pushd $sourcedir || exit 1
+        for p in $patches; do
+            echo "applying additional patch: $p"
+            patch -Np1 < $p || exit 1
+        done
+        popd
+    fi
+
+    configure="$sourcedir/$use_configure"
+    unset use_configure
+
+    # We need to make sure the sourcetree has already been bootstrapped.
+    #
+    # FIXME: args? haven't implemented this yet...
+    #
+    if [ ! -x $configure ]; then
+        echo "$configure missing, calling autoreconf_generic..."
+        autoreconf_generic || exit 1
+    fi
+
+    mkdir -p $builddir
+
+    echo sourcedir: $sourcedir
+    echo builddir:  $builddir
+    echo configure: $configure
+}
+
+
+# depends on the variables set by setup_generic.  either run that, or set them
+# yourself.  args are passed into configure.
+#
+configure_generic()
+{
+    pushd $builddir &&
+    $configure $* &&
+    popd || exit 1
+}
+
+
+# FIXME: wait... this shouldn't be needed.  core.py will ensure that SOURCE_DIR
+#        has been bootstrapped already, and we're either going to use that
+#        directly, copy it, or clone it...  well, a clone might need this...
+#        not many things are really going to do that in this context, though.
+#        the only thing we used checkout for in the bootstrap builder was the
+#        kernel (checkout specific CLFS-tested rev for headers, but use
+#        submodule controlled rev for final build).
+#
+#autoreconf_generic()
+#{
+#    pushd $sourcedir || exit 1
+#
+#    # some scripts will automatically run ./configure unless NOCONFIGURE is
+#    # set, so lets set it.
+#    export NOCONFIGURE=1
+#
+#    # choose a bootstrap method
+#    nothing_to_do=
+#    if [ -x ./bootstrap.sh ]; then
+#        echo "./bootstrap.sh..."
+#        ./bootstrap.sh || exit 1
+#    elif [ -x ./bootstrap ]; then
+#        echo "./bootstrap..."
+#        ./bootstrap || exit 1
+#    elif [ -x ./autogen.sh ]; then
+#        echo "./autogen.sh..."
+#        ./autogen.sh || exit 1
+#    elif [ -f ./configure.in ] || [ -f ./configure.ac ]; then
+#        echo "autoreconf..."
+#        autoreconf --force --install || exit 1
+#    else
+#        nothing_to_do=true
+#        echo "autoreconf_generic: doing nothing..."
+#    fi
+#    unset NOCONFIGURE
+#
+#    popd
+#}
+
+
+compile_generic()
+{
+    pushd $builddir &&
+    make -j$JOBCOUNT && make DESTDIR=$PAYLOAD_DIR install &&
+    popd || exit 1
+}

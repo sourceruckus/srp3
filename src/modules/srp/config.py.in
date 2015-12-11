@@ -15,3 +15,5 @@ compressors = {
 }
 
 default_compressor = "@COMP_DEFAULT@"
+
+build_functions = "@BUILD_FUNCTIONS@"

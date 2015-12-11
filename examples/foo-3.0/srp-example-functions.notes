@@ -1,0 +1,116 @@
+# -*- mode: conf -*-
+
+# The header section
+#
+# This is where we set all the normal package meta-data elements you would
+# expect to find in a pacakge.
+[header]
+
+name = foo
+version = 3.0.0
+
+# Udpate this if you modify the NOTES file but are building from the same
+# source.
+pkg_rev = 1
+
+# The description can be multiple lines, as long as the wrapped lines are
+# indented further than the "description" key was.
+description = The example package of doom.  This is a really lame example
+              package that serves two purposes; 1) To test functionality of
+              srp during development and 2) serve as an example for the new
+              NOTES file format.
+
+# These specify the minimum version of srp required to build this package.
+# If left blank, these fields bet filled in with the version being used to
+# create the source pacakge.  You should make an educated guess here,
+# because that's probably not very accurate (or polite).
+srp_min_version_major = 3
+srp_min_version_minor = 0
+srp_min_version_micro = 0
+
+# List of paths to extra files needed to build the package (usually patches
+# or more source tarballs).
+#
+# NOTE: These paths are relative to the location of the NOTES file (unless
+#       overriden on the command line)
+#
+# NOTE: This isn't technically needed by srp in order to build, but is in
+#       here so we can error-check that the files are available prior to
+#       running our build methods.
+extra_content = docs/docs1 docs/docs2
+
+
+# This list controls which features to enable for this package.  There are
+# two ways to enable a feature:
+#
+# 1) Explicitly specify it here
+#
+# 2) Create a feature-named section for specifying variables (i.e., the mere
+#    presense of a [perms] section causes the perms feature to be added to
+#    the list of required features, even if there's nothing in the [perms]
+#    section).
+#
+# NOTE: This means that any stray sections will cause SRP to expect to find an
+#       associated feature module (i.e., don't make a random [foo] section, or
+#       SRP will say something like "missing required feature: foo").
+#
+# NOTE: This list is pre-populated with a site-specific list of default
+#       features.  It can also be overriden on the command line at build
+#       and/or install time.
+features = no_ldupdate #perms users ldpath gtk_icons
+
+
+# The build script
+#
+# The general idea here is quite simple and pretty standard.  Configure and
+# build as if you're really gonna install it, but then set a special
+# variable that causes the install target to prepend extra path segments to
+# all paths (e.g., using DESTDIR=$PWD/FOO will cause automake's install
+# target to install files into $PWD/FOO/usr/local instead of /usr/local).
+# Then the pacakge manager pacakges up all the files in the special payload
+# dir.
+#
+# NOTE: Any section that needs to hold a multi-line, preformatted, buffer can be
+#       protected from the INI parser by putting it in a %%BUFFER_BEGIN%% block.
+#       This should be done for the build script, the perms section, and any
+#       other section we add that is going to be parsed by something else (i.e.,
+#       it's not just simple key/value pairs).
+#
+# NOTE: Internally, these %%BUFFER%% blocks are base64 encoded prior to the main
+#       parsing pass and are decoded before they're used.
+[script]
+%%BUFFER_BEGIN%%
+#!/bin/bash
+
+. $FUNCTIONS || exit 1
+
+build_generic || exit 1
+
+#copy=1 build_generic || exit 1
+
+mkdir -p $PAYLOAD_DIR/tmp/{foo,bar} || exit 1
+%%BUFFER_END%%
+
+# The perms section
+#
+# This special section defines rules to change file permissions and
+# ownership.  It is the ONLY acceptable way to change ownership of files
+# being installed (because normal users generally don't have permission to
+# chown, and we want our packages to be buildable by unprivileged users)
+[perms]
+%%BUFFER_BEGIN%%
+# NOTE: These rules are applied in the order they're listed here if multiple
+#       rules match a particular file
+#
+^/usr\S*/bin/\S*$:user=uucp,group=tty,mode=700
+^/usr/local/bin/foo$:mode_set=4000
+^/usr\S*/share/doc$:user=daemon,group=games,mode_set=600,mode_unset=077,recursive=true
+^/tmp$:group=disk,mode=1777
+%%BUFFER_END%%
+
+
+#[users]
+#users = foo:foo bar:bar
+
+#[ldpath]
+#paths = /opt/footastic/lib

@@ -198,6 +198,8 @@ def build_func(work):
     #            DESTDIR=$PAYLOAD_DIR) in build scripts.  The SRP_ROOT
     #            variable has been removed in v3.
     #
+    #        FUNCTIONS: Absolute path to our helpful functions file.
+    #
     # FIXME: the v2 code is really bad at keeping output synchronized when
     #        redirecting stdout to a logfile (i.e., output coming directly
     #        from srp and output coming from subprocesses do not apear in
@@ -219,6 +221,7 @@ def build_func(work):
     new_env['BUILD_DIR'] = work['dir']+"/build"
     new_env['PAYLOAD_DIR'] = work['dir']+"/payload"
     new_env['EXTRA_DIR'] = work['dir']+"/extra_content"
+    new_env['FUNCTIONS'] = srp.config.build_functions
     os.mkdir(work['dir'] + '/build')
     os.mkdir(work['dir'] + '/payload')
     subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/', env=new_env)

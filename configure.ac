@@ -128,6 +128,28 @@ if test $srp_cv_sed_i != yes; then
     AC_MSG_ERROR([SRP requires sed -i])
 fi
 
+# We need to substitute the path to our functions script file into
+# config.py, which is already being subst'd by configure.
+#
+# NOTE: Doing this via configure doesn't guarantee that the resuling string
+#       has been fully expanded.  In fact, it almost definately guarantees
+#       that it won't be.
+#
+# NOTE: This might not be the best way to fully expand the variable, but it
+#       works for me.  It might be portable.  It might not.  Fingers
+#       crossed.
+#
+# NOTE: This only works if we make sure $prefix has been set already...
+#       otherwise we end up with NONE in our path.
+#
+test "$prefix" = "NONE" && prefix=/usr/local
+BUILD_FUNCTIONS=$datadir/$PACKAGE/functions
+while :; do
+    temp=`eval echo $BUILD_FUNCTIONS`
+    test "$temp" = "$BUILD_FUNCTIONS" && break
+    BUILD_FUNCTIONS=$temp
+done
+AC_SUBST(BUILD_FUNCTIONS)
 
 AC_CONFIG_FILES([Makefile
 		 src/Makefile
@@ -165,4 +187,5 @@ echo "Installation:"
 echo "  prefix...............: $prefix"
 echo "  exec_prefix..........: $exec_prefix"
 echo "  pyexecdir............: $pyexecdir"
+echo "  functions............: $BUILD_FUNCTIONS"
 echo

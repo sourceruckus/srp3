@@ -1,5 +1,7 @@
 dist_bin_SCRIPTS = srp
 
+dist_pkgdata_DATA = functions
+
 SUBDIRS =
 SUBDIRS += modules
 
