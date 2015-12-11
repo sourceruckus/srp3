@@ -36,7 +36,7 @@ def build_func(work, fname):
 
     deps = []
 
-    realname = work['dir']+"/tmp"+fname
+    realname = work['dir']+"/payload"+fname
     print("calculating deps for: ", realname)
 
     # NOTE: We're using objdump here instead of ldd.  The difference is that

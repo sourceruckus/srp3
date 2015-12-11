@@ -58,7 +58,9 @@ def build_func(work):
 
     n = work["notes"]
 
-    # setup build dir(s)
+    sourcedir = work['dir'] + '/source'
+
+    # setup source dir(s)
     #
     # NOTE: If src is a dir, we will attempt to build out-of-tree using a
     #       seperate build dir.  If --intree was specified, we'll make a
@@ -67,26 +69,63 @@ def build_func(work):
     if os.path.isfile(n.header.src):
         print("extracting source tarball {}".format(n.header.src))
         with tarfile.open(n.header.src) as f:
-            f.extractall(work['dir'] + '/build')
+            f.extractall(sourcedir)
 
-        # put source dir in build, not build/source-x.y.z/
+        # put source dir in source, not souce/source-x.y.z/
         #
         # FIXME: This means if the source tarball is some odd tar that isn't
         #        all contained in a toplevel dir, we have problems...
-        d = os.listdir(work["dir"] + "/build")
+        d = os.listdir(sourcedir)
         if len(d) == 1:
             d = d[0]
-            for x in os.listdir(work["dir"] + "/build/" + d):
-                os.rename(work["dir"] + "/build/" + d + "/" + x,
-                          work["dir"] + "/build/" + x)
-            os.rmdir(work["dir"] + "/build/" + d)
+            for x in os.listdir(sourcedir + "/" + d):
+                os.rename(sourcedir + "/" + d + "/" + x,
+                          sourcedir + "/" + x)
+            os.rmdir(sourcedir + "/" + d)
 
     else:
+        # user provided external source tree
+
+        # copy source tree if not building out-of-tree
+        #
+        # FIXME: i can understand needing to be told to make a copy of a
+        #        source tree (e.g., because it's read-only), but does that
+        #        really mean we need to build out-of-tree at this point?
+        #        shouldn't that be up to the build script?  maybe we
+        #        should rename this flag --copy-source or something like
+        #        that?
+        #
+        # FIXME: setup_generic from the ruckus bootstrap scripts has
+        #        special code for excluding .git and for fixing relative
+        #        paths in .git when recursively copying a souce tree... do
+        #        we need that here?
+        #
+        if n.header.build_intree:
+            print("copying external sourcetree...")
+            shutil.copytree(n.header.src, sourcedir)
+
+        else:
+            # build out-of-tree in build dir.  we do this by creating a
+            # wrapper script build/configure which simply executes the
+            # srcdir/configure script via absolute path with the specified
+            # args
+            #
+            # FIXME: again... this seems misguided...
+            #
+            #os.mkdir(work['dir'] + '/build')
+            #with open(work['dir'] + '/build/configure', 'w') as f:
+            #    f.write("#!/bin/sh\n")
+            #    f.write("{}/configure $* || exit 1\n".format(n.header.src))
+            #    os.chmod(f.name,
+            #             stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
+            #
+            sourcedir = n.header.src
+
         # src is a source tree, do we need to bootstrap?
         #
         # NOTE: If this source tree doesn't use autotools, this block should
         #       just quietly boil down to a no-op.
-        if not os.path.exists(n.header.src + "/configure"):
+        if not os.path.exists(sourcedir + '/configure'):
             # try to bootstrap source tree
             #
             # NOTE: Each of these subprocess calls uses sets NOCONFIGURE in
@@ -95,22 +134,22 @@ def build_func(work):
             #       they're finished and we don't want that.
             new_env = dict(os.environ)
             new_env['NOCONFIGURE'] = "1"
-            if os.path.exists(n.header.src + "/bootstrap.sh"):
+            if os.path.exists(sourcedir + '/bootstrap.sh'):
                 subprocess.check_call(["./bootstrap.sh"],
-                                      cwd=n.header.src, env=new_env)
+                                      cwd=sourcedir, env=new_env)
 
-            elif os.path.exists(n.header.src + "/bootstrap"):
+            elif os.path.exists(sourcedir + '/bootstrap'):
                 subprocess.check_call(["./bootstrap"],
-                                      cwd=n.header.src, env=new_env)
+                                      cwd=sourcedir, env=new_env)
 
-            elif os.path.exists(n.header.src + "/autogen.sh"):
+            elif os.path.exists(sourcedir + '/autogen.sh'):
                 subprocess.check_call(["./autogen.sh"],
-                                      cwd=n.header.src, env=new_env)
+                                      cwd=sourcedir, env=new_env)
 
-            elif (os.path.exists(n.header.src + "/configure.in") or
-                  os.path.exists(n.header.src + "/configure.ac")):
+            elif (os.path.exists(sourcedir + '/configure.in') or
+                  os.path.exists(sourcedir + '/configure.ac')):
                 subprocess.check_call(["autoreconf", "--force", "--install"],
-                                      cwd=n.header.src, env=new_env)
+                                      cwd=sourcedir, env=new_env)
 
         # attempt to make sure srcdir is clean before we start
         #
@@ -124,29 +163,10 @@ def build_func(work):
         #        autotools?  This is really the responsibility of the
         #        user, not us, I think...
         #
-        #subprocess.call(["make", "distclean"], cwd=n.header.src)
+        #subprocess.call(["make", "distclean"], cwd=sourcedir)
 
-        # copy source tree if not building out-of-tree
-        if n.header.build_intree:
-            print("copying sourcetree for in-tree building...")
-            shutil.copytree(n.header.src, work['dir'] + '/build')
-
-        else:
-            # build out-of-tree in build dir.  we do this by creating a
-            # wrapper script build/configure which simply executes the
-            # srcdir/configure script via absolute path with the specified
-            # args
-            os.mkdir(work['dir'] + '/build')
-            with open(work['dir'] + '/build/configure', 'w') as f:
-                f.write("#!/bin/sh\n")
-                f.write("{}/configure $* || exit 1\n".format(n.header.src))
-                os.chmod(f.name,
-                         stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # create build script
-    #
-    # FIXME: do i really need to create an executable script file?  or can i
-    #        just somehow spawn a subprocess using the contents of the buf?
     with open(work['dir'] + "/srp_go", 'w') as f:
         f.write(work['notes'].script.buffer)
         os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
@@ -165,12 +185,15 @@ def build_func(work):
     #        to build scripts.  v2 just added RUCKUS_DIR.  i think we should
     #        add the following:
     #
-    #        BUILD_DIR: Toplevel dir of the source tree.
+    #        SOURCE_DIR: Toplevel dir of the source tree.
+    #
+    #        BUILD_DIR: Toplevel dir of build process (may or may not
+    #            match SOURCE_DIR).
     #
     #        EXTRA_DIR: Directory where extra_content is located (e.g.,
     #            patches).
     #
-    #        PAYLOAD_DIR: The tmp payload dir (was called SRP_ROOT in v2).
+    #        PAYLOAD_DIR: The payload dir (was called SRP_ROOT in v2).
     #            This is where files must get installed (e.g., w/
     #            DESTDIR=$PAYLOAD_DIR) in build scripts.  The SRP_ROOT
     #            variable has been removed in v3.
@@ -190,11 +213,14 @@ def build_func(work):
     #        in C i'd say to use popen and read chunks of stdout from the
     #        resulting pipe... can we do that easily using subprocess
     #        module?
+    #
     new_env = dict(os.environ)
+    new_env['SOURCE_DIR'] = sourcedir
     new_env['BUILD_DIR'] = work['dir']+"/build"
-    new_env['PAYLOAD_DIR'] = work['dir']+"/tmp"
+    new_env['PAYLOAD_DIR'] = work['dir']+"/payload"
     new_env['EXTRA_DIR'] = work['dir']+"/extra_content"
-    os.mkdir(work['dir'] + '/tmp')
+    os.mkdir(work['dir'] + '/build')
+    os.mkdir(work['dir'] + '/payload')
     subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/', env=new_env)
 
     # create manifest

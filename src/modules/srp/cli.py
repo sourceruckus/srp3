@@ -27,7 +27,7 @@ example: srp -v --build=foo.notes --src=/path/to/src --intree
 
 example: srp --build=foo.notes --src=foo.tar.xz --extra=/path/to/extra/files
 
-example: srp --install --options=strip_debug,strip_docs,strip_man -p foo.i686.brp
+example: srp -i --options=strip_debug,strip_docs,strip_man -p foo.i686.brp
 
 example: srp --query=info,size -p foo
 
@@ -415,7 +415,8 @@ def do_build(fname, src, extradir, intree, options):
     #       that's fine because we will have already added it to the toplevel
     #       brp archive.
     blob_fobj = tempfile.TemporaryFile()
-    srp.blob.blob_create(work["manifest"], work['dir']+'/tmp', fobj=blob_fobj)
+    srp.blob.blob_create(work["manifest"], work['dir']+'/payload',
+                         fobj=blob_fobj)
 
     # add NOTES (pickled instance) to toplevel pkg archive (the brp)
     n_fobj = tempfile.TemporaryFile()
