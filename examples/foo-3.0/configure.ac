@@ -4,7 +4,7 @@ AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_SRCDIR([src/foo.cpp])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE(dist-xz no-dist-gzip foreign)
+AM_INIT_AUTOMAKE(dist-xz dist-bzip2 foreign)
 
 AC_PROG_CXX
 AC_PROG_CC
