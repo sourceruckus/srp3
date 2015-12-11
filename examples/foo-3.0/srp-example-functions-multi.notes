@@ -80,21 +80,22 @@ features = no_ldupdate #perms users ldpath gtk_icons
 #       parsing pass and are decoded before they're used.
 [script]
 %%BUFFER_BEGIN%%
-#!/bin/bash
+#!/bin/sh
 
 . $FUNCTIONS || exit 1
 
-copy=1 setup_generic pass1 &&
-configure_generic --prefix=/scrap/staging1 &&
-compile_generic || exit 1
+#setup_generic pass1 &&
+#configure_generic --prefix=/scrap/staging1 &&
+#compile_generic || exit 1
+#
+#setup_generic pass2 &&
+#configure_generic --prefix=/scrap/staging2 &&
+#compile_generic || exit 1
 
-copy=1 setup_generic pass2 &&
-configure_generic --prefix=/scrap/staging2 &&
-compile_generic || exit 1
 
 # FIXME: make example build/install a library so we can test this propperly
 #
-#pass2="--libdir=/usr/lib64" build_multi --prefix=/usr || exit 1
+pass2="--libdir=/usr/lib64" build_multi --prefix=/usr || exit 1
 
 mkdir -p $PAYLOAD_DIR/tmp/{foo,bar} || exit 1
 %%BUFFER_END%%

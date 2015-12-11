@@ -80,13 +80,13 @@ features = no_ldupdate #perms users ldpath gtk_icons
 #       parsing pass and are decoded before they're used.
 [script]
 %%BUFFER_BEGIN%%
-#!/bin/bash
+#!/bin/sh
 
 . $FUNCTIONS || exit 1
 
 build_generic || exit 1
-
 #copy=1 build_generic || exit 1
+#build_in_tree=1 build_generic || exit 1
 
 mkdir -p $PAYLOAD_DIR/tmp/{foo,bar} || exit 1
 %%BUFFER_END%%

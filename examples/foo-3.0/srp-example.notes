@@ -80,7 +80,7 @@ features = no_ldupdate #perms users ldpath gtk_icons
 #       parsing pass and are decoded before they're used.
 [script]
 %%BUFFER_BEGIN%%
-#!/bin/bash
+#!/bin/sh
 
 $SOURCE_DIR/configure && make -j5 &&
 make DESTDIR=$PAYLOAD_DIR install || exit 1
