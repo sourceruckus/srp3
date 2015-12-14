@@ -9,7 +9,7 @@
 name = foo
 version = 3.0.0
 
-# Udpate this if you modify the NOTES file but are building from the same
+# Update this if you modify the NOTES file but are building from the same
 # source.
 pkg_rev = 1
 
@@ -84,18 +84,11 @@ features = no_ldupdate #perms users ldpath gtk_icons
 
 . $FUNCTIONS || exit 1
 
-#setup_generic pass1 &&
-#configure_generic --prefix=/scrap/staging1 &&
-#compile_generic || exit 1
-#
-#setup_generic pass2 &&
-#configure_generic --prefix=/scrap/staging2 &&
-#compile_generic || exit 1
+pass2="--libdir=/usr/lib64"
+build_multi --prefix=/usr || exit 1
 
-
-pass2="--libdir=/usr/lib64" build_multi --prefix=/usr || exit 1
-
-mkdir -p $PAYLOAD_DIR/tmp/{foo,bar} || exit 1
+mkdir -p $PAYLOAD_DIR/tmp/foo &&
+mkdir -p $PAYLOAD_DIR/tmp/bar || exit 1
 %%BUFFER_END%%
 
 # The perms section

@@ -113,8 +113,10 @@ build_multi()
     #       multilib build, but it essentially expands to a no-op in the other
     #       configs, so we just let it.
     #
-    CC="gcc ${BUILD32}" CXX="g++ ${BUILD32}" \
-        configure_generic $OPTS &&
+    export CC="gcc ${BUILD32}"
+    export CXX="g++ ${BUILD32}"
+    configure_generic $OPTS &&
+    unset CC CXX &&
     compile_generic || exit 1
 
     # ========== pass2 ==========
@@ -128,8 +130,10 @@ build_multi()
 
         OPTS="$* $pass2"
 
-        CC="gcc ${BUILD64}" CXX="g++ ${BUILD64}" \
-            configure_generic $OPTS &&
+        export CC="gcc ${BUILD64}"
+        export CXX="g++ ${BUILD64}"
+        configure_generic $OPTS &&
+        unset CC CXX &&
         compile_generic || exit 1
     fi
 }

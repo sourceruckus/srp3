@@ -9,7 +9,7 @@
 name = foo
 version = 3.0.0
 
-# Udpate this if you modify the NOTES file but are building from the same
+# Update this if you modify the NOTES file but are building from the same
 # source.
 pkg_rev = 1
 
@@ -84,11 +84,12 @@ features = no_ldupdate #perms users ldpath gtk_icons
 
 . $FUNCTIONS || exit 1
 
-build_generic || exit 1
-#copy=1 build_generic || exit 1
-#build_in_tree=1 build_generic || exit 1
+copy=1
+build_in_tree=1
+build_generic --prefix=/usr || exit 1
 
-mkdir -p $PAYLOAD_DIR/tmp/{foo,bar} || exit 1
+mkdir -p $PAYLOAD_DIR/tmp/foo &&
+mkdir -p $PAYLOAD_DIR/tmp/bar || exit 1
 %%BUFFER_END%%
 
 # The perms section

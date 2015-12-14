@@ -9,7 +9,7 @@
 name = foo
 version = 3.0.0
 
-# Udpate this if you modify the NOTES file but are building from the same
+# Update this if you modify the NOTES file but are building from the same
 # source.
 pkg_rev = 1
 
@@ -85,7 +85,8 @@ features = no_ldupdate #perms users ldpath gtk_icons
 $SOURCE_DIR/configure && make -j5 &&
 make DESTDIR=$PAYLOAD_DIR install || exit 1
 
-mkdir -p $PAYLOAD_DIR/tmp/{foo,bar} || exit 1
+mkdir -p $PAYLOAD_DIR/tmp/foo &&
+mkdir -p $PAYLOAD_DIR/tmp/bar || exit 1
 %%BUFFER_END%%
 
 # The perms section
