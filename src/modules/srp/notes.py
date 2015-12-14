@@ -164,7 +164,7 @@ class notes_file:
 
     NOTE: We implement sub-classes in here to handle each section of the file.
     """
-    def __init__(self, fobj, src, extradir=None, intree=False):
+    def __init__(self, fobj, src, extradir=None, copysrc=False):
         # check for open mode
         #
         # NOTE: We do this here so that we can assume the file has been
@@ -198,7 +198,7 @@ class notes_file:
 
         # add cli-specified header fields
         self.header.src = os.path.abspath(src)
-        self.header.build_intree = intree
+        self.header.copysrc = copysrc
 
         # add features for unclaimed sections
         #

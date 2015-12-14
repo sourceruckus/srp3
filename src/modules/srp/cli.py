@@ -23,7 +23,7 @@ desc = """\
 """.format(srp.config.prog, srp.config.version, srp.config.build_year)
 
 epi = """\
-example: srp -v --build=foo.notes --src=/path/to/src --intree
+example: srp -v --build=foo.notes --src=/path/to/src --copysrc
 
 example: srp --build=foo.notes --src=foo.tar.xz --extra=/path/to/extra/files
 
@@ -161,10 +161,10 @@ p.add_argument('--extra', metavar='DIR',
                help="""Specified an alternate basedir for paths referenced
                in the NOTES file (e.g., extra_content).""")
 
-p.add_argument('--intree', action='store_true',
-               help="""Do not attempt to build out-of-tree.  By default,
-               packages are built out-of-tree unless specified as tarballs
-               or this flag is set.""")
+p.add_argument('--copysrc', action='store_true',
+               help="""Make a copy of external source tree no matter what.  By
+               default, external source trees are used as-is for out-of-tree
+               building, unless the build_script makes a copy itself.""")
 
 p.add_argument('--options', metavar='OPTIONS', default=[],
                help="""Comma delimited list of extra options to pass into
@@ -244,9 +244,10 @@ def main():
         if not args.src:
             p.error("argument --build: requires --src")
 
-        print("do_build(notes={}, src={}, extra={}, intree={}, options={})".
-              format(args.build, args.src, args.extra, args.intree, args.options))
-        do_build(args.build, args.src, args.extra, args.intree, args.options)
+        print("do_build(notes={}, src={}, extra={}, copysrc={}, options={})".
+              format(args.build, args.src, args.extra, args.copysrc,
+                     args.options))
+        do_build(args.build, args.src, args.extra, args.copysrc, args.options)
 
     elif args.action:
         for x in get_package_list():
@@ -295,9 +296,9 @@ def verify_sha(tar):
     return x
 
 
-def do_build(fname, src, extradir, intree, options):
+def do_build(fname, src, extradir, copysrc, options):
     with open(fname, 'rb') as fobj:
-        n = srp.notes.notes_file(fobj, src, extradir, intree)
+        n = srp.notes.notes_file(fobj, src, extradir, copysrc)
 
     # add brp section to NOTES instance
     n.brp = srp.notes.notes_brp()

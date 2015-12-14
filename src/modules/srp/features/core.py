@@ -62,10 +62,11 @@ def build_func(work):
 
     # setup source dir(s)
     #
-    # NOTE: If src is a dir, we will attempt to build out-of-tree using a
-    #       seperate build dir.  If --intree was specified, we'll make a
-    #       copy of src in the build dir.  If src is a source tarball, we'll
-    #       extract it in dir.
+    # NOTE: If src is a dir, we will set things up so that the build
+    #       script can easily build out-of-tree using a seperate build
+    #       dir.  If --copysrc was specified, we'll make a copy of src in
+    #       the build dir.  If src is a source tarball, we'll extract it
+    #       in dir.
     if os.path.isfile(n.header.src):
         print("extracting source tarball {}".format(n.header.src))
         with tarfile.open(n.header.src) as f:
@@ -86,39 +87,18 @@ def build_func(work):
     else:
         # user provided external source tree
 
-        # copy source tree if not building out-of-tree
-        #
-        # FIXME: i can understand needing to be told to make a copy of a
-        #        source tree (e.g., because it's read-only), but does that
-        #        really mean we need to build out-of-tree at this point?
-        #        shouldn't that be up to the build script?  maybe we
-        #        should rename this flag --copy-source or something like
-        #        that?
+        # copy source tree if requested
         #
         # FIXME: setup_generic from the ruckus bootstrap scripts has
         #        special code for excluding .git and for fixing relative
         #        paths in .git when recursively copying a souce tree... do
         #        we need that here?
         #
-        if n.header.build_intree:
+        if n.header.copysrc:
             print("copying external sourcetree...")
             shutil.copytree(n.header.src, sourcedir)
 
         else:
-            # build out-of-tree in build dir.  we do this by creating a
-            # wrapper script build/configure which simply executes the
-            # srcdir/configure script via absolute path with the specified
-            # args
-            #
-            # FIXME: again... this seems misguided...
-            #
-            #os.mkdir(work['dir'] + '/build')
-            #with open(work['dir'] + '/build/configure', 'w') as f:
-            #    f.write("#!/bin/sh\n")
-            #    f.write("{}/configure $* || exit 1\n".format(n.header.src))
-            #    os.chmod(f.name,
-            #             stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
-            #
             sourcedir = n.header.src
 
         # src is a source tree, do we need to bootstrap?
@@ -150,20 +130,6 @@ def build_func(work):
                   os.path.exists(sourcedir + '/configure.ac')):
                 subprocess.check_call(["autoreconf", "--force", "--install"],
                                       cwd=sourcedir, env=new_env)
-
-        # attempt to make sure srcdir is clean before we start
-        #
-        # NOTE: Specifically, building out-of-tree requires that the source
-        #       tree be bootstrapped but NOT configured.
-        #
-        # FIXME: This could use subprocess.DEVNULL to hide output, but that
-        #        would requier Python >= 3.3
-        #
-        # FIXME: Should we really be doing this here?  What if not using
-        #        autotools?  This is really the responsibility of the
-        #        user, not us, I think...
-        #
-        #subprocess.call(["make", "distclean"], cwd=sourcedir)
 
 
     # create build script
