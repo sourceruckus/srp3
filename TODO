@@ -3,10 +3,13 @@
 * move functions from bootstrap-early in here
 Clean them up and make them available to build scripts
 
+*NOTE:* I think this is done, but should probably test a bit more...
+
 * hardcoded path to db file in srp.db
 
-* cli additions [0/3]
-  - [ ] --srcdir
+* cli additions [2/5]
+  - [X] --src= (tar or dir)
+  - [X] --copysrc
   - [ ] --compressor=[gzip,bz2,lzma]
   - [ ] --compression-level=N
   - [ ] --root flag (instead of DESTDIR or SRP_ROOT_PREFIX)
@@ -26,7 +29,24 @@ Clean them up and make them available to build scripts
 
 * get the --action stuff plumbed up.
 
-* query (from srp, brp, and installed manifest)
+* query (from brp and installed manifest) [1/3]
+  - [X] cli improvements
+  - [-] types [3/6]
+    - [X] name
+    - [ ] info
+    - [X] files
+    - [X] stats
+    - [ ] size
+    - [ ] raw
+  - [ ] criteria [0/8]
+    - [ ] pkg (w/ globbing)
+    - [ ] file (w/ globbing)
+    - [ ] date_installed
+    - [ ] date_built
+    - [ ] size
+    - [ ] grep
+    - [ ] built_by
+    - [ ] built_on
 
 * upgrade logic
 
