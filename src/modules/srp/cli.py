@@ -590,7 +590,7 @@ def do_install(fname, options):
     m = work["manifest"]
 
     # register w/ srp db
-    inst = srp.db.installed_package(n, m)
+    inst = srp.db.InstalledPackage(n, m)
     srp.db.register(inst)
 
     # commit db to disk
