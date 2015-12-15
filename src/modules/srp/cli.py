@@ -31,6 +31,8 @@ example: srp -i --options=strip_debug,strip_docs,strip_man -p foo.i686.brp
 
 example: srp --query=info,size -p foo
 
+example: srp -i foo.brp bar.brp baz.brp
+
 example: srp -l "perl*" | srp --action=strip_debug,strip_docs,commit
 """
 
@@ -144,14 +146,14 @@ p.add_argument('-F', '--force', action='store_true',
 #        fnmatch.filter results are actually what the user was expecting
 #        before uninstalling them... but a double-check prompt would be
 #        silly for --query.
-p.add_argument('-p', '--package', metavar='PACKAGE', nargs='+',
+#
+p.add_argument('packages', metavar='PACKAGE', nargs='*',
                help="""Specifies the PACKAGE(s) for --install, --uninstall,
                --query, and --action.  Note that PACKAGE can be a Unix
                shell-style wildcard for modes that act on previously
                installed packages (e.g., --uninstall, --query, --action).
                If a specified PACKAGE is '-', additional PACKAGEs are read
-               from stdin.  If --package is left out entirely, packages are
-               expected on stdin.""")
+               from stdin.""")
 
 p.add_argument('--src', metavar='SRC',
                help="""Specifies the source dir or source tarball to be
@@ -176,24 +178,27 @@ p.add_argument('--options', metavar='OPTIONS', default=[],
 args = None
 
 
-# FIXME: should i be able to augment package list via stdin? I.e., use
-#        --package AND also read more package from stdin.
-def get_package_list():
-    retval = []
 
-    if args.package:
-        retval.extend(args.package)
-        if '-' not in retval:
-            return retval
-        else:
-            retval.remove('-')
+def parse_package_list():
+    # nothing to do unless - was specified
+    if '-' not in args.packages:
+        return
 
-    # FIXME: for now, we assume that stdin is set up as a pipe if no
-    #        packages were specified or if one of the specified pacakges is
-    #        '-'.  would be nice if we could tell if this was going to
-    #        block...
-    retval.extend(sys.stdin.read().split())
-    return retval
+    # append stdin to supplied package list, after removing the '-'
+    args.packages.remove('-')
+    args.packages.extend(sys.stdin.read().split())
+
+
+def parse_options():
+    # nothing to do unless we actually got options
+    #
+    # FIXME: do i need to compare exlictly against [] here to diferentiate
+    #        between [] and None?
+    if not args.options:
+        return
+
+    # parse --options into a list
+    args.options = args.options.split(',')
 
 
 def main():
@@ -202,41 +207,27 @@ def main():
 
     print(args)
 
-    # FIXME: should i just add force as a per-method option instead of a
-    #        global option? i.e., --install=strip_debug,force instead of
-    #        --install=strip_debug --force.
+    # FIXME: actually do something with this verbosity level...
     #
-    # FIXME: kinda undecided, but I think i like --force better. feels a
-    #        little strange in some cases (e.g., --action's argument is
-    #        called ACTIONS and force would not be an action... it's an
-    #        option)
-    #
-    # FIXME: but maybe we don't want to allow --force for --action...?  just
-    #        say that --action is for fixing things that would otherwise
-    #        require you to add --force to other comands?
-
-    #force = args.force
-    #verbose = args.verbose
-    #init = args.init
-
-    # FIXME: we should error out if metadata has not yet been initialized
-    #        (unless args.init is set, obviously)
-
     print("do_init_output(level={})".format(args.verbose))
 
-    # stand-alone arguments/flags
-    if args.options != []:
-        # parse --options into a list
-        args.options = args.options.split(',')
+    parse_package_list()
+    parse_options()
 
     # mutually-exclusive arguments/flags
     if args.install:
-        for x in get_package_list():
+        if not args.packages:
+            p.error("argument --install: requires PACKAGE(s)")
+
+        for x in args.packages:
             print("do_install(package={}, options={})".format(x, args.options))
             do_install(x, args.options)
 
     elif args.uninstall:
-        for x in get_package_list():
+        if not args.packages:
+            p.error("argument --uninstall: requires PACKAGE(s)")
+
+        for x in args.packages:
             print("do_uninstall(package={}, options={})".format(x, args.options))
 
     elif args.build:
@@ -250,8 +241,8 @@ def main():
         do_build(args.build, args.src, args.extra, args.copysrc, args.options)
 
     elif args.action:
-        for x in get_package_list():
-            print("do_action(package={}, actions={})".format(x, args.action))
+        if not args.packages:
+            p.error("argument --action: requires PACKAGE(s)")
 
     elif args.query != None:
         if args.query != []:
