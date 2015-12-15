@@ -121,10 +121,19 @@ def blob_create(manifest, payload_dir, fname=None, fobj=None):
     #       offset! yay!
 
 
+# FIXME: if created via fobj, extract will not be functional... unless we
+#        make it work later.  the c func takes a filename, so we would
+#        have to make sure to know the path to the file on disk.
+#
 class blob:
-    def __init__(self, fname):
+    def __init__(self, fname=None, fobj=None):
         self.fname = fname
-        self.fobj = open(fname, "rb")
+
+        if not fobj:
+            self.fobj = open(fname, "rb")
+        else:
+            self.fobj = fobj
+
         self.manifest = pickle.load(self.fobj)
         self.hdr_offset = self.fobj.tell()
 

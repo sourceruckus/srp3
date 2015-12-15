@@ -18,7 +18,7 @@ from pprint import pprint
 # which is NOTES and MANIFEST (and perhaps other files as well).
 
 
-class installed_package:
+class InstalledPackage:
     def __init__(self, notes, manifest):
         self.notes = notes
         self.manifest = manifest
@@ -80,7 +80,7 @@ class installed_package:
 
 
 def register(p):
-    """register installed_package instance p in the db"""
+    """register InstalledPackage instance p in the db"""
     name = p.notes.header.name
     # FIXME: should the __db[name] entry be a list or a dict? for now it's
     #        a list, but we should revisit this once we've had a chance to

@@ -3,6 +3,11 @@
 
 # FIXME: waaaaay too much stuff has ended up in this cli module.  once it's
 #        been moved to a different module, audit the import statements
+#
+#        probably move almost everything other than cli parsing into the
+#        toplevel srp module (i.e., so we have srp.build instead of
+#        srp.cli.do_build)
+#
 import argparse
 import hashlib
 import os
@@ -11,6 +16,7 @@ import stat
 import sys
 import tarfile
 import tempfile
+import time
 import pickle
 import fnmatch
 
@@ -168,9 +174,10 @@ p.add_argument('--extra', metavar='DIR',
                in the NOTES file (e.g., extra_content).""")
 
 p.add_argument('--copysrc', action='store_true',
-               help="""Make a copy of external source tree no matter what.  By
-               default, external source trees are used as-is for out-of-tree
-               building, unless the build_script makes a copy itself.""")
+               help="""Used in conjunction with --build and --src w/ an external
+               source tree.  By default, external source trees are used as-is
+               for out-of-tree building, unless the build_script makes a copy
+               explicitly.""")
 
 p.add_argument('--options', metavar='OPTIONS', default=[],
                help="""Comma delimited list of extra options to pass into
@@ -253,12 +260,22 @@ def main():
         if not args.packages:
             p.error("argument --action: requires PACKAGE(s)")
 
-    elif args.query != None:
-        if args.query != []:
-            args.query = args.query.split(',')
-        for x in get_package_list():
-            print("do_query(package={}, fields={})".format(x, args.query))
-            do_query(x, args.query)
+        for x in args.packages:
+            print("do_action(package={}, actions={})".format(x, args.action))
+            if not args.dry_run:
+                do_action(x, args.action)
+
+    elif args.query:
+        q_t = []
+        q_c = []
+        for x in args.query.split(','):
+            if '=' in x:
+                q_c.append(x)
+            else:
+                q_t.append(x)
+        print("do_query(types={}, criteria={})".format(q_t, q_c))
+        if not args.dry_run:
+            do_query(q_t, q_c)
 
     elif args.list != None:
         if not args.list:
@@ -471,12 +488,15 @@ def do_install(fname, options):
     # NOTE: This is needed so that build scripts can access other misc files
     #       they've included in the srp (e.g., apply a patch, install an
     #       externally maintained init script)
+    #
+    # FIXME: is this still needed now that we've nixed the whole concept
+    #        of a source package?
+    #
     with tarfile.open(fname) as p:
         # verify SHA
         from_sha = verify_sha(p)
         # verify that requirements are met
         n_fobj = p.extractfile("NOTES")
-        #n = srp.notes.notes(n_fobj)
         n = pickle.load(n_fobj)
         # extract into work dir
         p.extractall(work['dir'] + "/package")
@@ -580,13 +600,176 @@ def do_install(fname, options):
 
 
 
-# FIXME: what should srp -l output look like?  maybe just like v2's output?  but --raw gives a SHA?
+# FIXME: what should srp -l output look like?  maybe just like v2's
+#        output?  but --raw gives a SHA?
 
-def do_query(fname, options):
-    print(fname, options)
-    matches = srp.db.lookup_by_name(fname)
-    print(matches)
+
+# FIXME: Need to document these query type and criteria ramblings
+#        somewhere user-visible...
+#
+# -q type[,type,...],criteria[,criteria]
+#
+# valid types:
+#   - name (package name w/ version)
+#   - info (summary)
+#   - files (filenames)
+#   - stats (stats for each file)
+#   - size (total size of installed package)
+#   - raw (super debug all)
+#
+# valid criteria:
+#   - pkg (glob pkgname or path to brp)
+#   - file (glob name of installed file)
+#   - date_installed (-/+ for before/after)
+#   - date_built (-/+ for before/after)
+#   - size (-/+ for smaller/larger)
+#   - grep (find string in info)
+#   - built_by (glob builder name)
+#   - built_on (glob built on host)
+#
+#
+# What package installed the specified file:
+#   srp -q name,file=/usr/lib/libcrust.so
+#
+# Show description of installed package
+#   srp -q info,pkg=srp-example
+#
+# List all files installed by package
+#   srp -q files,pkg=srp-example
+#
+# List info,files for package on disk
+#   srp -q info,files,pkg=./foo.brp
+#
+# List packages installed after specified date:
+#   srp -q name,date_installed=2015-11-01+
+#
+#   srp -q name,date_built=2015-11-01+
+#
+#   srp -q name,size=1M+
+#
+#   srp -q name,built_by=mike
+#
+# Search through descriptions for any packages that match a pattern:
+#   srp -q name,grep="tools for flabbergasting"
+#
+# Everything, and I mean everything, about a package:
+#   srp -q all,pkg=srp-example
+#
+def do_query(types, criteria):
+    print(types, criteria)
+    matches = []
+    for c in criteria:
+        k,v = c.split("=")
+        print("k={}, v={}".format(k, v))
+        if k == "pkg":
+            # glob pkgname or path to brp
+            matches.extend(do_query_pkg(v))
+        elif k == "file":
+            # glob name of installed file
+            matches.extend(do_query_file(v))
+        else:
+            raise Exception("Unsupported criteria '{}'".format(k))
+
+    print("fetching for all matches: {}".format(types))
     for m in matches:
-        print("-".join((m.notes.header.name,
-                        m.notes.header.version,
-                        m.notes.header.pkg_rev)))
+        for t in types:
+            if t == "name":
+                print(format_results_name(m))
+            elif t == "info":
+                print(format_results_info(m))
+            elif t == "files":
+                print(format_results_files(m))
+            elif t == "stats":
+                print(format_results_stats(m))
+            else:
+                raise Exception("Unsupported query type '{}'".format(t))
+
+
+def do_query_pkg(name):
+    if os.path.exists(name):
+        # query package file on disk
+        #
+        # FIXME: shouldn't there be a helper func for basic brp-on-disk
+        #        access?
+        #
+        with tarfile.open(name) as p:
+            n_fobj = p.extractfile("NOTES")
+            n = pickle.load(n_fobj)
+            blob_fobj = p.extractfile("BLOB")
+            blob = srp.blob.blob(fobj=blob_fobj)
+            m = blob.manifest
+
+        return [srp.db.InstalledPackage(n, m)]
+
+    else:
+        # query installed package via db
+        return srp.db.lookup_by_name(name)
+
+
+def format_results_name(p):
+    return "-".join((p.notes.header.name,
+                     p.notes.header.version,
+                     p.notes.header.pkg_rev))
+
+
+def format_results_info(p):
+    # FIXME: make this a nice multi-collumn summary of the NOTES file,
+    #        excluding build_script, perms, etc
+    #
+    # FIXME: wrap text according to terminal size for description
+    #
+    # FIXME: calculate total installed size
+    #
+    return "Package: {}\nDescription: {}".format(
+        format_results_name(p), p.notes.header.description)
+
+
+# FIXME: this seems inefficient
+def format_results_files(p):
+    m = list(p.manifest)
+    m.sort()
+    return "\n".join(m)
+
+
+# NOTE: To test this quickly in interpreter...
+#
+# import tempfile
+# import tarfile
+# import stat
+# import time
+# __tmp = tempfile.TemporaryFile()
+# tar = tarfile.open(fileobj=__tmp, mode="w|")
+# x = tar.gettarinfo("/etc/fstab")
+# y = tar.gettarinfo("/dev/console")
+# z = tar.gettarinfo("/dev/stdout")
+#
+def format_tinfo(t):
+    fmt = "{mode} {uid:8} {gid:8} {size:>8} {date} {name}{link}"
+    mode = stat.filemode(t.mode)
+    uid = t.uname or t.uid
+    gid = t.gname or t.gid
+    if t.ischr() or t.isblk():
+        size = "{},{}".format(t.devmajor, t.devminor)
+    else:
+        size = t.size
+    date = "{}-{:02}-{:02} {:02}:{:02}:{:02}".format(
+        *time.localtime(t.mtime)[:6])
+    name = t.name + ("/" if t.isdir() else "")
+    if t.issym():
+        link = " -> " + t.linkname
+    elif t.islnk():
+        link = " link to " + t.linkname
+    else:
+        link = ""
+    return fmt.format(**locals())
+
+
+# FIXME: this seems really inefficient
+def format_results_stats(p):
+    m = list(p.manifest)
+    m.sort()
+    retval = []
+    for f in m:
+        tinfo = p.manifest[f]["tinfo"]
+        retval.append(format_tinfo(tinfo))
+    return "\n".join(retval)
