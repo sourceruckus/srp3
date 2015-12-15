@@ -138,6 +138,10 @@ p.add_argument('-F', '--force', action='store_true',
                     It can also be used to force installation even if
                     dependencies are not met.""")
 
+p.add_argument('-n', '--dry-run', action='store_true',
+               help="""Don't actualy do anything, just print what would have
+                    been done.""")
+
 # FIXME: should -p support fnmatch globbing directly or force users to pass
 #        output of srp -l PATTERN in via a pipe...?
 #
@@ -221,7 +225,8 @@ def main():
 
         for x in args.packages:
             print("do_install(package={}, options={})".format(x, args.options))
-            do_install(x, args.options)
+            if not args.dry_run:
+                do_install(x, args.options)
 
     elif args.uninstall:
         if not args.packages:
@@ -229,6 +234,8 @@ def main():
 
         for x in args.packages:
             print("do_uninstall(package={}, options={})".format(x, args.options))
+            if not args.dry_run:
+                do_uninstall(x, args.options)
 
     elif args.build:
         # check for other required flags
@@ -238,7 +245,9 @@ def main():
         print("do_build(notes={}, src={}, extra={}, copysrc={}, options={})".
               format(args.build, args.src, args.extra, args.copysrc,
                      args.options))
-        do_build(args.build, args.src, args.extra, args.copysrc, args.options)
+        if not args.dry_run:
+            do_build(args.build, args.src, args.extra, args.copysrc,
+                     args.options)
 
     elif args.action:
         if not args.packages:
@@ -255,9 +264,13 @@ def main():
         if not args.list:
             args.list = ["*"]
         print("do_list(pattern='{}')".format(args.list))
+        if not args.dry_run:
+            args.do_list(args.list)
 
     elif args.init:
         print("do_init_metadata()")
+        if not args.dry_run:
+            pass
 
     elif args.features:
         m = srp.features.get_stage_map(srp.features.registered_features)
