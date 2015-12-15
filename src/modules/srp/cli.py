@@ -117,7 +117,7 @@ g.add_argument('-a', '--action', metavar="ACTIONS",
 #
 #        commit - re-checksum and record package changes
 
-g.add_argument('-l', '--list', metavar="PATTERN", nargs='*',
+g.add_argument('-l', '--list', metavar="PATTERN", nargs='?', const='*',
                help="""List installed packages matching Unix shell-style
                     wildcard PATTERN (or all packages if PATTERN not
                     supplied).""")
@@ -126,7 +126,8 @@ g.add_argument('-I', '--init', action='store_true',
                help="Initialize metadata.")
 
 g.add_argument('-V', '--version', action='version',
-               version="{} version {}".format(srp.config.prog, srp.config.version))
+               version="{} version {}".format(
+                   srp.config.prog, srp.config.version))
 
 g.add_argument('--features', action='store_true',
                help="""Display a summary of all registered features""")
@@ -277,12 +278,14 @@ def main():
         if not args.dry_run:
             do_query(q_t, q_c)
 
+    # FIXME: should we just get rid of --list?  or keep it around as a
+    #        shortcut to list installed packages by name...?
     elif args.list != None:
         if not args.list:
-            args.list = ["*"]
-        print("do_list(pattern='{}')".format(args.list))
+            args.list = "*"
+        print("do_query(types=['name'], criteria=['pkg={}'])".format(args.list))
         if not args.dry_run:
-            args.do_list(args.list)
+            do_query(types=['name'], criteria=['pkg={}'.format(args.list)])
 
     elif args.init:
         print("do_init_metadata()")
