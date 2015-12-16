@@ -139,6 +139,8 @@ p.add_argument('-v', '--verbose', action='count', default=0,
                help="""Be verbose.  Can be supplied multiple times for
                     increased levels of verbosity.""")
 
+# FIXME: this doesn't force no_deps yet...  only same-version-upgrade...
+#
 p.add_argument('-F', '--force', action='store_true',
                help="""Do things anyway.  For example, this will allow you
                     to 'upgrade' to the same version of what's installed.
@@ -180,6 +182,10 @@ p.add_argument('--copysrc', action='store_true',
                for out-of-tree building, unless the build_script makes a copy
                explicitly.""")
 
+p.add_argument('--no-upgrade', action='store_true',
+               help="""Changes default logic of --install to NOT install if any
+               version of the package is already installed.""")
+
 p.add_argument('--options', metavar='OPTIONS', default=[],
                help="""Comma delimited list of extra options to pass into
                --build, --install, or --uninstall.""")
@@ -187,6 +193,17 @@ p.add_argument('--options', metavar='OPTIONS', default=[],
 
 # once we parse our command line arguments, we'll store the results globally
 # here
+#
+# FIXME: might want to put this in some obvious globally available spot so
+#        that we car reference our run-time params from within other
+#        modules (e.g., deps feature mod for --force)
+#
+# FIXME: some of the cli flags are currently getting stored in the
+#        NotesFile instance, some are getting passed down into
+#        functions...  using the NotesFile makes sense, but does also
+#        cause the cli flags to get stored in the InstalledPackage
+#        instance in the db... which could be helpful I guess.
+#
 args = None
 
 
@@ -234,7 +251,7 @@ def main():
         for x in args.packages:
             print("do_install(package={}, options={})".format(x, args.options))
             if not args.dry_run:
-                do_install(x, args.options)
+                do_install(x, args.options, not args.no_upgrade, args.force)
 
     elif args.uninstall:
         if not args.packages:
@@ -477,7 +494,7 @@ def do_build(fname, src, extradir, copysrc, options):
     __brp.close()
 
 
-def do_install(fname, options):
+def do_install(fname, options, allow_upgrade=True, force=False):
     # create ruckus dir in tmp
     #
     # FIXME: we need to standardize who make the tmp dir... i think the
@@ -503,6 +520,37 @@ def do_install(fname, options):
         # extract into work dir
         p.extractall(work['dir'] + "/package")
 
+    # check for previously installed version
+    #
+    # NOTE: The db lookup method(s) return a list of matches to 1) support
+    #        fnmatch queries and 2) support having multiple versions of a
+    #        package installed.  We don't need to wory about the 1st case
+    #        here, because we're passing in an exact package name, but we
+    #        do have to wory about the 2nd case.
+    #
+    #        Why?  We like to be able to have multiple kernel packages
+    #        installed, as they generally don't overlap files (except
+    #        firmware, possibly) and it's nice to have multiple kernels
+    #        managed via the package manager.
+    #
+    #        This means we need to iterate over a list of possibly more
+    #        than 1 installed version.
+    #
+    prevs = srp.db.lookup_by_name(n.header.name)
+    # make sure upgrading is allowed if needed
+    if prevs and not allow_upgrade:
+        raise Exception("Package {} already installed".format(n.header.name))
+
+    # check for upgrading to identical version (requires --force)
+    for prev in prevs:
+        if prev.notes.header.fullname == n.header.fullname and not force:
+            raise Exception("Package {} already installed, use --force to"
+                            " forcefully reinstall or --uninstall and then"
+                            " --install".format(n.header.fullname))
+
+    if prevs:
+        print("Upgrading to {}".format(n.header.fullname))
+
     # add installed section to NOTES instance
     n.installed = srp.notes.notes_installed(from_sha)
 
@@ -522,6 +570,7 @@ def do_install(fname, options):
     work['fname'] = fname
     work['notes'] = n
     work['manifest'] = blob.manifest
+    work['prev'] = prev
 
     # NOTE: In order to test this (and later on, to test new packages) as an
     #       unprivileged, we need to have to have some sort of fake root
