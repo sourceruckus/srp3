@@ -684,6 +684,8 @@ def do_query(types, criteria):
                 print(format_results_files(m))
             elif t == "stats":
                 print(format_results_stats(m))
+            elif t == "raw":
+                print(format_results_raw(m))
             else:
                 raise Exception("Unsupported query type '{}'".format(t))
 
@@ -722,6 +724,8 @@ def format_results_info(p):
     # FIXME: wrap text according to terminal size for description
     #
     # FIXME: calculate total installed size
+    #
+    # FIXME: show deps list? or use raw for that?
     #
     return "Package: {}\nDescription: {}".format(
         format_results_name(p), p.notes.header.description)
@@ -776,3 +780,9 @@ def format_results_stats(p):
         tinfo = p.manifest[f]["tinfo"]
         retval.append(format_tinfo(tinfo))
     return "\n".join(retval)
+
+
+def format_results_raw(p):
+    return "{}\n{}".format(
+        p.notes,
+        p.manifest)
