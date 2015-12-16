@@ -147,19 +147,14 @@ p.add_argument('-F', '--force', action='store_true',
                     It can also be used to force installation even if
                     dependencies are not met.""")
 
+# FIXME: how deep should the dry-run go?  cli parsing?  toplevel mode
+#        function?  each individual feature func for each file being acted
+#        upon?
+#
 p.add_argument('-n', '--dry-run', action='store_true',
                help="""Don't actualy do anything, just print what would have
                     been done.""")
 
-# FIXME: should -p support fnmatch globbing directly or force users to pass
-#        output of srp -l PATTERN in via a pipe...?
-#
-# FIXME: actually, maybe the other modes should do the matching...  for
-#        example, you might want uninstall to double-check that the
-#        fnmatch.filter results are actually what the user was expecting
-#        before uninstalling them... but a double-check prompt would be
-#        silly for --query.
-#
 p.add_argument('packages', metavar='PACKAGE', nargs='*',
                help="""Specifies the PACKAGE(s) for --install, --uninstall,
                --query, and --action.  Note that PACKAGE can be a Unix
@@ -570,7 +565,7 @@ def do_install(fname, options, allow_upgrade=True, force=False):
     work['fname'] = fname
     work['notes'] = n
     work['manifest'] = blob.manifest
-    work['prev'] = prev
+    work['prevs'] = prevs
 
     # NOTE: In order to test this (and later on, to test new packages) as an
     #       unprivileged, we need to have to have some sort of fake root
