@@ -404,8 +404,7 @@ def do_build(fname, src, extradir, copysrc, options):
     mach = platform.machine()
     if not mach:
         mach = "unknown"
-    pname = "{}-{}-{}.{}.brp".format(n.header.name, n.header.version,
-                                     n.header.pkg_rev, mach)
+    pname = "{}.{}.brp".format(n.header.fullname, mach)
 
     # FIXME: compression should be configurable globally and also via
     #        the command line when building.

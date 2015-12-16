@@ -57,6 +57,9 @@ class notes_header:
         self.version = config["version"]
         self.pkg_rev = config["pkg_rev"]
 
+        # add formatted fullname
+        self.fullname = "{}-{}-{}".format(self.name, self.version, self.pkg_rev)
+
         # strip carriage returns out of this potentially multi-line item
         self.description = config["description"].replace("\n", " ")
 
