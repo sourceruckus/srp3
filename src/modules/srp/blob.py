@@ -6,6 +6,7 @@ import tarfile
 import tempfile
 import pickle
 import stat
+import subprocess
 import pwd
 import grp
 
@@ -29,6 +30,30 @@ import srp._blob
 #         usage) than tarfile, especially on older hardware.  We'll be
 #         making it even faster by implementing bits of it in C down the
 #         line...
+
+
+# FIXME: objdump -p "file format" vs readlef -h Class
+#
+def lookup_file_format(fname):
+    p = subprocess.Popen(["objdump", "-p", fname],
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    buf = p.communicate()[0]
+    if p.returncode != 0:
+        # objdump failed, must not be an elf binary
+        return
+
+    file_format = None
+    for line in buf.decode().split('\n'):
+        line = line.strip().split()
+        if not line:
+            continue
+        if line[-3:-1] == ['file', 'format']:
+            file_format = line[-1]
+            break
+
+    return file_format
+
 
 def manifest_create(payload_dir):
     retval = {}
@@ -73,6 +98,20 @@ def manifest_create(payload_dir):
             del(x.tarfile)
 
             retval[arcname] = {"tinfo": x}
+
+            # add file_format, shortname tuple for binaries
+            #
+            # NOTE: We store this in here as a tuple so that we can more
+            #       easily check to see what libraries we're installing
+            #       later.  Technically all that's needed is the
+            #       file_format, but stash the shortname in here makes
+            #       comparisons easier later.
+            #
+            file_format = lookup_file_format(realname)
+            if file_format:
+                file_format = (file_format, os.path.basename(realname))
+
+            retval[arcname]["file_format"] = file_format
 
     return retval
 
