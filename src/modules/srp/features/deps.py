@@ -54,12 +54,27 @@ def build_func(work, fname):
         # objdump failed, must not be an elf binary
         return
 
+    # FIXME: objdump -p "file format" vs readlef -h Class
+    #
     for line in buf.decode().split('\n'):
         line = line.strip().split()
         if not line:
             continue
+        if line[-3:-1] == ['file', 'format']:
+            file_format = line[-1]
         if line[0] == "NEEDED":
-            deps.append(line[1])
+            # check to see if this lib is in our manifest
+            found = False
+            d = (file_format, line[1])
+            print(work["manifest"])
+            for f in work["manifest"]:
+                if work["manifest"][f]["file_format"] == d:
+                    found = True
+                    break
+
+            if not found:
+                deps.append(d)
+
             # FIXME: what if needed lib is provided by this package?
             #
             # 1. readelf -h Class: ELF32 or ELF64
