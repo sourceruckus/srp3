@@ -19,7 +19,8 @@ import subprocess
 
 class notes_deps:
     def __init__(self):
-        self.libs = []
+        self.libs_needed = []
+        self.libs_provided = []
 
 
 # FIXME: MULTI: why don't i iterate over the list of TarInfo objects
@@ -56,8 +57,18 @@ def build_func(work, fname):
         # objdump failed, must not be an elf binary
         return
 
-    # FIXME: objdump -p "file format" vs readlef -h Class
+    # We do a whole bunch with this output.
     #
+    #  1. file_format - This is the elf file_format of fname (and it's
+    #     required libs).
+    #
+    #  2. soname - If this is set, fname is a library.
+    #
+    #  3. deps - This list gets populated with (file_format, soname)
+    #     tuples of any libraries needed by this file.
+    #
+    file_format = None
+    soname = None
     for line in buf.decode().split('\n'):
         line = line.strip().split()
         if not line:
@@ -65,43 +76,25 @@ def build_func(work, fname):
         if line[-3:-1] == ['file', 'format']:
             file_format = line[-1]
         if line[0] == "NEEDED":
-            # check to see if this lib is in our manifest
-            found = False
-            d = (file_format, line[1])
-            print(work["manifest"])
-            for f in work["manifest"]:
-                if work["manifest"][f]["file_format"] == d:
-                    found = True
-                    break
-
-            if not found:
-                deps.append(d)
-
-            # FIXME: what if needed lib is provided by this package?
-            #
-            # 1. readelf -h Class: ELF32 or ELF64
-            #
-            # 2. if lib is already on sys, it's a requirement.  if not, we
-            #    MUST be providing it.  but our python interpreter cannot
-            #    dlopen 32bit if we're running 64...  BUT, we could
-            #    compile a 32bit libexec binary to check via dlopen and a
-            #    64bit one as well...
-            #
-            #    that doesn't work if lib is being replaced by our package
-            #    (i.e., it's installed in /tools/lib64 and we're
-            #    installint it in /lib64).
-            #
-            #    ok, new idea.  Go look for any file named libfoo.so in
-            #    our PAYLOAD_DIR, if found check via readelf -h that class
-            #    matches, if found and matches remove from deps
-
-            # FIXME: Alternatively, could also add a provides[Class][]
-            #        array iteratively and have the check/install method
-            #        do the weeding out.  Would need to detect shared
-            #        libs... Type: DYN (Shared object file) vs EXEC
-            #        (Executable file)
-
+            deps.append((file_format, line[1]))
+        if line[0] == "SONAME":
+            soname = line[1]
+    
     print("needed:", deps)
+
+    # stash our libinfo tuple into this file's section of the manifest
+    if file_format and soname:
+        libinfo = (file_format, soname)
+        work["manifest"][fname]["libinfo"] = libinfo
+        print("provides:", libinfo)
+        
+        # also stash this info in the deps section of the notes file for
+        # easy weeding out
+        #
+        # FIXME: as with deps.libs_needed, this will need some type of
+        #        locking if we do multiproc stuff...
+        #
+        work["notes"].deps.libs_provided.append(libinfo)
 
     # NOTE: At this point, deps contains a sorted list of deps for THIS FILE.
     #       We still need to update our global list of deps for this package.
@@ -110,12 +103,12 @@ def build_func(work, fname):
     #        locking here so that we can modify the notes file from within each
     #        subproc
     n = work["notes"]
-    big_deps = n.deps.libs[:]
+    big_deps = n.deps.libs_needed[:]
     for d in deps:
         if d not in big_deps:
             big_deps.append(d)
     big_deps.sort()
-    n.deps.libs = big_deps
+    n.deps.libs_needed = big_deps
 
 
 def install_func(work):
@@ -144,7 +137,15 @@ def install_func(work):
     #        can get the deps check to pass by setting
     #        LD_PRELOAD=libncurses.so.5 on the command line.
     n = work['notes']
-    deps = n.deps.libs[:]
+    deps = n.deps.libs_needed[:]
+    print(deps)
+    for x in n.deps.libs_provided:
+        print(x)
+        try:
+            deps.remove(x)
+        except:
+            pass
+
     # NOTE: We iterate all the way through so that the user can see ALL the
     #       missing libs as apposed to just the first one
     #
@@ -157,51 +158,7 @@ def install_func(work):
     #        see.
     missing = []
     for d in deps:
-        try:
-            # FIXME: this is not gonna work when checking for 32bit libs
-            #        from within a 64bit python interpreter...
-            #
-            #        instead, we need a specific helper binary for all
-            #        supported "file_formats" (see blob.py) that we can
-            #        inspect via the appropriate ld.so (e.g.,
-            #        /lib64/ld-linux-x86-64.so.2 /lib/ld-linux.so.2) and
-            #        add the library in question to the lookup via
-            #        LD_PRELOAD.
-            #
-            #        Ex: LD_PRELOAD=libfoo.so /lib64/ld-linux-x86-64.so.2 \
-            #              --list /path/to/helper-elf32
-            #
-            #        That attempts to locate all the libraries needed by
-            #        helper-elf32 AND libfoo.so for elf32.  It will return
-            #        successfully if libfoo.so isn't found, but it will
-            #        print an ERROR and libfoo.so won't be in the
-            #        resulting list.  If the library IS found, no error
-            #        message and libfoo is magically added to the list of
-            #        libraries.
-            #
-            #        Doing things this way will allow us to fully leverage
-            #        the systems's runtime linker w/out having to know how
-            #        it's presently configured (e.g., ld.so.conf,
-            #        LD_LIBRARY_PATH, etc).  We will need to detect the
-            #        system's ls-linux binaries at install-time, though...
-            #
-            #        Looks like we can detect the ld-linux binary at
-            #        run-time by greppfor for "Requesting program
-            #        interpreter" in the output of readelf -l helper-elf32
-            #
-            #        Actually, we don't need the helper prog... we can
-            #        inspec libdl.so in the directory containing the
-            #        interpreter:
-            #
-            #        Ex: LD_PRELOAD=libfoo.so /lib64/ld-linux-x86-64.so.2 \
-            #              --list /lib64/libdl.so
-            #
-            #        POOP: actually, that's not guaranteed... on avlinux
-            #        it's in /lib/i686-something/libdl.so
-
-
-            ctypes.cdll.LoadLibrary(d)
-        except:
+        if not lookup_lib(*d):
             missing.append(d)
     
     if missing:
@@ -209,34 +166,26 @@ def install_func(work):
 
 
 
-register_feature(
-    feature_struct("deps",
-                   __doc__,
-                   True,
-                   build_iter = stage_struct("deps", build_func, [], []),
-                   install = stage_struct("deps", install_func, [], ["core"])))
+# objdump -p fname | grep "file format"
+def lookup_file_format(fname):
+    p = subprocess.Popen(["objdump", "-p", fname],
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    buf = p.communicate()[0]
+    if p.returncode != 0:
+        # objdump failed, must not be an elf binary
+        return
 
-# FIXME: can I register multiple install funcs?  I'd like to have dep
-#        checking at the beginning of install, but then i also want to
-#        install the deps info into the package manifest after installation.
-#        i guess i could always just go ahead and start writing into the pkg
-#        manifest dir if the dep checks pass, assuming that the package will
-#        get installed...
-#
-#        wait, do i have any way of knowing what the pkg sha is in here?  i
-#        was planning on installing files into /var/lib/srp/pkgname/sha/
-#
-#        well, if i have the brp, i can extract the SHA file.
-#
-#        maybe manifest contest should be finalized by an upper lever
-#        function?  similar to the do_build method actually added files to
-#        the brp.  otherwise the path to manifest (and potentially
-#        implementation details) will have to be known in all the feature
-#        modules...
-#
-#        hey, brain fart.  deps is appended to the NOTES file already, which
-#        we should also be adding to the manifest.
+    file_format = None
+    for line in buf.decode().split('\n'):
+        line = line.strip().split()
+        if not line:
+            continue
+        if line[-3:-1] == ['file', 'format']:
+            file_format = line[-1]
+            break
 
+    return file_format
 
 
 # grep ld-linux $(which ldd)
@@ -258,7 +207,7 @@ def lookup_elf_interpreters():
                 line = line[9:].strip('"').split()
                 for x in line:
                     if os.path.exists(x):
-                        retval[srp.blob.lookup_file_format(x)] = x
+                        retval[lookup_file_format(x)] = x
     
     if not retval:
         raise Exception("Failed to detect any valid elf interpreters")
@@ -274,7 +223,7 @@ def lookup_matching_lib(elf, file_format):
     # start in dirname(elf)
     for x in glob.glob("{}/lib*.so*".format(os.path.dirname(elf))):
         print("checking for {}: {}".format(file_format, x))
-        fmt = srp.blob.lookup_file_format(x)
+        fmt = lookup_file_format(x)
         print("file_format:", fmt)
         if file_format == fmt:
             return x
@@ -312,3 +261,13 @@ def lookup_lib(file_format, libname):
             continue
         if line[0] == libname:
             return line[2]
+
+
+
+
+register_feature(
+    feature_struct("deps",
+                   __doc__,
+                   True,
+                   build_iter = stage_struct("deps", build_func, [], []),
+                   install = stage_struct("deps", install_func, [], ["core"])))
