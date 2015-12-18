@@ -14,7 +14,22 @@ class NotesSize:
         self.total = 0
 
 
-def increment_notes(work, fname):
+def reset_notes(work):
+    work["notes"].size.total = 0
+
+
+def increment_notes_build(work, fname):
+    x = work["manifest"][fname]['tinfo']
+    if not x.isreg():
+        return
+    work["notes"].size.total += x.size
+
+
+# NOTE: The size is recalculated at install-time because some other
+#       Feature may have changed the file once installed (i.e., size
+#       stored at build-time may be wrong).
+#
+def increment_notes_install(work, fname):
     """add size of fname to total in NOTES"""
     x = work["manifest"][fname]
 
@@ -28,8 +43,6 @@ def increment_notes(work, fname):
 
     n = work["notes"]
 
-    # NOTE: We can't use the size recorded in TarInfo here because some
-    #       other Feature may have changed the file once installed
     # NOTE: The file is already installed on disk, so we don't need to mess
     #       with the old BLOB
     #
@@ -42,6 +55,10 @@ def increment_notes(work, fname):
     n.size.total += os.stat(path)[stat.ST_SIZE]
 
 
+def size_info(p):
+    return "Size: {} bytes".format(p.notes.size.total)
+
+
 # FIXME: this should also register a commit action so we can recalc size
 #        after installation if we want to
 
@@ -49,5 +66,9 @@ register_feature(
     feature_struct("size",
                    __doc__,
                    True,
-                   install_iter = stage_struct("size", increment_notes,
+                   info = size_info,
+                   build_iter = stage_struct("size", increment_notes_build,
+                                             ["core"], []),
+                   install = stage_struct("size", reset_notes, ["core"], []),
+                   install_iter = stage_struct("size", increment_notes_install,
                                                ["core"], [])))
