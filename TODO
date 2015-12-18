@@ -14,16 +14,18 @@ Clean them up and make them available to build scripts
   - [ ] --compression-level=N
   - [ ] --root flag (instead of DESTDIR or SRP_ROOT_PREFIX)
 
-* finish implementing planned feature modules [0/9]
+* finish implementing planned feature modules [2/9]
   - [ ] core
-  - [ ] size
-  - [ ] upgrade
+  - [X] size
+  - [ ] upgrade (??)
   - [ ] user
   - [ ] ldupdate
   - [ ] ldpath
   - [ ] repairable
-  - [ ] strip_debug
-  - [ ] strip_docs
+  - [X] strip_debug
+  - [ ] strip_docs (should this include man/info?)
+  - [ ] strip_man
+  - [ ] strip_info
 
 * make sure we can pass options into --create, --build, --install
 
@@ -31,13 +33,22 @@ Clean them up and make them available to build scripts
 
 * query (from brp and installed manifest) [1/3]
   - [X] cli improvements
-  - [-] types [3/6]
+  - [-] types [4/6]
     - [X] name
-    - [ ] info
+    - [-] info [4/9]
+      - [X] Name
+      - [X] Description
+      - [X] Size
+      - [X] Deps
+      - [ ] Date Installed
+      - [ ] Date Built
+      - [ ] Built by (i.e., contact info)
+      - [ ] Enabled Features
+      - [ ] ??
     - [X] files
     - [X] stats
     - [ ] size
-    - [ ] raw
+    - [X] raw
   - [ ] criteria [0/8]
     - [ ] pkg (w/ globbing)
     - [ ] file (w/ globbing)
