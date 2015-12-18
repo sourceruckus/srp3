@@ -17,21 +17,21 @@ import re
 import tarfile
 
 
-class notes_perms(srp.notes.notes_buffer):
+class NotesPerms(srp.notes.NotesBuffer):
     pass
 
 # NOTE: We need to stick our notes section definition class in the notes
 #       module's namespace so that it can be located dynamically in the
-#       notes_file constructor.
+#       NotesFile constructor.
 #
 # FIXME: Need to document this requirement somewhere more obvious...  By the
 #        way, this is ONLY needed because we expect stuff for this feature
 #        to be parsed from the initial notes file (i.e., if we only add
 #        things during build it's not needed).
-srp.notes.notes_perms = notes_perms
+srp.notes.NotesPerms = NotesPerms
 
 
-class perms(list):
+class PermsList(list):
     """ This class defines a special list that initializes itself from a
     decoded perms buffer.  It provides a [] method that returns a list of
     rules that match the specified file (via regexp).
@@ -150,7 +150,7 @@ def build_func(work, fname):
     #print(work.keys())
     #print(work['notes'].perms.buf)
     n = work["notes"]
-    p = perms(n.perms.buffer)
+    p = PermsList(n.perms.buffer)
     #print(p)
     #print(p['/usr/local/bin/foo'])
     #print(p['/usr/share/asdf'])

@@ -51,7 +51,7 @@ def cmp_version(a, b):
     return 0
 
 
-class notes_header:
+class NotesHeader:
     def __init__(self, config, path=""):
         self.name = config["name"]
         self.version = config["version"]
@@ -123,7 +123,7 @@ class notes_header:
         self.features = f
 
 
-class notes_buffer:
+class NotesBuffer:
     def __init__(self, config, path=""):
         try:
             self.encoded = config["encoded"]
@@ -135,11 +135,11 @@ class notes_buffer:
             self.buffer = config["buffer"]
 
 
-class notes_script(notes_buffer):
+class NotesScript(NotesBuffer):
     pass
 
 
-class notes_brp:
+class NotesBrp:
     def __init__(self):
         # FIXME: should have a .srprc file to specify a full name (e.g.,
         #        'Joe Bloe <bloe@mail.com>'), and fallback to user id if
@@ -154,13 +154,13 @@ class notes_brp:
         self.build_date = time.asctime()
 
 
-class notes_installed():
+class NotesInstalled():
     def __init__(self, from_sha):
         self.install_date = time.asctime()
         self.installed_from_sha = from_sha
 
 
-class notes_file:
+class NotesFile:
     """Class representing a NOTES file.
 
     NOTE: fobj must be opened in binary mode
@@ -194,8 +194,8 @@ class notes_file:
         c.read_string(buf)
 
         # populate sub-section instances
-        self.header = notes_header(c["header"], extradir)
-        self.script = notes_script(c["script"], extradir)
+        self.header = NotesHeader(c["header"], extradir)
+        self.script = NotesScript(c["script"], extradir)
         self.brp = None
         self.installed = None
 
@@ -213,7 +213,8 @@ class notes_file:
             if s not in ["header", "script", "brp", "installed", "DEFAULT"]:
                 self.header.features.append(s)
                 # instantiate special feature subsections
-                setattr(self, s, globals()["notes_"+s](c[s], extradir))
+                setattr(self, s,
+                        globals()["Notes"+s.capitalize()](c[s], extradir))
 
         # check package requirements
         self.check()

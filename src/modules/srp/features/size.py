@@ -9,7 +9,7 @@ import stat
 from srp.features import *
 
 
-class notes_size:
+class NotesSize:
     def __init__(self):
         self.total = 0
 

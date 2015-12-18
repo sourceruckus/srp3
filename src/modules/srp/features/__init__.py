@@ -59,10 +59,10 @@ class feature_struct:
     """The primary object used for feature registration.  The name and doc
     items are the feature's name and short description.  The default item
     specifies whether this feature should be turned on by default.  The
-    info item is a function that returns a string to be added to the
-    "info" query type.  The action item is a list of name, stage_struct
-    pairs.  The remaining items are stage_struct objects for each relevant
-    stage.
+    info item is a function that returns a string to be included in the
+    results of queries of type "info".  The action item is a list of name,
+    stage_struct pairs.  The remaining items are stage_struct objects for
+    each relevant stage.
 
     """
     def __init__(self, name=None, doc=None, default=False,

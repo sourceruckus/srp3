@@ -126,37 +126,6 @@ def load():
         raise
 
 
-# FIXME: think this is OBE...
-def refresh():
-    import os
-    # FIXME: path to db in config?
-    #
-    # FIXME: DESTDIR?  --root?  both/either?
-    try:
-        dbpath = os.environ["DESTDIR"]
-    except:
-        dbpath = ""
-    dbpath+="/var/lib/srp/"
-
-    objs = os.listdir(dbpath)
-    print(objs)
-    for x in objs:
-        path = dbpath+"/"+x+"/"
-        print(os.listdir(path))
-        with open(path+"NOTES", "rb") as f:
-            n = srp.notes.notes(f)
-        print(n)
-        #print(dir())
-        #print(dir(srp.db))
-        #print(locals())
-        #print(globals())
-        g = globals()
-        try:
-            g[n.info.name].append(n)
-        except:
-            g[n.info.name] = [n]
-
-
 #srp.db.foo = [{"af4237": {
 
 # foo = [{"n": <notes inst>, "shadir": "af43212"}, {"n": <notes inst>, "shadir": "ff2315"}]

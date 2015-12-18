@@ -334,10 +334,10 @@ def verify_sha(tar):
 
 def do_build(fname, src, extradir, copysrc, options):
     with open(fname, 'rb') as fobj:
-        n = srp.notes.notes_file(fobj, src, extradir, copysrc)
+        n = srp.notes.NotesFile(fobj, src, extradir, copysrc)
 
     # add brp section to NOTES instance
-    n.brp = srp.notes.notes_brp()
+    n.brp = srp.notes.NotesBrp()
 
     # update notes fields with optional command line flags
     n.update_features(options)
@@ -376,7 +376,7 @@ def do_build(fname, src, extradir, copysrc, options):
     for f in stages['build']:
         # check for notes section class and create if needed
         section = getattr(getattr(srp.features, f.name),
-                          "notes_"+f.name, False)
+                          "Notes"+f.name.capitalize(), False)
         if section and not getattr(n, f.name, False):
             print("creating notes section:", f.name)
             setattr(n, f.name, section())
@@ -398,7 +398,7 @@ def do_build(fname, src, extradir, copysrc, options):
         for f in stages['build_iter']:
             # check for notes section class and create if needed
             section = getattr(getattr(srp.features, f.name),
-                              "notes_"+f.name, False)
+                              "Notes"+f.name.capitalize(), False)
             if section and not getattr(n, f.name, False):
                 print("creating notes section:", f.name)
                 setattr(n, f.name, section())
@@ -547,9 +547,9 @@ def do_install(fname, options, allow_upgrade=True, force=False):
         print("Upgrading to {}".format(n.header.fullname))
 
     # add installed section to NOTES instance
-    n.installed = srp.notes.notes_installed(from_sha)
+    n.installed = srp.notes.NotesInstalled(from_sha)
 
-    # update notes_file with host defaults
+    # update NotesFile with host defaults
     n.update_features(srp.features.default_features)
 
     # update notes fields with optional command line flags
@@ -589,7 +589,7 @@ def do_install(fname, options, allow_upgrade=True, force=False):
     for f in stages['install']:
         # check for notes section class and create if needed
         section = getattr(getattr(srp.features, f.name),
-                          "notes_"+f.name, False)
+                          "Notes"+f.name.capitalize(), False)
         if section and not getattr(n, f.name, False):
             print("creating notes section:", f.name)
             setattr(n, f.name, section())
@@ -611,7 +611,7 @@ def do_install(fname, options, allow_upgrade=True, force=False):
         for f in stages['install_iter']:
             # check for notes section class and create if needed
             section = getattr(getattr(srp.features, f.name),
-                              "notes_"+f.name, False)
+                              "Notes"+f.name.capitalize(), False)
             if section and not getattr(n, f.name, False):
                 print("creating notes section:", f.name)
                 setattr(n, f.name, section())

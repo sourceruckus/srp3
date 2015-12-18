@@ -17,7 +17,7 @@ import os
 import subprocess
 
 
-class notes_deps:
+class NotesDeps:
     def __init__(self):
         self.libs_needed = []
         self.libs_provided = []
