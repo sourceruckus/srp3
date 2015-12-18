@@ -166,6 +166,17 @@ def install_func(work):
 
 
 
+# takes an InstalledPackage
+def info_func(p):
+    lines = ["Required Libraries:"]
+    for l in p.notes.deps.libs_needed:
+        lines.append("  {}".format(l))
+    lines.append("Provided Libraries:")
+    for l in p.notes.deps.libs_provided:
+        lines.append("  {}".format(l))
+    return "\n".join(lines)
+
+
 # objdump -p fname | grep "file format"
 def lookup_file_format(fname):
     p = subprocess.Popen(["objdump", "-p", fname],
@@ -270,4 +281,5 @@ register_feature(
                    __doc__,
                    True,
                    build_iter = stage_struct("deps", build_func, [], []),
-                   install = stage_struct("deps", install_func, [], ["core"])))
+                   install = stage_struct("deps", install_func, [], ["core"]),
+                   info = info_func))

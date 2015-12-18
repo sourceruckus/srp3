@@ -770,8 +770,16 @@ def format_results_info(p):
     #
     # FIXME: show deps list? or use raw for that?
     #
-    return "Package: {}\nDescription: {}".format(
-        format_results_name(p), p.notes.header.description)
+    info = []
+    info.append("Package: {}".format(format_results_name(p)))
+    info.append("Description: {}".format(p.notes.header.description))
+    
+    for f in srp.features.registered_features:
+        info_func = srp.features.registered_features[f].info
+        if info_func:
+            info.append(info_func(p))
+
+    return "\n".join(info)
 
 
 # FIXME: this seems inefficient
