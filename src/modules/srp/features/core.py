@@ -209,6 +209,9 @@ def build_func(work):
     #       objects) will be added to the archive.
     #
     # FIXME: straighten out these comments
+    #
+    # FIXME: why is manifest_create inside blob.py?
+    #
     work['manifest'] = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
 
 

@@ -34,6 +34,10 @@ import srp._blob
 
 # FIXME: objdump -p "file format" vs readlef -h Class
 #
+# FIXME: where should this live?  blob?  srp?
+#
+# FIXME: why did i put this here instead of in deps.py?
+#
 def lookup_file_format(fname):
     p = subprocess.Popen(["objdump", "-p", fname],
                          stdout=subprocess.PIPE,
@@ -106,6 +110,8 @@ def manifest_create(payload_dir):
             #       later.  Technically all that's needed is the
             #       file_format, but stash the shortname in here makes
             #       comparisons easier later.
+            #
+            # FIXME: why did i put this here instead of in deps.py?
             #
             file_format = lookup_file_format(realname)
             if file_format:

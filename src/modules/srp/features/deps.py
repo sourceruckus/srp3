@@ -8,9 +8,11 @@ to installing.
 NOTE: This is probably not as portable as it could/should be...
 """
 
+import srp
 from srp.features import *
 
 import ctypes
+import glob
 import os
 import subprocess
 
@@ -158,6 +160,46 @@ def install_func(work):
         try:
             # FIXME: this is not gonna work when checking for 32bit libs
             #        from within a 64bit python interpreter...
+            #
+            #        instead, we need a specific helper binary for all
+            #        supported "file_formats" (see blob.py) that we can
+            #        inspect via the appropriate ld.so (e.g.,
+            #        /lib64/ld-linux-x86-64.so.2 /lib/ld-linux.so.2) and
+            #        add the library in question to the lookup via
+            #        LD_PRELOAD.
+            #
+            #        Ex: LD_PRELOAD=libfoo.so /lib64/ld-linux-x86-64.so.2 \
+            #              --list /path/to/helper-elf32
+            #
+            #        That attempts to locate all the libraries needed by
+            #        helper-elf32 AND libfoo.so for elf32.  It will return
+            #        successfully if libfoo.so isn't found, but it will
+            #        print an ERROR and libfoo.so won't be in the
+            #        resulting list.  If the library IS found, no error
+            #        message and libfoo is magically added to the list of
+            #        libraries.
+            #
+            #        Doing things this way will allow us to fully leverage
+            #        the systems's runtime linker w/out having to know how
+            #        it's presently configured (e.g., ld.so.conf,
+            #        LD_LIBRARY_PATH, etc).  We will need to detect the
+            #        system's ls-linux binaries at install-time, though...
+            #
+            #        Looks like we can detect the ld-linux binary at
+            #        run-time by greppfor for "Requesting program
+            #        interpreter" in the output of readelf -l helper-elf32
+            #
+            #        Actually, we don't need the helper prog... we can
+            #        inspec libdl.so in the directory containing the
+            #        interpreter:
+            #
+            #        Ex: LD_PRELOAD=libfoo.so /lib64/ld-linux-x86-64.so.2 \
+            #              --list /lib64/libdl.so
+            #
+            #        POOP: actually, that's not guaranteed... on avlinux
+            #        it's in /lib/i686-something/libdl.so
+
+
             ctypes.cdll.LoadLibrary(d)
         except:
             missing.append(d)
@@ -194,3 +236,79 @@ register_feature(
 #
 #        hey, brain fart.  deps is appended to the NOTES file already, which
 #        we should also be adding to the manifest.
+
+
+
+# grep ld-linux $(which ldd)
+def lookup_elf_interpreters():
+    p = subprocess.Popen(["which", "ldd"],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    buf = p.communicate()[0]
+    if p.returncode != 0:
+        raise Exception("Failed to locate ldd")
+    
+    ldd = buf.decode().split('\n')[0]
+    with open(ldd) as f:
+        retval = {}
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("RTLDLIST="):
+                line = line[9:].strip('"').split()
+                for x in line:
+                    if os.path.exists(x):
+                        retval[srp.blob.lookup_file_format(x)] = x
+    
+    if not retval:
+        raise Exception("Failed to detect any valid elf interpreters")
+    
+    return retval
+
+
+# FIXME: this could look in tons of other dirs... but really, what's the
+#        chance that there are no libraries in the directory alongside
+#        ld-linux.so?
+#
+def lookup_matching_lib(elf, file_format):
+    # start in dirname(elf)
+    for x in glob.glob("{}/lib*.so*".format(os.path.dirname(elf))):
+        print("checking for {}: {}".format(file_format, x))
+        fmt = srp.blob.lookup_file_format(x)
+        print("file_format:", fmt)
+        if file_format == fmt:
+            return x
+    
+    raise Exception("Failed to find any libs of format {}".format(file_format))
+
+
+# LD_PRELOAD=libfoo.so /lib64/ld-linux-x86-64.so.2 \
+#    --list /lib64/libdl.so
+def lookup_lib(file_format, libname):
+    # get list of available elf interpreters
+    elf = lookup_elf_interpreters()[file_format]
+    
+    # find an appropriate lib to interrogate
+    piggy = lookup_matching_lib(elf, file_format)
+    
+    # add the lib we're checking for via LD_PRELOAD (basically pretend
+    # that whatever library we're using as our guinea pig was linked
+    # against it) and have the interpreter go find all the libraries on
+    # the system.
+    #
+    # "LD_PRELOAD={} {} --list {}".format(libname, elf, piggy))
+    #
+    p = subprocess.Popen([elf, "--list", piggy],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         env = {"LD_PRELOAD": libname})
+    out,err = p.communicate()
+    print(err)
+    print(out)
+    
+    for line in out.decode().split('\n'):
+        line = line.strip().split()
+        print(line)
+        if not line:
+            continue
+        if line[0] == libname:
+            return line[2]
