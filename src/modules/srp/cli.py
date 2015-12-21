@@ -450,22 +450,11 @@ def do_build(fname, src, extradir, copysrc, options):
     #       tarfile.  When the fobj is closed it's contents are lost, but
     #       that's fine because we will have already added it to the toplevel
     #       brp archive.
+    n.brp.time_blob_creation = time.time()
     blob_fobj = tempfile.TemporaryFile()
     srp.blob.blob_create(work["manifest"], work['dir']+'/payload',
                          fobj=blob_fobj)
-
-    # add NOTES (pickled instance) to toplevel pkg archive (the brp)
-    n_fobj = tempfile.TemporaryFile()
-    #n.write(n_fobj)
-    pickle.dump(n, n_fobj)
-    n_fobj.seek(0)
-    brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
-                fileobj=n_fobj)
-    # rewind and generate a SHA entry
-    n_fobj.seek(0)
-    sha.update(n_fobj.read())
-    n_fobj.close()
-
+    n.brp.time_blob_creation = time.time() - n.brp.time_blob_creation
     # add BLOB file to toplevel pkg archive
     blob_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob_fobj),
@@ -474,6 +463,19 @@ def do_build(fname, src, extradir, copysrc, options):
     blob_fobj.seek(0)
     sha.update(blob_fobj.read())
     blob_fobj.close()
+
+    # add NOTES (pickled instance) to toplevel pkg archive (the brp)
+    n_fobj = tempfile.TemporaryFile()
+    # last chance toupdate time_total
+    n.brp.time_total = time.time() - n.brp.time_total
+    pickle.dump(n, n_fobj)
+    n_fobj.seek(0)
+    brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
+                fileobj=n_fobj)
+    # rewind and generate a SHA entry
+    n_fobj.seek(0)
+    sha.update(n_fobj.read())
+    n_fobj.close()
 
     # create the SHA file and add it to the pkg
     with tempfile.TemporaryFile() as f:

@@ -153,6 +153,13 @@ class NotesBrp:
         #        readable string here...?
         self.build_date = time.asctime()
 
+        # Number of seconds it took to build the whole package
+        #
+        # NOTE: Set to current time here, and is subtracted from current
+        #       time when we're done at the very end of package creation.
+        #
+        self.time_total = time.time()
+
 
 class NotesInstalled():
     def __init__(self, from_sha):

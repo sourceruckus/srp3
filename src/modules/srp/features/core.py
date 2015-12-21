@@ -190,6 +190,7 @@ def build_func(work):
     new_env['FUNCTIONS'] = srp.config.build_functions
     os.mkdir(work['dir'] + '/build')
     os.mkdir(work['dir'] + '/payload')
+    n.brp.time_build_script = time.time()
     subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/', env=new_env)
 
     # create manifest
@@ -212,7 +213,10 @@ def build_func(work):
     #
     # FIXME: why is manifest_create inside blob.py?
     #
+    n.brp.time_build_script = time.time() - n.brp.time_build_script
+    n.brp.time_manifest_creation = time.time()
     work['manifest'] = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
+    n.brp.time_manifest_creation = time.time() - n.brp.time_manifest_creation
 
 
 def install_iter(work, fname):
