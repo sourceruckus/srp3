@@ -67,6 +67,12 @@ g.add_argument('-i', '--install', action='store_true',
                     though you'd probably think of that as a downgrade
                     (unless version 3 is broken, of course)).""")
 
+g.add_argument('-B', '--build-and-install', metavar="NOTES",
+               help="""Build specified package and then install it.  If built brp already
+                    exists and is newer than the NOTES file and the
+                    specified sources, the previously built package is
+                    installed w/out triggering a re-build.""")
+
 g.add_argument('-u', '--uninstall', action='store_true',
                help="""Uninstall the provided PACKAGE(s).  If PACKAGE isn't
                     installed, this will quietly return successfully (well,
@@ -238,6 +244,11 @@ def main():
     parse_package_list()
     parse_options()
 
+    # set global params
+    srp.params.verbosity = args.verbose
+    srp.params.dry_run = args.dry_run
+    srp.params.options = args.options
+
     # mutually-exclusive arguments/flags
     if args.install:
         if not args.packages:
@@ -262,12 +273,9 @@ def main():
         if not args.src:
             p.error("argument --build: requires --src")
 
-        print("do_build(notes={}, src={}, extra={}, copysrc={}, options={})".
-              format(args.build, args.src, args.extra, args.copysrc,
-                     args.options))
-        if not args.dry_run:
-            do_build(args.build, args.src, args.extra, args.copysrc,
-                     args.options)
+        srp.params.build = srp.BuildParameters(args.build, args.src, args.extra)
+        print(srp.params)
+        srp.build()
 
     elif args.action:
         if not args.packages:
@@ -330,165 +338,6 @@ def verify_sha(tar):
     if x != y:
         raise Exception("SHA doesn't match.  Corrupted archive?")
     return x
-
-
-def do_build(fname, src, extradir, copysrc, options):
-    with open(fname, 'rb') as fobj:
-        n = srp.notes.NotesFile(fobj, src, extradir, copysrc)
-
-    # add brp section to NOTES instance
-    n.brp = srp.notes.NotesBrp()
-
-    # update notes fields with optional command line flags
-    n.update_features(options)
-    print(n)
-
-    # FIXME: should the core feature func untar the srp in a tmp dir? or
-    #        should we do that here and pass tmpdir in via our work
-    #        map...?  i think that's the only reason any of the build
-    #        funcs would need the tarfile instance...  might just boil
-    #        down to how determined i am to make the feature funcs do as
-    #        much of the work as possible...
-    #
-    #        it might also come down to duplicating code all over the
-    #        place... chances are, there's a bunch of places where we'll
-    #        need to create the tmpdir and extract a package's
-    #        files... in which case we'll rip that out of the core
-    #        feature's build_func and put it somewhere else.
-
-    # prep our shared work namespace
-    #
-    # NOTE: This dict gets passed into all the stage funcs (i.e., it's
-    #       how they can all share data)
-    work = {}
-    work['fname'] = fname
-
-    # NOTE: We do not pass the TarFile instance along because it doesn't
-    #       play nicely with subproc access...
-    #work['srp'] = p
-
-    work['notes'] = n
-
-    # run through all queued up stage funcs for build
-    stages = srp.features.get_stage_map(n.header.features)
-    print("features:", n.header.features)
-    print("build funcs:", stages['build'])
-    for f in stages['build']:
-        # check for notes section class and create if needed
-        section = getattr(getattr(srp.features, f.name),
-                          "Notes"+f.name.capitalize(), False)
-        if section and not getattr(n, f.name, False):
-            print("creating notes section:", f.name)
-            setattr(n, f.name, section())
-
-        print("executing:", f)
-        try:
-            f.func(work)
-        except:
-            print("ERROR: failed feature stage function:", f)
-            raise
-
-    # now run through all queued up stage funcs for build_iter
-    #
-    # FIXME: multiprocessing
-    print("build_iter funcs:", stages['build_iter'])
-    flist = list(work['manifest'].keys())
-    flist.sort()
-    for x in flist:
-        for f in stages['build_iter']:
-            # check for notes section class and create if needed
-            section = getattr(getattr(srp.features, f.name),
-                              "Notes"+f.name.capitalize(), False)
-            if section and not getattr(n, f.name, False):
-                print("creating notes section:", f.name)
-                setattr(n, f.name, section())
-
-            print("executing:", f, x)
-            try:
-                f.func(work, x)
-            except:
-                print("ERROR: failed feature stage function:", f)
-                raise
-
-    # create the toplevel brp archive
-    #
-    # FIXME: we should remove this file if we fail...
-    mach = platform.machine()
-    if not mach:
-        mach = "unknown"
-    pname = "{}.{}.brp".format(n.header.fullname, mach)
-
-    # FIXME: compression should be configurable globally and also via
-    #        the command line when building.
-    #
-    if srp.config.default_compressor == "lzma":
-        import lzma
-        __brp = lzma.LZMAFile(pname, mode="w",
-                              preset=srp.config.compressors["lzma"])
-    elif srp.config.default_compressor == "bzip2":
-        import bz2
-        __brp = bz2.BZ2File(pname, mode="w",
-                            compresslevel=srp.config.compressors["bz2"])
-    elif srp.config.default_compressor == "gzip":
-        import gzip
-        __brp = gzip.GzipFile(pname, mode="w",
-                              compresslevel=srp.config.compressors["gzip"])
-    else:
-        # shouldn't really ever happen
-        raise Exception("invalid default compressor: {}".format(
-            srp.config.default_compressor))
-
-    brp = tarfile.open(fileobj=__brp, mode="w|")
-    sha = hashlib.new("sha1")
-
-    # populate the BLOB archive
-    #
-    # NOTE: This is where we actually add TarInfo objs and their associated
-    #       fobjs to the BLOB, then add the BLOB to the brp archive.
-    #
-    # NOTE: This is implemented using a temporary file as the fileobj for a
-    #       tarfile.  When the fobj is closed it's contents are lost, but
-    #       that's fine because we will have already added it to the toplevel
-    #       brp archive.
-    n.brp.time_blob_creation = time.time()
-    blob_fobj = tempfile.TemporaryFile()
-    srp.blob.blob_create(work["manifest"], work['dir']+'/payload',
-                         fobj=blob_fobj)
-    n.brp.time_blob_creation = time.time() - n.brp.time_blob_creation
-    # add BLOB file to toplevel pkg archive
-    blob_fobj.seek(0)
-    brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob_fobj),
-                fileobj=blob_fobj)
-    # rewind and generate a SHA entry
-    blob_fobj.seek(0)
-    sha.update(blob_fobj.read())
-    blob_fobj.close()
-
-    # add NOTES (pickled instance) to toplevel pkg archive (the brp)
-    n_fobj = tempfile.TemporaryFile()
-    # last chance toupdate time_total
-    n.brp.time_total = time.time() - n.brp.time_total
-    pickle.dump(n, n_fobj)
-    n_fobj.seek(0)
-    brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
-                fileobj=n_fobj)
-    # rewind and generate a SHA entry
-    n_fobj.seek(0)
-    sha.update(n_fobj.read())
-    n_fobj.close()
-
-    # create the SHA file and add it to the pkg
-    with tempfile.TemporaryFile() as f:
-        f.write(sha.hexdigest().encode())
-        f.seek(0)
-        brp.addfile(brp.gettarinfo(arcname="SHA", fileobj=f),
-                    fileobj=f)
-
-    # FIXME: all the files are still left in /tmp/srp-asdf...
-
-    # close the toplevel brp archive
-    brp.close()
-    __brp.close()
 
 
 def do_install(fname, options, allow_upgrade=True, force=False):

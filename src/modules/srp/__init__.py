@@ -9,3 +9,5 @@ __all__ = ["config", "features", "notes", "cli", "blob", "db"]
 
 for x in __all__:
     __import__(".".join([__name__, x]))
+
+from srp.core import *

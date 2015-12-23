@@ -2,8 +2,9 @@ pkgpyexec_PYTHON =
 pkgpyexec_PYTHON += __init__.py
 pkgpyexec_PYTHON += blob.py
 pkgpyexec_PYTHON += cli.py
-pkgpyexec_PYTHON += notes.py
+pkgpyexec_PYTHON += core.py
 pkgpyexec_PYTHON += db.py
+pkgpyexec_PYTHON += notes.py
 
 nodist_pkgpyexec_PYTHON = config.py
 
