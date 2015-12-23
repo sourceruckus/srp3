@@ -129,7 +129,7 @@ def blob_create(manifest, payload_dir, fname=None, fobj=None):
 #        make it work later.  the c func takes a filename, so we would
 #        have to make sure to know the path to the file on disk.
 #
-class blob:
+class blob(srp.SrpObject):
     def __init__(self, fname=None, fobj=None):
         self.fname = fname
 

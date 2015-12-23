@@ -319,3 +319,7 @@ def build():
 
 
 params = RunTimeParameters()
+
+# FIXME: work = WorkDict()
+
+# FIXME: log = SrpLogger()

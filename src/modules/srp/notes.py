@@ -51,7 +51,7 @@ def cmp_version(a, b):
     return 0
 
 
-class NotesHeader:
+class NotesHeader(srp.SrpObject):
     def __init__(self, config, path=""):
         self.name = config["name"]
         self.version = config["version"]
@@ -123,7 +123,7 @@ class NotesHeader:
         self.features = f
 
 
-class NotesBuffer:
+class NotesBuffer(srp.SrpObject):
     def __init__(self, config, path=""):
         try:
             self.encoded = config["encoded"]
@@ -139,7 +139,7 @@ class NotesScript(NotesBuffer):
     pass
 
 
-class NotesBrp:
+class NotesBrp(srp.SrpObject):
     def __init__(self):
         # FIXME: should have a .srprc file to specify a full name (e.g.,
         #        'Joe Bloe <bloe@mail.com>'), and fallback to user id if
@@ -161,13 +161,13 @@ class NotesBrp:
         self.time_total = time.time()
 
 
-class NotesInstalled():
+class NotesInstalled(srp.SrpObject):
     def __init__(self, from_sha):
         self.install_date = time.asctime()
         self.installed_from_sha = from_sha
 
 
-class NotesFile:
+class NotesFile(srp.SrpObject):
     """Class representing a NOTES file.
 
     NOTE: fobj must be opened in binary mode
@@ -225,28 +225,6 @@ class NotesFile:
 
         # check package requirements
         self.check()
-
-
-    # FIXME: do i really want to do this?  look at __str__ vs __repr__
-    def __str__(self):
-        ret = ""
-        ret += repr(self) + "\n"
-        for x in dir(self):
-            s = getattr(self, x)
-            if x.startswith("_") or type(s) == types.MethodType:
-                continue
-
-            ret += x + ": " + repr(s) + "\n"
-            if not s:
-                continue
-            keys = list(s.__dict__.keys())
-            keys.sort()
-            for k in keys:
-                if k == "buffer" and getattr(s, "encoded", False):
-                    ret += "-- <buffer> --------\n{}\n-- </buffer> -------\n".format(getattr(s, "buffer"))
-                else:
-                    ret += "{}.{}: ".format(s.__class__.__name__, k) + str(getattr(s, k)) + "\n"
-        return ret.strip()
 
 
     def check(self):

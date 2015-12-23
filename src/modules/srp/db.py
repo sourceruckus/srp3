@@ -18,7 +18,7 @@ from pprint import pprint
 # which is NOTES and MANIFEST (and perhaps other files as well).
 
 
-class InstalledPackage:
+class InstalledPackage(srp.SrpObject):
     def __init__(self, notes, manifest):
         self.notes = notes
         self.manifest = manifest
