@@ -16,14 +16,14 @@ class NotesSize(srp.SrpObject):
 
 
 def reset_notes():
-    srp.work.notes.size.total = 0
+    srp.work.build.notes.size.total = 0
 
 
 def increment_notes_build(fname):
-    x = srp.work.manifest[fname]['tinfo']
+    x = srp.work.build.manifest[fname]['tinfo']
     if not x.isreg():
         return
-    srp.work.notes.size.total += x.size
+    srp.work.build.notes.size.total += x.size
 
 
 # NOTE: The size is recalculated at install-time because some other
@@ -32,7 +32,7 @@ def increment_notes_build(fname):
 #
 def increment_notes_install(fname):
     """add size of fname to total in NOTES"""
-    x = srp.work.manifest[fname]
+    x = srp.work.install.manifest[fname]
 
     # only count regular files
     #
@@ -42,7 +42,7 @@ def increment_notes_install(fname):
     if not x['tinfo'].isreg():
         return
 
-    n = srp.work.notes
+    n = srp.work.install.notes
 
     # NOTE: The file is already installed on disk, so we don't need to mess
     #       with the old BLOB

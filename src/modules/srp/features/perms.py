@@ -151,13 +151,13 @@ def build_func(fname):
     """update tarinfo via perms section of NOTES file"""
     #print(work.keys())
     #print(work['notes'].perms.buf)
-    n = srp.work.notes
+    n = srp.work.build.notes
     p = PermsList(n.perms.buffer)
     #print(p)
     #print(p['/usr/local/bin/foo'])
     #print(p['/usr/share/asdf'])
 
-    x = srp.work.manifest[fname]["tinfo"]
+    x = srp.work.build.manifest[fname]["tinfo"]
     #print(x)
 
     # skip links
@@ -184,7 +184,7 @@ def build_func(fname):
     #       package maintainers don't need to worry about which file gets added
     #       first when writing perms rules.
     if x.islnk():
-        x = srp.work.manifest["/"+x.linkname]["tinfo"]
+        x = srp.work.build.manifest["/"+x.linkname]["tinfo"]
         #print(x)
 
     # return if there's no perms matching this file
@@ -228,7 +228,7 @@ def build_func(fname):
     #        did it have something to do with experimenting with
     #        multiprocessing and shared memory?  I think it did...
     #
-    srp.work.manifest["/"+x.name]["tinfo"] = x
+    srp.work.build.manifest["/"+x.name]["tinfo"] = x
 
 
 

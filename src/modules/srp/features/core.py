@@ -48,6 +48,15 @@ def build_func():
     """run build script to populate payload dir, then create TarInfo objects for
     all files"""
 
+    # get some local refs with shorter names
+    n = srp.work.build.notes
+
+    # define paths once
+    sourcedir = srp.work.topdir + '/source'
+    extradir = srp.work.topdir + '/extra_contenct'
+    buildscript = srp.work.topdir + '/srp_go'
+    builddir = srp.work.topdir + '/build'
+    payloaddir = srp.work.topdir + '/payload'
     sourcedir = srp.work.topdir + '/source'
 
     # setup source dir(s)
@@ -123,8 +132,8 @@ def build_func():
 
 
     # create build script
-    with open(srp.work.topdir + "/srp_go", 'w') as f:
-        f.write(srp.work.notes.script.buffer)
+    with open(buildscript, 'w') as f:
+        f.write(n.script.buffer)
         os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # create extra_content dir
@@ -132,9 +141,9 @@ def build_func():
     # NOTE: The extra_content files are not symlinks, so that bogus build
     #       scripts can't mangle system files
     #
-    os.mkdir(srp.work.topdir + "/extra_content")
-    for x in srp.work.notes.header.extra_content:
-        shutil.copy(x, srp.work.topdir + "/extra_content")
+    os.mkdir(extradir)
+    for x in n.header.extra_content:
+        shutil.copy(x, extradir)
 
     # run build script
     #
@@ -175,14 +184,14 @@ def build_func():
     #
     new_env = dict(os.environ)
     new_env['SOURCE_DIR'] = sourcedir
-    new_env['BUILD_DIR'] = srp.work.topdir+"/build"
-    new_env['PAYLOAD_DIR'] = srp.work.topdir+"/payload"
-    new_env['EXTRA_DIR'] = srp.work.topdir+"/extra_content"
+    new_env['BUILD_DIR'] = builddir
+    new_env['PAYLOAD_DIR'] = payloaddir
+    new_env['EXTRA_DIR'] = extradir
     new_env['FUNCTIONS'] = srp.config.build_functions
-    os.mkdir(new_env['BUILD_DIR'])
-    os.mkdir(new_env['PAYLOAD_DIR'])
-    srp.work.notes.brp.time_build_script = time.time()
-    subprocess.check_call(["../srp_go"], cwd=srp.work.topdir+'/build/', env=new_env)
+    os.mkdir(builddir)
+    os.mkdir(payloaddir)
+    n.brp.time_build_script = time.time()
+    subprocess.check_call(["../srp_go"], cwd=builddir, env=new_env)
 
     # create manifest
     #
@@ -204,10 +213,10 @@ def build_func():
     #
     # FIXME: why is manifest_create inside blob.py?
     #
-    srp.work.notes.brp.time_build_script = time.time() - srp.work.notes.brp.time_build_script
-    srp.work.notes.brp.time_manifest_creation = time.time()
-    srp.work.manifest = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
-    srp.work.notes.brp.time_manifest_creation = time.time() - srp.work.notes.brp.time_manifest_creation
+    n.brp.time_build_script = time.time() - n.brp.time_build_script
+    n.brp.time_manifest_creation = time.time()
+    srp.work.build.manifest = srp.blob.manifest_create(payloaddir)
+    n.brp.time_manifest_creation = time.time() - n.brp.time_manifest_creation
 
 
 def install_iter(fname):

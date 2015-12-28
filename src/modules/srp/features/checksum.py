@@ -13,7 +13,7 @@ from srp.features import *
 # FIXME: MULTI:
 def gen_sum(fname):
     """gen sha of a file, update pkg manifest"""
-    x = srp.work.manifest[fname]
+    x = srp.work.install.manifest[fname]
 
     # only record checksum of regular files
     if not x['tinfo'].isreg():
@@ -44,7 +44,7 @@ def gen_sum(fname):
     x["checksum"] = sha.hexdigest().encode()
 
     # put our updated manifest entry back into the global map
-    srp.work.manifest[fname] = x
+    srp.work.install.manifest[fname] = x
 
 
 def verify_sums():

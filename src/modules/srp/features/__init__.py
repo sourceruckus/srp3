@@ -345,20 +345,60 @@ class WorkBag(srp.SrpObject):
     the Feature funcs during our run.  All Feature stage functions should
     refer to the common WorkBag instance at `srp.work'.
 
-    The `stages' variable is a dictionary of sorted stage lists based on
-    default settings and the `notes_obj' passed into the constructor.
+    Each high-level operational mode (e.g., build) of srp has its own
+    class to handle it's work data:
+
+      build
+      install
+      uninstall
+      query
+      action
+
+    Global Items:
+
+      topdir - The instance-unique temporary working directory that serves
+          as the parent directory for all temporary files.  The directory
+          itself is wreated when this class gets instantiated, and is up
+          to the user to be deleted (upon successful completion)
 
     """
-    # FIXME: should i have a BuildWork, InstallWork, etc class for each
-    #        mode? that would definately document what variables are
-    #        available for each stage_func...
-    #
-    def __init__(self, notes_obj):
-        self.notes = notes_obj
-        self.manifest = {} # FIXME: blob.Manifest with sorted iterator/view?
-        self.stages = get_stage_map(self.notes.header.features)
+    def __init__(self):
+        self.build = None
+        self.install = None
+        self.uninstall = None
+        self.query = None
+        self.action = None
+
         self.topdir = tempfile.mkdtemp(prefix="srp-")
-        self.DESTDIR = "/" # FIXME: where is this set... do_install
+
+
+class BuildWork(srp.SrpObject):
+    """`notes' is a NotesFile instance.  `manifest' is a dict of files being
+    installed and lots of metadata for each one (this is left
+    intentionally vague).  `stages' is a dictionary of sorted stage lists
+    based on default settings and the NOTES file.
+
+    """
+    def __init__(self):
+        with open(srp.params.build.notes, 'rb') as fobj:
+            self.notes = srp.notes.NotesFile(fobj)
+        
+        # FIXME: blob.Manifest with sorted iterator/view?  I seem to think
+        #        i didn't do this originally because 1) i was lazy, and 2)
+        #        i think it messes with shared memory in
+        #        multiprocessing...
+        #
+        self.manifest = {}
+
+        self.stages = get_stage_map(self.notes.header.features)
+
+
+class InstallWork(srp.SrpObject):
+    def __init__(self):
+        self.notes = None
+        self.manifest = None
+        self.prevs = None
+        # FIXME: not done.  at all...
 
 
 

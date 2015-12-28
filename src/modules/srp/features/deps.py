@@ -31,12 +31,13 @@ class NotesDeps(srp.SrpObject):
 #        else.
 def build_func(fname):
     """add library deps to the brp"""
-    x = srp.work.manifest[fname]["tinfo"]
+    x = srp.work.build.manifest[fname]["tinfo"]
 
     # we only care about regular files
     if not x.isreg():
         return
 
+    n = srp.work.build.notes
     deps = []
 
     realname = srp.work.topdir+"/payload"+fname
@@ -85,7 +86,7 @@ def build_func(fname):
     # stash our libinfo tuple into this file's section of the manifest
     if file_format and soname:
         libinfo = (file_format, soname)
-        srp.work.manifest[fname]["libinfo"] = libinfo
+        srp.work.build.manifest[fname]["libinfo"] = libinfo
         print("provides:", libinfo)
         
         # also stash this info in the deps section of the notes file for
@@ -94,7 +95,7 @@ def build_func(fname):
         # FIXME: as with deps.libs_needed, this will need some type of
         #        locking if we do multiproc stuff...
         #
-        srp.work.notes.deps.libs_provided.append(libinfo)
+        n.deps.libs_provided.append(libinfo)
 
     # NOTE: At this point, deps contains a sorted list of deps for THIS FILE.
     #       We still need to update our global list of deps for this package.
@@ -105,7 +106,6 @@ def build_func(fname):
     #
     # FIXME: is n a ref to the entry in srp.work? or a copy?
     #
-    n = srp.work.notes
     big_deps = n.deps.libs_needed[:]
     for d in deps:
         if d not in big_deps:
@@ -139,7 +139,7 @@ def install_func():
     # FIXME: for now, when tesing on systems with broken libreadline, you
     #        can get the deps check to pass by setting
     #        LD_PRELOAD=libncurses.so.5 on the command line.
-    n = srp.work.notes
+    n = srp.work.install.notes
     deps = n.deps.libs_needed[:]
     print(deps)
     for x in n.deps.libs_provided:

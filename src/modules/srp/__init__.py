@@ -15,7 +15,7 @@ for x in ["config", "features", "notes", "cli", "blob", "db"]:
 del x
 
 params = core.RunTimeParameters()
-work = None
+work = features.WorkBag()
 
 
 # FIXME: log = SrpLogger()

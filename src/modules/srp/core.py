@@ -172,14 +172,19 @@ def build():
     `srp.params'.
 
     """
-    with open(srp.params.build.notes, 'rb') as fobj:
-        srp.work = srp.features.WorkBag(srp.notes.NotesFile(fobj))
+    # create our work instance
+    srp.work.build = srp.features.BuildWork()
+
+    # get some local refs with shorter names
+    n = srp.work.build.notes
+    build_funcs = srp.work.build.stages["build"]
+    build_iter_funcs = srp.work.build.stages["build_iter"]
 
     # add brp section to NOTES instance
-    srp.work.notes.brp = srp.notes.NotesBrp()
+    n.brp = srp.notes.NotesBrp()
 
     # update notes fields with optional command line flags
-    srp.work.notes.update_features(srp.params.options)
+    n.update_features(srp.params.options)
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
@@ -197,15 +202,15 @@ def build():
     print(srp.work)
 
     # run through all queued up stage funcs for build
-    print("features:", srp.work.notes.header.features)
-    print("build funcs:", srp.work.stages['build'])
-    for f in srp.work.stages["build"]:
+    print("features:", n.header.features)
+    print("build funcs:", build_funcs)
+    for f in build_funcs:
         # check for notes section class and create if needed
         section = getattr(getattr(srp.features, f.name),
                           "Notes"+f.name.capitalize(), False)
-        if section and not getattr(srp.work.notes, f.name, False):
+        if section and not getattr(n, f.name, False):
             print("creating notes section:", f.name)
-            setattr(srp.work.notes, f.name, section())
+            setattr(n, f.name, section())
 
         print("executing:", f)
         if not srp.params.dry_run:
@@ -218,17 +223,17 @@ def build():
     # now run through all queued up stage funcs for build_iter
     #
     # FIXME: multiprocessing
-    print("build_iter funcs:", srp.work.stages['build_iter'])
-    flist = list(srp.work.manifest.keys())
+    print("build_iter funcs:", build_iter_funcs)
+    flist = list(srp.work.build.manifest.keys())
     flist.sort()
     for x in flist:
-        for f in srp.work.stages['build_iter']:
+        for f in build_iter_funcs:
             # check for notes section class and create if needed
             section = getattr(getattr(srp.features, f.name),
                               "Notes"+f.name.capitalize(), False)
-            if section and not getattr(srp.work.notes, f.name, False):
+            if section and not getattr(n, f.name, False):
                 print("creating notes section:", f.name)
-                setattr(srp.work.notes, f.name, section())
+                setattr(n, f.name, section())
 
             print("executing:", f, x)
             if not srp.params.dry_run:
@@ -244,7 +249,7 @@ def build():
     mach = platform.machine()
     if not mach:
         mach = "unknown"
-    pname = "{}.{}.brp".format(srp.work.notes.header.fullname, mach)
+    pname = "{}.{}.brp".format(n.header.fullname, mach)
     print("finalizing", pname)
 
     if srp.params.dry_run:
@@ -284,11 +289,11 @@ def build():
     #       tarfile.  When the fobj is closed it's contents are lost, but
     #       that's fine because we will have already added it to the toplevel
     #       brp archive.
-    srp.work.notes.brp.time_blob_creation = time.time()
+    n.brp.time_blob_creation = time.time()
     blob_fobj = tempfile.TemporaryFile()
-    srp.blob.blob_create(srp.work.manifest, srp.work.topdir+'/payload',
-                         fobj=blob_fobj)
-    srp.work.notes.brp.time_blob_creation = time.time() - srp.work.notes.brp.time_blob_creation
+    srp.blob.blob_create(srp.work.build.manifest,
+                         srp.work.topdir+'/payload', fobj=blob_fobj)
+    n.brp.time_blob_creation = time.time() - n.brp.time_blob_creation
     # add BLOB file to toplevel pkg archive
     blob_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob_fobj),
@@ -301,8 +306,8 @@ def build():
     # add NOTES (pickled instance) to toplevel pkg archive (the brp)
     n_fobj = tempfile.TemporaryFile()
     # last chance toupdate time_total
-    srp.work.notes.brp.time_total = time.time() - srp.work.notes.brp.time_total
-    pickle.dump(srp.work.notes, n_fobj)
+    n.brp.time_total = time.time() - n.brp.time_total
+    pickle.dump(n, n_fobj)
     n_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
                 fileobj=n_fobj)

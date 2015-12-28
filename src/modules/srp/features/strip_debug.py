@@ -26,7 +26,7 @@ from srp.features import *
 #        function.
 def install_func(fname):
     """strip --strip-unneeded from a file"""
-    x = srp.work.manifest[fname]
+    x = srp.work.install.manifest[fname]
 
     # only strip actual files
     if not x['tinfo'].isreg():
