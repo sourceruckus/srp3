@@ -67,6 +67,9 @@ class RunTimeParameters(SrpObject):
           implementers will have appropriately checked this parameter, the
           Feature funcs are not executed when dry_run is set.
 
+      root - Alternate root dir (like DESTDIR or SRP_ROOT_PREFIX).  Will
+          get set to "/" by default.
+
       force - Forcefully do something that should otherwise not be done
           (e.g., install even though dependencies aren't met, upgrade to
           same version of a package).
@@ -83,6 +86,7 @@ class RunTimeParameters(SrpObject):
         # global params
         self.verbosity = 0
         self.dry_run = False
+        self.root = "/"
         self.options = []
 
         # mode param instances
@@ -177,14 +181,8 @@ def build():
 
     # get some local refs with shorter names
     n = srp.work.build.notes
-    build_funcs = srp.work.build.stages["build"]
-    build_iter_funcs = srp.work.build.stages["build_iter"]
-
-    # add brp section to NOTES instance
-    n.brp = srp.notes.NotesBrp()
-
-    # update notes fields with optional command line flags
-    n.update_features(srp.params.options)
+    funcs = srp.work.build.stages["build"]
+    iter_funcs = srp.work.build.stages["build_iter"]
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
@@ -203,8 +201,8 @@ def build():
 
     # run through all queued up stage funcs for build
     print("features:", n.header.features)
-    print("build funcs:", build_funcs)
-    for f in build_funcs:
+    print("build funcs:", funcs)
+    for f in funcs:
         # check for notes section class and create if needed
         section = getattr(getattr(srp.features, f.name),
                           "Notes"+f.name.capitalize(), False)
@@ -223,11 +221,11 @@ def build():
     # now run through all queued up stage funcs for build_iter
     #
     # FIXME: multiprocessing
-    print("build_iter funcs:", build_iter_funcs)
+    print("build_iter funcs:", iter_funcs)
     flist = list(srp.work.build.manifest.keys())
     flist.sort()
     for x in flist:
-        for f in build_iter_funcs:
+        for f in iter_funcs:
             # check for notes section class and create if needed
             section = getattr(getattr(srp.features, f.name),
                               "Notes"+f.name.capitalize(), False)
@@ -328,3 +326,84 @@ def build():
     # close the toplevel brp archive
     brp.close()
     __brp.close()
+
+
+def install():
+    """Installs a package according to the RunTimeParameters instance
+    `srp.params'.
+
+    """
+    # create our work instance
+    srp.work.install = srp.features.InstallWork()
+
+    # get some local refs with shorter names
+    n = srp.work.install.notes
+    m = srp.work.install.manifest
+    funcs = srp.work.build.stages["install"]
+    iter_funcs = srp.work.build.stages["install_iter"]
+
+    # run through install funcs
+    print("features:", n.header.features)
+    print("install funcs:", funcs)
+    for f in funcs:
+        # check for notes section class and create if needed
+        section = getattr(getattr(srp.features, f.name),
+                          "Notes"+f.name.capitalize(), False)
+        if section and not getattr(n, f.name, False):
+            print("creating notes section:", f.name)
+            setattr(n, f.name, section())
+
+        print("executing:", f)
+        if not srp.params.dry_run:
+            try:
+                f.func()
+            except:
+                print("ERROR: failed feature stage function:", f)
+                raise
+
+    # now run through all queued up stage funcs for install_iter
+    #
+    # FIXME: multiprocessing
+    print("install_iter funcs:", iter_funcs)
+    flist = list(m.keys())
+    flist.sort()
+    for x in flist:
+        for f in iter_funcs:
+            # check for notes section class and create if needed
+            section = getattr(getattr(srp.features, f.name),
+                              "Notes"+f.name.capitalize(), False)
+            if section and not getattr(n, f.name, False):
+                print("creating notes section:", f.name)
+                setattr(n, f.name, section())
+
+            print("executing:", f, x)
+            if not srp.params.dry_run:
+                try:
+                    f.func(x)
+                except:
+                    print("ERROR: failed feature stage function:", f)
+                    raise
+
+    # commit NOTES to disk in srp db
+    #
+    # NOTE: We need to refresh our copy of n because feature funcs may have
+    #       modified the copy in work[].
+    #
+    n = srp.work.install.notes
+
+    # commit MANIFEST to disk in srp db
+    #
+    # NOTE: We need to refresh our copy because feature funcs may have
+    #       modified it
+    #
+    m = srp.work.install.manifest
+
+    # register w/ srp db
+    inst = srp.db.InstalledPackage(n, m)
+    srp.db.register(inst)
+
+    # commit db to disk
+    #
+    # FIXME: is there a better place for this?
+    if not srp.params.dry_run:
+        srp.db.commit()

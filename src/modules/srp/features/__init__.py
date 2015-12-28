@@ -43,6 +43,10 @@ has to do is fetch a list of build functions from all the registered
 Features (sorted via their pre/post rules), and execute them one by one.
 
 """
+import hashlib
+import os
+import pickle
+import tarfile
 import tempfile
 
 import srp
@@ -392,13 +396,93 @@ class BuildWork(srp.SrpObject):
 
         self.stages = get_stage_map(self.notes.header.features)
 
+        # add brp section to NOTES instance
+        self.notes.brp = srp.notes.NotesBrp()
+
+        # update notes fields with optional command line flags
+        self.notes.update_features(srp.params.options)
+
+
+def verify_sha(tar):
+    sha = hashlib.new("sha1")
+    for f in tar:
+        if f.name != "SHA":
+            sha.update(tar.extractfile(f).read())
+    x = sha.hexdigest().encode()
+    y = tar.extractfile("SHA").read()
+    if x != y:
+        raise Exception("SHA doesn't match.  Corrupted archive?")
+    return x
+
 
 class InstallWork(srp.SrpObject):
+    """`notes' is a NotesFile insance loaded from the brp specified in params,
+    `prevs' is a list of previously installed InstalledPackage instances
+    of the same name, `manifest' is a dict loaded out of the brp, and
+    `stages' is a dictionary of sorted stage lists.
+
+    """
     def __init__(self):
-        self.notes = None
-        self.manifest = None
-        self.prevs = None
-        # FIXME: not done.  at all...
+        # extract NOTES file
+        with tarfile.open(srp.params.install.pkg) as p:
+            # verify SHA
+            from_sha = verify_sha(p)
+            # verify that requirements are met
+            n_fobj = p.extractfile("NOTES")
+            n = pickle.load(n_fobj)
+            self.notes = n
+
+        # check for previously installed version
+        #
+        # NOTE: The db lookup method(s) return a list of matches to 1) support
+        #       fnmatch queries and 2) support having multiple versions of a
+        #       package installed.  We don't need to wory about the 1st case
+        #       here, because we're passing in an exact package name, but we
+        #       do have to wory about the 2nd case.
+        #
+        #       Why?  We like to be able to have multiple kernel packages
+        #       installed, as they generally don't overlap files (except
+        #       firmware, possibly) and it's nice to have multiple kernels
+        #       managed via the package manager.
+        #
+        #       This means we need to iterate over a list of possibly more
+        #       than 1 installed version.
+        #
+        prevs = srp.db.lookup_by_name(n.header.name)
+        # make sure upgrading is allowed if needed
+        if prevs and not srp.params.install.allow_upgrade:
+            raise Exception("Package {} already installed".format(
+                n.header.name))
+
+        # check for upgrading to identical version (requires --force)
+        for prev in prevs:
+            if (prev.notes.header.fullname == n.header.fullname
+                and not srp.params.force):
+                raise Exception("Package {} already installed, use --force to"
+                                " forcefully reinstall or --uninstall and then"
+                                " --install".format(n.header.fullname))
+
+        if prevs:
+            print("Upgrading to {}".format(n.header.fullname))
+        self.prevs = prevs
+
+        # add installed section to NOTES instance
+        n.installed = srp.notes.NotesInstalled(from_sha)
+
+        # update NotesFile with host defaults
+        n.update_features(srp.features.default_features)
+
+        # update notes fields with optional command line flags
+        n.update_features(srp.params.options)
+
+        # FIXME: why isn't this stored away srp.work?  don't we need it
+        #        later...?
+        #
+        blob = srp.blob.blob(srp.work.topdir+"/package/BLOB")
+
+        self.manifest = blob.manifest
+
+        self.stages = get_stage_map(self.notes.header.features)
 
 
 

@@ -9,7 +9,6 @@
 #        srp.cli.do_build)
 #
 import argparse
-import hashlib # do_install
 import os # do_install, do_query
 import stat # query
 import sys
@@ -161,6 +160,11 @@ p.add_argument('-n', '--dry-run', action='store_true',
                help="""Don't actualy do anything, just print what would have
                     been done.""")
 
+p.add_argument('--root', metavar='ROOTDIR',
+               help="""Specifies that we should operate on a filesystem rooted at ROOTDIR.
+               This is similar to automake's DESTDIR variable, or srp2's
+               SRP_ROOT_PREFIX variable""")
+
 p.add_argument('packages', metavar='PACKAGE', nargs='*',
                help="""Specifies the PACKAGE(s) for --install, --uninstall,
                --query, and --action.  Note that PACKAGE can be a Unix
@@ -247,6 +251,9 @@ def main():
     # set global params
     srp.params.verbosity = args.verbose
     srp.params.dry_run = args.dry_run
+    if args.root:
+        srp.params.root = args.root
+        os.makedirs(args.root, exist_ok=True)
     srp.params.options = args.options
 
     # mutually-exclusive arguments/flags
@@ -255,9 +262,9 @@ def main():
             p.error("argument --install: requires PACKAGE(s)")
 
         for x in args.packages:
-            print("do_install(package={}, options={})".format(x, args.options))
-            if not args.dry_run:
-                do_install(x, args.options, not args.no_upgrade, args.force)
+            srp.params.install = srp.InstallParameters(x, not args.no_upgrade)
+            print(srp.params)
+            srp.install()
 
     elif args.uninstall:
         if not args.packages:
@@ -318,182 +325,8 @@ def main():
 
 
 
-# /usr/bin/srp (import srp.cli; srp.cli.main(sys.argv))
-#
-# python-x.y/site/srp/__init__.py
-#                    .core/__init__.py (highlevel methods (e.g., install, uninstall)
-#                    .cli.py
-#                    .package/__init__.py (guts of package types)
-#                    .features.py
-#                    .features/somefeature.py
 
 
-def verify_sha(tar):
-    sha = hashlib.new("sha1")
-    for f in tar:
-        if f.name != "SHA":
-            sha.update(tar.extractfile(f).read())
-    x = sha.hexdigest().encode()
-    y = tar.extractfile("SHA").read()
-    if x != y:
-        raise Exception("SHA doesn't match.  Corrupted archive?")
-    return x
-
-
-def do_install(fname, options, allow_upgrade=True, force=False):
-    # create ruckus dir in tmp
-    #
-    # FIXME: we need to standardize who make the tmp dir... i think the
-    #        core build_func makes it during build...
-    work = {}
-    work['dir'] = srp.features.core.create_tmp_ruckus()
-
-    # extract package contents
-    #
-    # NOTE: This is needed so that build scripts can access other misc files
-    #       they've included in the srp (e.g., apply a patch, install an
-    #       externally maintained init script)
-    #
-    # FIXME: is this still needed now that we've nixed the whole concept
-    #        of a source package?
-    #
-    with tarfile.open(fname) as p:
-        # verify SHA
-        from_sha = verify_sha(p)
-        # verify that requirements are met
-        n_fobj = p.extractfile("NOTES")
-        n = pickle.load(n_fobj)
-        # extract into work dir
-        p.extractall(work['dir'] + "/package")
-
-    # check for previously installed version
-    #
-    # NOTE: The db lookup method(s) return a list of matches to 1) support
-    #        fnmatch queries and 2) support having multiple versions of a
-    #        package installed.  We don't need to wory about the 1st case
-    #        here, because we're passing in an exact package name, but we
-    #        do have to wory about the 2nd case.
-    #
-    #        Why?  We like to be able to have multiple kernel packages
-    #        installed, as they generally don't overlap files (except
-    #        firmware, possibly) and it's nice to have multiple kernels
-    #        managed via the package manager.
-    #
-    #        This means we need to iterate over a list of possibly more
-    #        than 1 installed version.
-    #
-    prevs = srp.db.lookup_by_name(n.header.name)
-    # make sure upgrading is allowed if needed
-    if prevs and not allow_upgrade:
-        raise Exception("Package {} already installed".format(n.header.name))
-
-    # check for upgrading to identical version (requires --force)
-    for prev in prevs:
-        if prev.notes.header.fullname == n.header.fullname and not force:
-            raise Exception("Package {} already installed, use --force to"
-                            " forcefully reinstall or --uninstall and then"
-                            " --install".format(n.header.fullname))
-
-    if prevs:
-        print("Upgrading to {}".format(n.header.fullname))
-
-    # add installed section to NOTES instance
-    n.installed = srp.notes.NotesInstalled(from_sha)
-
-    # update NotesFile with host defaults
-    n.update_features(srp.features.default_features)
-
-    # update notes fields with optional command line flags
-    n.update_features(options)
-    print(n)
-
-    blob = srp.blob.blob(work['dir']+"/package/BLOB")
-
-    # prep our shared work namespace
-    #
-    # NOTE: This dict gets passed into all the stage funcs (i.e., it's
-    #       how they can all share data)
-    work['fname'] = fname
-    work['notes'] = n
-    work['manifest'] = blob.manifest
-    work['prevs'] = prevs
-
-    # NOTE: In order to test this (and later on, to test new packages) as an
-    #       unprivileged, we need to have to have some sort of fake root
-    #       option (e.g., the old SRP_ROOT_PREFIX trick).
-    #
-    #       I'm waffling between using a DESTDIR environment variable
-    #       (because that's what autotools and tons of other Makefiles use)
-    #       and adding a --root command line arg (because that's what RPM
-    #       does and it's easier to document)
-    #
-    # FIXME: For now, it's DESTDIR.  Perhaps revisit this later...
-    try:
-        work["DESTDIR"] = os.environ["DESTDIR"]
-    except:
-        work["DESTDIR"] = "/"
-
-    # run through install funcs
-    stages = srp.features.get_stage_map(n.header.features)
-    print("features:", n.header.features)
-    print("install funcs:", stages['install'])
-    for f in stages['install']:
-        # check for notes section class and create if needed
-        section = getattr(getattr(srp.features, f.name),
-                          "Notes"+f.name.capitalize(), False)
-        if section and not getattr(n, f.name, False):
-            print("creating notes section:", f.name)
-            setattr(n, f.name, section())
-
-        print("executing:", f)
-        try:
-            f.func(work)
-        except:
-            print("ERROR: failed feature stage function:", f)
-            raise
-
-    # now run through all queued up stage funcs for install_iter
-    #
-    # FIXME: multiprocessing
-    print("install_iter funcs:", stages['install_iter'])
-    flist = list(work['manifest'].keys())
-    flist.sort()
-    for x in flist:
-        for f in stages['install_iter']:
-            # check for notes section class and create if needed
-            section = getattr(getattr(srp.features, f.name),
-                              "Notes"+f.name.capitalize(), False)
-            if section and not getattr(n, f.name, False):
-                print("creating notes section:", f.name)
-                setattr(n, f.name, section())
-
-            print("executing:", f, x)
-            try:
-                f.func(work, x)
-            except:
-                print("ERROR: failed feature stage function:", f)
-                raise
-
-    # commit NOTES to disk in srp db
-    #
-    # NOTE: We need to refresh our copy of n because feature funcs may have
-    #       modified the copy in work[].
-    n = work["notes"]
-
-    # commit MANIFEST to disk in srp db
-    #
-    # NOTE: We need to refresh our copy because feature funcs may have
-    #       modified it
-    m = work["manifest"]
-
-    # register w/ srp db
-    inst = srp.db.InstalledPackage(n, m)
-    srp.db.register(inst)
-
-    # commit db to disk
-    #
-    # FIXME: is there a better place for this?
-    srp.db.commit()
 
 
 

@@ -95,12 +95,8 @@ def register(p):
 
 # FIXME: path to db in config?
 #
-# FIXME: DESTDIR?  --root?  both/either?
-try:
-    dbpath = os.environ["DESTDIR"]
-except:
-    dbpath = ""
-dbpath+="/var/lib/srp/db"
+dbpath = srp.params.root
+dbpath += "var/lib/srp/db"
 
 
 def commit():
