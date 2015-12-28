@@ -25,7 +25,7 @@ class SrpObject:
     """
     def __str__(self):
         ret = repr(self)
-        if params.verbosity <= 1:
+        if srp.params.verbosity <= 1:
             return ret
 
         # slice off the trailing '>'
@@ -99,9 +99,10 @@ class BuildParameters(SrpObject):
         source tarball or a directory full of source code.  Paths can use
         fnmatch patterns (e.g., src/foo/foo*.tar.*) but MUST only result
         in a single match.  `extradir', if provided, specifies a path to a
-        dir to be used to locate extra files.  If `copysrc' is specified
-        as True, the build will create a copy of the source tree (i.e., so
-        we don't modify an external source tree).
+        dir to be used to locate extra files (defaults to directory
+        containing the notes file).  If `copysrc' is specified as True,
+        the build will create a copy of the source tree (i.e., so we don't
+        modify an external source tree).
 
         """
         # FIXME: we can probably get rid of extradir at this point... it
@@ -164,17 +165,21 @@ class QueryParameters(SrpObject):
         self.criteria = criteria
 
 
-#fname, src, extradir, copysrc, options):
 def build():
-    with open(params.build.notes, 'rb') as fobj:
-        n = srp.notes.NotesFile(fobj)
+    """Builds a package according to the RunTimeParameters instance
+    `srp.params'.  The features.WorkBag instance `srp.work' is created
+    using a NotesFile instance created from the notes file specified in
+    `srp.params'.
+
+    """
+    with open(srp.params.build.notes, 'rb') as fobj:
+        srp.work = srp.features.WorkBag(srp.notes.NotesFile(fobj))
 
     # add brp section to NOTES instance
-    n.brp = srp.notes.NotesBrp()
+    srp.work.notes.brp = srp.notes.NotesBrp()
 
     # update notes fields with optional command line flags
-    n.update_features(params.options)
-    print(n)
+    srp.work.notes.update_features(srp.params.options)
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
@@ -189,46 +194,23 @@ def build():
     #        files... in which case we'll rip that out of the core
     #        feature's build_func and put it somewhere else.
 
-    # prep our shared work namespace
-    #
-    # NOTE: This dict gets passed into all the stage funcs (i.e., it's
-    #       how they can all share data)
-    #
-    # FIXME: make this into a class, just like RunTimeParameters, that's
-    #        got an instance insrp (e.g., srp.work).  Might need to be
-    #        really careful regarding allowing feature funcs to add new
-    #        entries to the work dictionary...  if they're allowed to do
-    #        that, the feature entries cannot be accessed by other
-    #        features (well, they CAN technically, but then the features
-    #        are going to be intertwined)...
-    #
-    work = {}
-    work['fname'] = params.build.notes
-
-    # NOTE: We do not pass the TarFile instance along because it doesn't
-    #       play nicely with subproc access...
-    #work['srp'] = p
-
-    work['notes'] = n
-
-    work['manifest'] = {}
+    print(srp.work)
 
     # run through all queued up stage funcs for build
-    stages = srp.features.get_stage_map(n.header.features)
-    print("features:", n.header.features)
-    print("build funcs:", stages['build'])
-    for f in stages['build']:
+    print("features:", srp.work.notes.header.features)
+    print("build funcs:", srp.work.stages['build'])
+    for f in srp.work.stages["build"]:
         # check for notes section class and create if needed
         section = getattr(getattr(srp.features, f.name),
                           "Notes"+f.name.capitalize(), False)
-        if section and not getattr(n, f.name, False):
+        if section and not getattr(srp.work.notes, f.name, False):
             print("creating notes section:", f.name)
-            setattr(n, f.name, section())
+            setattr(srp.work.notes, f.name, section())
 
         print("executing:", f)
-        if not params.dry_run:
+        if not srp.params.dry_run:
             try:
-                f.func(work)
+                f.func()
             except:
                 print("ERROR: failed feature stage function:", f)
                 raise
@@ -236,22 +218,22 @@ def build():
     # now run through all queued up stage funcs for build_iter
     #
     # FIXME: multiprocessing
-    print("build_iter funcs:", stages['build_iter'])
-    flist = list(work['manifest'].keys())
+    print("build_iter funcs:", srp.work.stages['build_iter'])
+    flist = list(srp.work.manifest.keys())
     flist.sort()
     for x in flist:
-        for f in stages['build_iter']:
+        for f in srp.work.stages['build_iter']:
             # check for notes section class and create if needed
             section = getattr(getattr(srp.features, f.name),
                               "Notes"+f.name.capitalize(), False)
-            if section and not getattr(n, f.name, False):
+            if section and not getattr(srp.work.notes, f.name, False):
                 print("creating notes section:", f.name)
-                setattr(n, f.name, section())
+                setattr(srp.work.notes, f.name, section())
 
             print("executing:", f, x)
-            if not params.dry_run:
+            if not srp.params.dry_run:
                 try:
-                    f.func(work, x)
+                    f.func(x)
                 except:
                     print("ERROR: failed feature stage function:", f)
                     raise
@@ -262,10 +244,10 @@ def build():
     mach = platform.machine()
     if not mach:
         mach = "unknown"
-    pname = "{}.{}.brp".format(n.header.fullname, mach)
+    pname = "{}.{}.brp".format(srp.work.notes.header.fullname, mach)
     print("finalizing", pname)
 
-    if params.dry_run:
+    if srp.params.dry_run:
         # nothing more to do, since we didn't actually build anything to
         # finalize into a brp...
         return
@@ -302,11 +284,11 @@ def build():
     #       tarfile.  When the fobj is closed it's contents are lost, but
     #       that's fine because we will have already added it to the toplevel
     #       brp archive.
-    n.brp.time_blob_creation = time.time()
+    srp.work.notes.brp.time_blob_creation = time.time()
     blob_fobj = tempfile.TemporaryFile()
-    srp.blob.blob_create(work["manifest"], work['dir']+'/payload',
+    srp.blob.blob_create(srp.work.manifest, srp.work.topdir+'/payload',
                          fobj=blob_fobj)
-    n.brp.time_blob_creation = time.time() - n.brp.time_blob_creation
+    srp.work.notes.brp.time_blob_creation = time.time() - srp.work.notes.brp.time_blob_creation
     # add BLOB file to toplevel pkg archive
     blob_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob_fobj),
@@ -319,8 +301,8 @@ def build():
     # add NOTES (pickled instance) to toplevel pkg archive (the brp)
     n_fobj = tempfile.TemporaryFile()
     # last chance toupdate time_total
-    n.brp.time_total = time.time() - n.brp.time_total
-    pickle.dump(n, n_fobj)
+    srp.work.notes.brp.time_total = time.time() - srp.work.notes.brp.time_total
+    pickle.dump(srp.work.notes, n_fobj)
     n_fobj.seek(0)
     brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
                 fileobj=n_fobj)
@@ -341,10 +323,3 @@ def build():
     # close the toplevel brp archive
     brp.close()
     __brp.close()
-
-
-params = RunTimeParameters()
-
-# FIXME: work = WorkDict()
-
-# FIXME: log = SrpLogger()

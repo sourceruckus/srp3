@@ -6,32 +6,33 @@ This feature keeps tabs on disk utilization during install.
 import os
 import stat
 
+import srp
 from srp.features import *
 
 
-class NotesSize:
+class NotesSize(srp.SrpObject):
     def __init__(self):
         self.total = 0
 
 
-def reset_notes(work):
-    work["notes"].size.total = 0
+def reset_notes():
+    srp.work.notes.size.total = 0
 
 
-def increment_notes_build(work, fname):
-    x = work["manifest"][fname]['tinfo']
+def increment_notes_build(fname):
+    x = srp.work.manifest[fname]['tinfo']
     if not x.isreg():
         return
-    work["notes"].size.total += x.size
+    srp.work.notes.size.total += x.size
 
 
 # NOTE: The size is recalculated at install-time because some other
 #       Feature may have changed the file once installed (i.e., size
 #       stored at build-time may be wrong).
 #
-def increment_notes_install(work, fname):
+def increment_notes_install(fname):
     """add size of fname to total in NOTES"""
-    x = work["manifest"][fname]
+    x = srp.work.manifest[fname]
 
     # only count regular files
     #
@@ -41,7 +42,7 @@ def increment_notes_install(work, fname):
     if not x['tinfo'].isreg():
         return
 
-    n = work["notes"]
+    n = srp.work.notes
 
     # NOTE: The file is already installed on disk, so we don't need to mess
     #       with the old BLOB

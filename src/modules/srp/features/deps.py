@@ -17,7 +17,7 @@ import os
 import subprocess
 
 
-class NotesDeps:
+class NotesDeps(srp.SrpObject):
     def __init__(self):
         self.libs_needed = []
         self.libs_provided = []
@@ -29,9 +29,9 @@ class NotesDeps:
 #        multiprocessing to take advantage of multiple CPUs.  we would
 #        need a Manager for the deps list, but probably not anything
 #        else.
-def build_func(work, fname):
+def build_func(fname):
     """add library deps to the brp"""
-    x = work["manifest"][fname]["tinfo"]
+    x = srp.work.manifest[fname]["tinfo"]
 
     # we only care about regular files
     if not x.isreg():
@@ -39,7 +39,7 @@ def build_func(work, fname):
 
     deps = []
 
-    realname = work['dir']+"/payload"+fname
+    realname = srp.work.topdir+"/payload"+fname
     print("calculating deps for: ", realname)
 
     # NOTE: We're using objdump here instead of ldd.  The difference is that
@@ -85,7 +85,7 @@ def build_func(work, fname):
     # stash our libinfo tuple into this file's section of the manifest
     if file_format and soname:
         libinfo = (file_format, soname)
-        work["manifest"][fname]["libinfo"] = libinfo
+        srp.work.manifest[fname]["libinfo"] = libinfo
         print("provides:", libinfo)
         
         # also stash this info in the deps section of the notes file for
@@ -94,7 +94,7 @@ def build_func(work, fname):
         # FIXME: as with deps.libs_needed, this will need some type of
         #        locking if we do multiproc stuff...
         #
-        work["notes"].deps.libs_provided.append(libinfo)
+        srp.work.notes.deps.libs_provided.append(libinfo)
 
     # NOTE: At this point, deps contains a sorted list of deps for THIS FILE.
     #       We still need to update our global list of deps for this package.
@@ -102,7 +102,10 @@ def build_func(work, fname):
     # FIXME: if we use multiproc iter stage, we need to use some sort of
     #        locking here so that we can modify the notes file from within each
     #        subproc
-    n = work["notes"]
+    #
+    # FIXME: is n a ref to the entry in srp.work? or a copy?
+    #
+    n = srp.work.notes
     big_deps = n.deps.libs_needed[:]
     for d in deps:
         if d not in big_deps:
@@ -111,7 +114,7 @@ def build_func(work, fname):
     n.deps.libs_needed = big_deps
 
 
-def install_func(work):
+def install_func():
     """check system for required libs"""
     # FIXME: libreadline stupidly has unresolved symbols unless you link it
     #        with libncurses (or libtermcap, if memory serves).  so,
@@ -136,7 +139,7 @@ def install_func(work):
     # FIXME: for now, when tesing on systems with broken libreadline, you
     #        can get the deps check to pass by setting
     #        LD_PRELOAD=libncurses.so.5 on the command line.
-    n = work['notes']
+    n = srp.work.notes
     deps = n.deps.libs_needed[:]
     print(deps)
     for x in n.deps.libs_provided:

@@ -28,6 +28,7 @@ class NotesPerms(srp.notes.NotesBuffer):
 #        way, this is ONLY needed because we expect stuff for this feature
 #        to be parsed from the initial notes file (i.e., if we only add
 #        things during build it's not needed).
+#
 srp.notes.NotesPerms = NotesPerms
 
 
@@ -145,17 +146,18 @@ class PermsList(list):
 #
 # FIXME: I think the above is true, but TarInfo has a uid and uname
 #        field.... what if they don't match up?  are they both required?
-def build_func(work, fname):
+#
+def build_func(fname):
     """update tarinfo via perms section of NOTES file"""
     #print(work.keys())
     #print(work['notes'].perms.buf)
-    n = work["notes"]
+    n = srp.work.notes
     p = PermsList(n.perms.buffer)
     #print(p)
     #print(p['/usr/local/bin/foo'])
     #print(p['/usr/share/asdf'])
 
-    x = work["manifest"][fname]["tinfo"]
+    x = srp.work.manifest[fname]["tinfo"]
     #print(x)
 
     # skip links
@@ -182,7 +184,7 @@ def build_func(work, fname):
     #       package maintainers don't need to worry about which file gets added
     #       first when writing perms rules.
     if x.islnk():
-        x = work["manifest"]["/"+x.linkname]["tinfo"]
+        x = srp.work.manifest["/"+x.linkname]["tinfo"]
         #print(x)
 
     # return if there's no perms matching this file
@@ -221,7 +223,12 @@ def build_func(work, fname):
     # NOTE: We use x.name instead of fname here because we need to make sure we
     #       update the right TarInfo instance and we may have followed a link
     #       to a new file's TarInfo.
-    work["manifest"]["/"+x.name]["tinfo"] = x
+    #
+    # FIXME: why do we sometimes re-insert the tinfo and sometimes not...?
+    #        did it have something to do with experimenting with
+    #        multiprocessing and shared memory?  I think it did...
+    #
+    srp.work.manifest["/"+x.name]["tinfo"] = x
 
 
 
@@ -229,6 +236,7 @@ def verify_func():
     """check perms, issue warning"""
     # FIXME: MULTI:
     pass
+
 
 register_feature(
     feature_struct("perms",

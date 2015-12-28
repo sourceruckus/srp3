@@ -260,8 +260,6 @@ class NotesFile(srp.SrpObject):
         # extra content
         flist.extend(self.header.extra_content)
 
-        print(os.getcwd())
-        print(flist)
         for fname in flist:
             # fname may be a file or a dir, so we just check for existence
             if not os.path.exists(fname):

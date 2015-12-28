@@ -15,21 +15,21 @@ in.
 
 The pre-defined stages are:
 
-  build(work) -- Build the binary package by executing the embedded build
+  build() -- Build the binary package by executing the embedded build
   script in the NOTES file, populate MANIFEST with TarInfo objects of
   resulting payload.
 
-  build_iter(work, fname) -- If you want to tweak each file before it gets
-  added to the archive, this is the stage you want.
+  build_iter(fname) -- If you want to tweak each file before it gets added
+  to the archive, this is the stage you want.
 
-  install(work) -- Install the package on a system.
+  install() -- Install the package on a system.
 
-  install_iter(work, fname) -- If you have something special to do that
-  involves iterating over all the installed files, this is the stage to use.
+  install_iter(fname) -- If you have something special to do that involves
+  iterating over all the installed files, this is the stage to use.
 
-  uninstall(work) -- Uninstall the package from a system.
+  uninstall() -- Uninstall the package from a system.
 
-  uninstall_iter(work, fname) -- If you have something to do per file during
+  uninstall_iter(fname) -- If you have something to do per file during
   uninstall, this is the stage to do it in.
 
   action -- This stage is special.  It's really a meta-stage of sorts,
@@ -43,6 +43,9 @@ has to do is fetch a list of build functions from all the registered
 Features (sorted via their pre/post rules), and execute them one by one.
 
 """
+import tempfile
+
+import srp
 
 # These lists/maps are populated via calls to register_feature
 default_features = []
@@ -55,6 +58,11 @@ stage_list = ['build', 'build_iter',
               'uninstall', 'uninstall_iter']
 
 
+# FIXME: could use collections.namedtuple, derive from tuple myself, or
+#        use __slots__ to make this more efficient.  more importantly,
+#        this would add enforcement to the data members (i.e., .naem="foo"
+#        would be an error instead of creating a new member named naem).
+#
 class feature_struct:
     """The primary object used for feature registration.  The name and doc
     items are the feature's name and short description.  The default item
@@ -227,7 +235,10 @@ class stage_struct:
 
 
 def register_feature(feature_obj):
-    """The registration method for the Feature API."""
+    """The registration method for the Feature API.  See documentation for
+    features.feature_struct.
+
+    """
     if not feature_obj.valid():
         raise Exception("invalid feature_obj")
 
@@ -319,6 +330,35 @@ def get_stage_map(flags):
         retval[s] = get_function_list(s, flags)
 
     return retval
+
+
+# FIXME: should this be in core.py or features/__init__.py?  could go
+#        either way, really, as it's for coordinating the feature funcs to
+#        do work per RunTimeParameters...  might move it into features
+#        just so it's documentation is alongside the rest of the Features
+#        API docs...
+#
+# FIXME: move get_stage_map, get_function_list, etc, into this class
+#
+class WorkBag(srp.SrpObject):
+    """Toplevel container class for storing all the things being worked on by
+    the Feature funcs during our run.  All Feature stage functions should
+    refer to the common WorkBag instance at `srp.work'.
+
+    The `stages' variable is a dictionary of sorted stage lists based on
+    default settings and the `notes_obj' passed into the constructor.
+
+    """
+    # FIXME: should i have a BuildWork, InstallWork, etc class for each
+    #        mode? that would definately document what variables are
+    #        available for each stage_func...
+    #
+    def __init__(self, notes_obj):
+        self.notes = notes_obj
+        self.manifest = {} # FIXME: blob.Manifest with sorted iterator/view?
+        self.stages = get_stage_map(self.notes.header.features)
+        self.topdir = tempfile.mkdtemp(prefix="srp-")
+        self.DESTDIR = "/" # FIXME: where is this set... do_install
 
 
 

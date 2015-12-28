@@ -7,6 +7,7 @@ recorded.
 
 import fnmatch
 
+import srp
 from srp.features import *
 
 # NOTE: This is implemented as an install_func instead of an iter func to
@@ -16,15 +17,15 @@ from srp.features import *
 doc_patterns = ["*/share/doc", "*/share/doc/*"]
 
 
-def install_func(work):
+def install_func():
     """remove all documentation from manifest"""
-    flist = list(work['manifest'].keys())
+    flist = list(srp.work.manifest.keys())
     flist.sort()
     for x in flist:
         for pat in doc_patterns:
             if fnmatch.fnmatch(x, pat):
                 # remove from manifest
-                del work["manifest"][x]
+                del srp.work.manifest[x]
 
                 # skip to next file
                 break
@@ -33,7 +34,7 @@ def install_func(work):
 # FIXME: this should also register an action so we can strip after
 #        installation if we want to
 
-def action_func(work):
+def action_func():
     pass
 
 

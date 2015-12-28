@@ -6,12 +6,14 @@ verify files on demand after installation.
 
 import hashlib
 
+import srp
 from srp.features import *
 
+
 # FIXME: MULTI:
-def gen_sum(work, fname):
+def gen_sum(fname):
     """gen sha of a file, update pkg manifest"""
-    x = work["manifest"][fname]
+    x = srp.work.manifest[fname]
 
     # only record checksum of regular files
     if not x['tinfo'].isreg():
@@ -42,10 +44,10 @@ def gen_sum(work, fname):
     x["checksum"] = sha.hexdigest().encode()
 
     # put our updated manifest entry back into the global map
-    work['manifest'][fname] = x
+    srp.work.manifest[fname] = x
 
 
-def verify_sums(work):
+def verify_sums():
     """verify, issue warning"""
     # FIXME: MULTI: this one can't be an iter func, because we would want it
     #        to happen before anything else.  But we COULD put an

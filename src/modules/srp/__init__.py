@@ -7,8 +7,15 @@ Packager.  Importing it will automatically include all submodules.
 from srp.core import *
 
 # FIXME: was there some reason for the strange ordering here?
-__all__ = ["config", "features", "notes", "cli", "blob", "db"]
-
-for x in __all__:
+#
+# FIXME: was setting __all__ and iterating over it... but not sure why now
+#
+for x in ["config", "features", "notes", "cli", "blob", "db"]:
     __import__(".".join([__name__, x]))
+del x
 
+params = core.RunTimeParameters()
+work = None
+
+
+# FIXME: log = SrpLogger()

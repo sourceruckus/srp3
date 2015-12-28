@@ -14,7 +14,6 @@ import socket
 import stat
 import subprocess
 import tarfile
-import tempfile
 import time
 
 import srp
@@ -44,21 +43,12 @@ def partition_list(full_list, n):
 
 
 
-def create_tmp_ruckus():
-    d = tempfile.mkdtemp(prefix="srp-")
-    return d
 
-
-
-def build_func(work):
+def build_func():
     """run build script to populate payload dir, then create TarInfo objects for
     all files"""
-    # create ruckus dir in tmp
-    work['dir'] = create_tmp_ruckus()
 
-    n = work["notes"]
-
-    sourcedir = work['dir'] + '/source'
+    sourcedir = srp.work.topdir + '/source'
 
     # setup source dir(s)
     #
@@ -133,8 +123,8 @@ def build_func(work):
 
 
     # create build script
-    with open(work['dir'] + "/srp_go", 'w') as f:
-        f.write(work['notes'].script.buffer)
+    with open(srp.work.topdir + "/srp_go", 'w') as f:
+        f.write(srp.work.notes.script.buffer)
         os.chmod(f.name, stat.S_IMODE(os.stat(f.name).st_mode) | stat.S_IXUSR)
 
     # create extra_content dir
@@ -142,9 +132,9 @@ def build_func(work):
     # NOTE: The extra_content files are not symlinks, so that bogus build
     #       scripts can't mangle system files
     #
-    os.mkdir(work['dir'] + "/extra_content")
-    for x in n.header.extra_content:
-        shutil.copy(x, work['dir'] + "/extra_content")
+    os.mkdir(srp.work.topdir + "/extra_content")
+    for x in srp.work.notes.header.extra_content:
+        shutil.copy(x, srp.work.topdir + "/extra_content")
 
     # run build script
     #
@@ -185,14 +175,14 @@ def build_func(work):
     #
     new_env = dict(os.environ)
     new_env['SOURCE_DIR'] = sourcedir
-    new_env['BUILD_DIR'] = work['dir']+"/build"
-    new_env['PAYLOAD_DIR'] = work['dir']+"/payload"
-    new_env['EXTRA_DIR'] = work['dir']+"/extra_content"
+    new_env['BUILD_DIR'] = srp.work.topdir+"/build"
+    new_env['PAYLOAD_DIR'] = srp.work.topdir+"/payload"
+    new_env['EXTRA_DIR'] = srp.work.topdir+"/extra_content"
     new_env['FUNCTIONS'] = srp.config.build_functions
-    os.mkdir(work['dir'] + '/build')
-    os.mkdir(work['dir'] + '/payload')
-    n.brp.time_build_script = time.time()
-    subprocess.check_call(["../srp_go"], cwd=work['dir']+'/build/', env=new_env)
+    os.mkdir(new_env['BUILD_DIR'])
+    os.mkdir(new_env['PAYLOAD_DIR'])
+    srp.work.notes.brp.time_build_script = time.time()
+    subprocess.check_call(["../srp_go"], cwd=srp.work.topdir+'/build/', env=new_env)
 
     # create manifest
     #
@@ -214,18 +204,18 @@ def build_func(work):
     #
     # FIXME: why is manifest_create inside blob.py?
     #
-    n.brp.time_build_script = time.time() - n.brp.time_build_script
-    n.brp.time_manifest_creation = time.time()
-    work['manifest'] = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
-    n.brp.time_manifest_creation = time.time() - n.brp.time_manifest_creation
+    srp.work.notes.brp.time_build_script = time.time() - srp.work.notes.brp.time_build_script
+    srp.work.notes.brp.time_manifest_creation = time.time()
+    srp.work.manifest = srp.blob.manifest_create(new_env['PAYLOAD_DIR'])
+    srp.work.notes.brp.time_manifest_creation = time.time() - srp.work.notes.brp.time_manifest_creation
 
 
-def install_iter(work, fname):
+def install_iter(fname):
     """install a file"""
     # FIXME: can we make blob() take a previously read manifest to speed
     #        up instantiation?
-    blob = srp.blob.blob(work["dir"]+"/package/BLOB")
-    blob.extract(fname, work["DESTDIR"])
+    blob = srp.blob.blob(srp.work.topdir+"/package/BLOB")
+    blob.extract(fname, srp.work.DESTDIR)
 
 
 def uninstall_func():
@@ -238,7 +228,7 @@ def uninstall_func():
     pass
 
 
-def uninstall_iter(work, fname):
+def uninstall_iter(unused, fname):
     """remove a file"""
     pass
 
@@ -247,6 +237,7 @@ def commit_func():
     """update pkg manifest"""
     # FIXME: MULTI:
     pass
+
 
 register_feature(
     feature_struct("core",

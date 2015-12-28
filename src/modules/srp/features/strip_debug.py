@@ -6,6 +6,7 @@ install-time, prior to checksums getting recorded.
 
 import subprocess
 
+import srp
 from srp.features import *
 
 # NOTE: This has to happen AFTER core (i.e., after the files are installed
@@ -23,9 +24,9 @@ from srp.features import *
 #        Although, a hidden benefit of doing it after core is that the
 #        install_func and our strip_debug action can use the exact same
 #        function.
-def install_func(work, fname):
+def install_func(fname):
     """strip --strip-unneeded from a file"""
-    x = work["manifest"][fname]
+    x = srp.work.manifest[fname]
 
     # only strip actual files
     if not x['tinfo'].isreg():
