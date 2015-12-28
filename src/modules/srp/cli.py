@@ -9,19 +9,19 @@
 #        srp.cli.do_build)
 #
 import argparse
-import hashlib
-import os
-import platform
-import stat
+import hashlib # do_install
+import os # do_install, do_query
+import stat # query
 import sys
-import tarfile
-import tempfile
-import time
-import pickle
-import fnmatch
+import tarfile # install, query
+import time # query
+import pickle # query, install
+import fnmatch # FIXME: not used yet but should be
+
+from pprint import pprint # FIXME: this was for debug...?
 
 import srp
-from pprint import pprint
+
 
 desc = """\
 {}, version {}

@@ -67,9 +67,9 @@ def build_func(work):
     #       dir.  If --copysrc was specified, we'll make a copy of src in
     #       the build dir.  If src is a source tarball, we'll extract it
     #       in dir.
-    if os.path.isfile(n.header.src):
-        print("extracting source tarball {}".format(n.header.src))
-        with tarfile.open(n.header.src) as f:
+    if os.path.isfile(srp.params.build.src):
+        print("extracting source tarball {}".format(srp.params.build.src))
+        with tarfile.open(srp.params.build.src) as f:
             f.extractall(sourcedir)
 
         # put source dir in source, not souce/source-x.y.z/
@@ -94,12 +94,12 @@ def build_func(work):
         #        paths in .git when recursively copying a souce tree... do
         #        we need that here?
         #
-        if n.header.copysrc:
+        if srp.params.build.copysrc:
             print("copying external sourcetree...")
-            shutil.copytree(n.header.src, sourcedir)
+            shutil.copytree(srp.params.build.src, sourcedir)
 
         else:
-            sourcedir = n.header.src
+            sourcedir = srp.params.build.src
 
         # src is a source tree, do we need to bootstrap?
         #
@@ -141,6 +141,7 @@ def build_func(work):
     #
     # NOTE: The extra_content files are not symlinks, so that bogus build
     #       scripts can't mangle system files
+    #
     os.mkdir(work['dir'] + "/extra_content")
     for x in n.header.extra_content:
         shutil.copy(x, work['dir'] + "/extra_content")

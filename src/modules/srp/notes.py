@@ -52,7 +52,7 @@ def cmp_version(a, b):
 
 
 class NotesHeader(srp.SrpObject):
-    def __init__(self, config, path=""):
+    def __init__(self, config):
         self.name = config["name"]
         self.version = config["version"]
         self.pkg_rev = config["pkg_rev"]
@@ -67,7 +67,8 @@ class NotesHeader(srp.SrpObject):
         self.extra_content = []
         try:
             for x in config["extra_content"].split():
-                self.extra_content.append(os.path.join(path, x))
+                self.extra_content.append(
+                    os.path.join(srp.params.build.extradir, x))
         except:
             pass
 
@@ -124,7 +125,7 @@ class NotesHeader(srp.SrpObject):
 
 
 class NotesBuffer(srp.SrpObject):
-    def __init__(self, config, path=""):
+    def __init__(self, config):
         try:
             self.encoded = config["encoded"]
             # FIXME: why not leave this as bytes?  i really need to get a
@@ -174,7 +175,7 @@ class NotesFile(srp.SrpObject):
 
     NOTE: We implement sub-classes in here to handle each section of the file.
     """
-    def __init__(self, fobj, src, extradir=None, copysrc=False):
+    def __init__(self, fobj):
         # check for open mode
         #
         # NOTE: We do this here so that we can assume the file has been
@@ -186,10 +187,9 @@ class NotesFile(srp.SrpObject):
         #       returned from tarfile.extractfile have mode of 'r' (at least
         #       w/ v3.2.2), but read returns bytes (as apposed to str).
         if type(fobj.read(0)) != bytes:
-            raise Exception("{}(fobj): fobj must be opened in binary mode".format(self.__class__.__name__))
-
-        if not extradir:
-            extradir = os.path.dirname(fobj.name)
+            raise Exception(
+                "{}(fobj): fobj must be opened in binary mode".format(
+                    self.__class__.__name__))
 
         # NOTE: We pass the actual buffer read from file through buffencode,
         #       which encodes specified sections and allows the configparser to
@@ -201,14 +201,10 @@ class NotesFile(srp.SrpObject):
         c.read_string(buf)
 
         # populate sub-section instances
-        self.header = NotesHeader(c["header"], extradir)
-        self.script = NotesScript(c["script"], extradir)
+        self.header = NotesHeader(c["header"])
+        self.script = NotesScript(c["script"])
         self.brp = None
         self.installed = None
-
-        # add cli-specified header fields
-        self.header.src = os.path.abspath(src)
-        self.header.copysrc = copysrc
 
         # add features for unclaimed sections
         #
@@ -221,7 +217,7 @@ class NotesFile(srp.SrpObject):
                 self.header.features.append(s)
                 # instantiate special feature subsections
                 setattr(self, s,
-                        globals()["Notes"+s.capitalize()](c[s], extradir))
+                        globals()["Notes"+s.capitalize()](c[s]))
 
         # check package requirements
         self.check()
@@ -260,7 +256,7 @@ class NotesFile(srp.SrpObject):
         # check for needed files (source tree, patches, etc)
         flist = []
         # source dir/tarball
-        flist.append(self.header.src)
+        flist.append(srp.params.build.src)
         # extra content
         flist.extend(self.header.extra_content)
 

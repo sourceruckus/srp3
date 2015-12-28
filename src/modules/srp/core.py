@@ -6,10 +6,17 @@ functions that actually DO STUFF using the other components of srp).
 This module gets merged into the toplevel srp module
 """
 
+import hashlib
+import os
+import pickle
 import platform
+import tarfile
+import tempfile
+import time
 import types
 
 import srp
+
 
 class SrpObject:
     """Base object for all srp objects.  Basically just adds some debugging
@@ -27,7 +34,7 @@ class SrpObject:
             v = getattr(self, k)
             if k.startswith("_") or type(v) == types.MethodType:
                 continue
-            ret+=", {}={}".format(k, repr(v))
+            ret+=", {}={}".format(k, v)
         ret += '>'
         return ret
 
@@ -101,12 +108,33 @@ class BuildParameters(SrpObject):
         #        just doesn't seem to make any sense now that we've nixed
         #        the idea of source packages.
         #
+        #        actually, there is a use case still: notes file +
+        #        external source dir + dir of "extra files" (e.g., config
+        #        files, patches) where notes file isn't in same dir as
+        #        extra files.
+        #
+        #        also, files declared as extra_content in the notes file
+        #        are copied into the extra_content dir in the per-package
+        #        build tree.  w/out that, build_scripts won't be able to
+        #        find their extra config files in the case mentioned
+        #        above...
+        #
         # FIXME: Is the description of copysrc really needed here?  Isn't
         #        this almost verbatim from the usage message in cli.py?
         #
-        self.notes = notes
-        self.src = src
-        self.extradir = extradir
+
+        # NOTE: We store all paths as absolute here, so that they'll all
+        #       still be valid after changing directory.
+        #
+        self.notes = os.path.abspath(notes)
+        self.src = os.path.abspath(src)
+
+        # if not set, default to directory containing notes file
+        try:
+            self.extradir = os.path.abspath(extradir)
+        except:
+            self.extradir = os.path.dirname(self.notes)
+
         self.copysrc = copysrc
 
 
@@ -139,10 +167,7 @@ class QueryParameters(SrpObject):
 #fname, src, extradir, copysrc, options):
 def build():
     with open(params.build.notes, 'rb') as fobj:
-        n = srp.notes.NotesFile(fobj,
-                                params.build.src,
-                                params.build.extradir,
-                                params.build.copysrc)
+        n = srp.notes.NotesFile(fobj)
 
     # add brp section to NOTES instance
     n.brp = srp.notes.NotesBrp()

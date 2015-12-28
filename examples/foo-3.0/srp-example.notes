@@ -87,6 +87,8 @@ make DESTDIR=$PAYLOAD_DIR install || exit 1
 
 mkdir -p $PAYLOAD_DIR/tmp/foo &&
 mkdir -p $PAYLOAD_DIR/tmp/bar || exit 1
+
+cp -va $EXTRA_DIR/doc* $PAYLOAD_DIR/tmp || exit 1
 %%BUFFER_END%%
 
 # The perms section
