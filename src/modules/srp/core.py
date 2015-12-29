@@ -11,6 +11,7 @@ import hashlib
 import os
 import pickle
 import platform
+import stat
 import tarfile
 import tempfile
 import time
@@ -103,8 +104,10 @@ class RunTimeParameters(SrpObject):
         self.action = None
 
     def __setattr__(self, name, value):
-        """This __setattr__ method is special only in that it automatically
-        re-invokes srp.db.load() if `root' is being set.
+        """This special __setattr__ method does some extra work if `root' is
+        being set.  Namely, it 1) ensures that the new rootdir exists, creating
+        it if needed, and 2) automatically re-invokes srp.db.load() if
+        it's already been loaded.
 
         """
         # set it
@@ -112,8 +115,10 @@ class RunTimeParameters(SrpObject):
 
         # reload the database if we just modified 'root' and db module has
         # already been loaded
-        if name == "root" and hasattr(srp, "db"):
-            srp.db.load()
+        if name == "root":
+            os.makedirs(value, exist_ok=True)
+            if hasattr(srp, "db"):
+                srp.db.load()
 
 
 # FIXME: where should this go?
@@ -216,28 +221,22 @@ class QueryParameters(SrpObject):
 
     Data:
 
-      types - a list of results the user is asking for (e.g., [info,
-          files]).
+      types - List of types of results the user is asking for (e.g.,
+          [info, files]).
 
-      criteria - a list of search things that would make a package match
-          (e.g., package name, installed file).
+      criteria - Dictionary of search criteria that would make a package
+          match (e.g., {"pkg": "*"}).
 
     """
     def __init__(self, types, criteria):
-        """Both `types` and `criteria' are comma-delimited lists, which get
-        split on ',' and stored away as lists.  Validity of both arguments is
-        handled by the srp.query() method.
-
-        """
-        self.types = types.split(',')
-        self.criteria = criteria.split(',')
+        self.types = types
+        self.criteria = criteria
 
 
 def build():
     """Builds a package according to the RunTimeParameters instance
-    `srp.params'.  The features.WorkBag instance `srp.work' is created
-    using a NotesFile instance created from the notes file specified in
-    `srp.params'.
+    `srp.params'.  All work is stored in the features.WorkBag instance
+    `srp.work'.
 
     """
     # create our work instance
@@ -471,3 +470,192 @@ def install():
     # FIXME: is there a better place for this?
     if not srp.params.dry_run:
         srp.db.commit()
+
+
+# FIXME: Need to document these query type and criteria ramblings
+#        somewhere user-visible...
+#
+# -q type[,type,...],criteria[,criteria]
+#
+# valid types:
+#   - name (package name w/ version)
+#   - info (summary)
+#   - files (filenames)
+#   - stats (stats for each file)
+#   - size (total size of installed package)
+#   - raw (super debug all)
+#
+# valid criteria:
+#   - pkg (glob pkgname or path to brp)
+#   - file (glob name of installed file)
+#   - date_installed (-/+ for before/after)
+#   - date_built (-/+ for before/after)
+#   - size (-/+ for smaller/larger)
+#   - grep (find string in info)
+#   - built_by (glob builder name)
+#   - built_on (glob built on host)
+#
+#
+# What package installed the specified file:
+#   srp -q name,file=/usr/lib/libcrust.so
+#
+# Show description of installed package:
+#   srp -q info,pkg=srp-example
+#
+# List all files installed by package
+#   srp -q files,pkg=srp-example
+#
+# List info,files for package on disk
+#   srp -q info,files,pkg=./foo.brp
+#
+# List packages installed after specified date:
+#   srp -q name,date_installed=2015-11-01+
+#
+#   srp -q name,date_built=2015-11-01+
+#
+#   srp -q name,size=1M+
+#
+#   srp -q name,built_by=mike
+#
+# Search through descriptions for any packages that match a pattern:
+#   srp -q name,grep="tools for flabbergasting"
+#
+# Everything, and I mean everything, about a package:
+#   srp -q raw,pkg=srp-example
+#
+def query():
+    """Performs a query according to the RunTimeParamters instance
+    `srp.params'.
+
+    FIXME: This mode is really different from the others... it doesn't
+           actually correlate with any stages defined by the Features API
+           and it doesn't really need a QueryWork object...
+
+    FIXME: I wonder if we should add a way for Features to define new
+           query types or criteria?  I've already got things plubmed into
+           feature_struct to add output to `info' queries... but I do have
+           size listed as a potention criteria in my ramblings
+           above... and size is defined via the Features API...
+
+    """
+    matches = []
+    for k in srp.params.query.criteria:
+        v = srp.params.query.criteria[k]
+        print("k={}, v={}".format(k, v))
+        if k == "pkg":
+            # glob pkgname or path to brp
+            matches.extend(query_pkg(v))
+        elif k == "file":
+            # glob name of installed file
+            matches.extend(query_file(v))
+        else:
+            raise Exception("Unsupported criteria '{}'".format(k))
+
+    print("fetching for all matches: {}".format(srp.params.query.types))
+    for m in matches:
+        for t in srp.params.query.types:
+            if t == "name":
+                print(format_results_name(m))
+            elif t == "info":
+                print(format_results_info(m))
+            elif t == "files":
+                print(format_results_files(m))
+            elif t == "stats":
+                print(format_results_stats(m))
+            elif t == "raw":
+                print(format_results_raw(m))
+            else:
+                raise Exception("Unsupported query type '{}'".format(t))
+
+# FIXME: we should put all the pre-defined query_type and format_results
+#        funcs somewhere else and dynamically extend them via the Features
+#        API.
+#
+def query_pkg(name):
+    if os.path.exists(name):
+        # query package file on disk
+        #
+        # FIXME: shouldn't there be a helper func for basic brp-on-disk
+        #        access?
+        #
+        with tarfile.open(name) as p:
+            n_fobj = p.extractfile("NOTES")
+            n = pickle.load(n_fobj)
+            blob_fobj = p.extractfile("BLOB")
+            blob = srp.blob.blob(fobj=blob_fobj)
+            m = blob.manifest
+
+        return [srp.db.InstalledPackage(n, m)]
+
+    else:
+        # query installed package via db
+        return srp.db.lookup_by_name(name)
+
+
+def format_results_name(p):
+    return "-".join((p.notes.header.name,
+                     p.notes.header.version,
+                     p.notes.header.pkg_rev))
+
+
+def format_results_info(p):
+    # FIXME: make this a nice multi-collumn summary of the NOTES file,
+    #        excluding build_script, perms, etc
+    #
+    # FIXME: wrap text according to terminal size for description
+    #
+    info = []
+    info.append("Package: {}".format(format_results_name(p)))
+    info.append("Description: {}".format(p.notes.header.description))
+    
+    for f in srp.features.registered_features:
+        info_func = srp.features.registered_features[f].info
+        if info_func:
+            info.append(info_func(p))
+
+    return "\n".join(info)
+
+
+# FIXME: this seems inefficient
+def format_results_files(p):
+    m = list(p.manifest)
+    m.sort()
+    return "\n".join(m)
+
+
+def format_tinfo(t):
+    fmt = "{mode} {uid:8} {gid:8} {size:>8} {date} {name}{link}"
+    mode = stat.filemode(t.mode)
+    uid = t.uname or t.uid
+    gid = t.gname or t.gid
+    if t.ischr() or t.isblk():
+        size = "{},{}".format(t.devmajor, t.devminor)
+    else:
+        size = t.size
+    date = "{}-{:02}-{:02} {:02}:{:02}:{:02}".format(
+        *time.localtime(t.mtime)[:6])
+    name = t.name + ("/" if t.isdir() else "")
+    if t.issym():
+        link = " -> " + t.linkname
+    elif t.islnk():
+        link = " link to " + t.linkname
+    else:
+        link = ""
+    return fmt.format(**locals())
+
+
+# FIXME: this seems really inefficient
+def format_results_stats(p):
+    m = list(p.manifest)
+    m.sort()
+    retval = []
+    for f in m:
+        tinfo = p.manifest[f]["tinfo"]
+        retval.append(format_tinfo(tinfo))
+    return "\n".join(retval)
+
+
+def format_results_raw(p):
+    return "{}\n{}".format(
+        p.notes,
+        p.manifest)
