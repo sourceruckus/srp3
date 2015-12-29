@@ -2,6 +2,8 @@
 
 This module contains all the python back-end code for the Source Ruckus
 Packager.  Importing it will automatically include all submodules.
+
+To get started, look at the documentation for srp.core.
 """
 
 from srp.core import *

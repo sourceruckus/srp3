@@ -15,10 +15,6 @@ class NotesSize(srp.SrpObject):
         self.total = 0
 
 
-def reset_notes():
-    srp.work.build.notes.size.total = 0
-
-
 def increment_notes_build(fname):
     x = srp.work.build.manifest[fname]['tinfo']
     if not x.isreg():
@@ -30,6 +26,10 @@ def increment_notes_build(fname):
 #       Feature may have changed the file once installed (i.e., size
 #       stored at build-time may be wrong).
 #
+def reset_notes_install():
+    srp.work.install.notes.size.total = 0
+
+
 def increment_notes_install(fname):
     """add size of fname to total in NOTES"""
     x = srp.work.install.manifest[fname]
@@ -47,12 +47,10 @@ def increment_notes_install(fname):
     # NOTE: The file is already installed on disk, so we don't need to mess
     #       with the old BLOB
     #
-    # FIXME: DESTDIR or --root
-    try:
-        path = os.environ["DESTDIR"] + fname
-    except:
-        path = fname
-
+    # NOTE: We have to chop the leading '/' off of fname so that
+    #       os.path.join will really add in our root path.
+    #
+    path = os.path.join(srp.params.root, fname[1:])
     n.size.total += os.stat(path)[stat.ST_SIZE]
 
 
@@ -70,6 +68,7 @@ register_feature(
                    info = size_info,
                    build_iter = stage_struct("size", increment_notes_build,
                                              ["core"], []),
-                   install = stage_struct("size", reset_notes, ["core"], []),
+                   install = stage_struct("size", reset_notes_install,
+                                          ["core"], []),
                    install_iter = stage_struct("size", increment_notes_install,
                                                ["core"], [])))

@@ -25,11 +25,10 @@ def gen_sum(fname):
     # NOTE: The file is already installed on disk, so we don't need to mess
     #       with the old BLOB
     #
-    # FIXME: DESTDIR or --root
-    try:
-        path = os.environ["DESTDIR"] + fname
-    except:
-        path = fname
+    # NOTE: We have to chop the leading '/' off of fname so that
+    #       os.path.join will really add in our root path.
+    #
+    path = os.path.join(srp.params.root, fname[1:])
     with open(path, "rb") as f:
         sha.update(f.read())
 

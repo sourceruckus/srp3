@@ -221,10 +221,7 @@ def build_func():
 
 def install_iter(fname):
     """install a file"""
-    # FIXME: can we make blob() take a previously read manifest to speed
-    #        up instantiation?
-    blob = srp.blob.blob(srp.work.topdir+"/package/BLOB")
-    blob.extract(fname, srp.work.DESTDIR)
+    srp.work.install.blob.extract(fname, srp.params.root)
 
 
 def uninstall_func():

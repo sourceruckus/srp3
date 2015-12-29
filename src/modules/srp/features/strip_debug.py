@@ -32,11 +32,13 @@ def install_func(fname):
     if not x['tinfo'].isreg():
         return
 
-    # FIXME: DESTDIR or --root
-    try:
-        path = os.environ["DESTDIR"] + fname
-    except:
-        path = fname
+    # NOTE: The file is already installed on disk, so we don't need to mess
+    #       with the old BLOB
+    #
+    # NOTE: We have to chop the leading '/' off of fname so that
+    #       os.path.join will really add in our root path.
+    #
+    path = os.path.join(srp.params.root, fname[1:])
 
     go = ["strip", "--strip-unneeded", path]
     # NOTE: I'd love to do a check_call here, but strip returns error if

@@ -95,23 +95,36 @@ def register(p):
 
 # FIXME: path to db in config?
 #
-dbpath = srp.params.root
-dbpath += "var/lib/srp/db"
+dbpath = "/var/lib/srp/db"
 
 
 def commit():
     """re-pickle __db to disk"""
     # FIXME: should we keep a backup of the last pickle, just in case?
-    os.makedirs(os.path.dirname(dbpath), exist_ok=True)
-    with open(dbpath, "wb") as f:
+
+    # NOTE: We have to chop the leading '/' off of fname so that
+    #       os.path.join will really add in our root path.
+    #
+    path = os.path.join(srp.params.root, dbpath[1:])
+    print("commiting db to {}".format(path))
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as f:
         pickle.dump(__db, f)
 
 
 def load():
     """un-pickle __db from disk"""
     global __db
+
+    # NOTE: We have to chop the leading '/' off of fname so that
+    #       os.path.join will really add in our root path.
+    #
+    path = os.path.join(srp.params.root, dbpath[1:])
+    print("loading db from {}".format(path))
+
     try:
-        with open(dbpath, "rb") as f:
+        with open(path, "rb") as f:
             __db = pickle.load(f)
     except IOError:
         __db = {}

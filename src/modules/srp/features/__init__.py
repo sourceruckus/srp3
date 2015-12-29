@@ -352,17 +352,17 @@ class WorkBag(srp.SrpObject):
     Each high-level operational mode (e.g., build) of srp has its own
     class to handle it's work data:
 
-      build
-      install
-      uninstall
-      query
-      action
+      build - instance of BuildWork
+      install - instance of InstallWork
+      uninstall - instance of UninstallWork
+      query - instance of QueryWork
+      action - instance of ActionWork
 
     Global Items:
 
       topdir - The instance-unique temporary working directory that serves
           as the parent directory for all temporary files.  The directory
-          itself is wreated when this class gets instantiated, and is up
+          itself is created when this class gets instantiated, and is up
           to the user to be deleted (upon successful completion)
 
     """
@@ -377,10 +377,20 @@ class WorkBag(srp.SrpObject):
 
 
 class BuildWork(srp.SrpObject):
-    """`notes' is a NotesFile instance.  `manifest' is a dict of files being
-    installed and lots of metadata for each one (this is left
-    intentionally vague).  `stages' is a dictionary of sorted stage lists
-    based on default settings and the NOTES file.
+    """Class holding data for srp.build(), which runs through the build and
+    build_iter stages.
+
+    Data:
+
+      notes - Instace of srp.notes.NotesFile.
+
+      manifest - Dict of files being installed and lots of metadata for
+          each one (this is left intentionally vague).
+
+      funcs - Sorted list of stage_struct instances for the build stage.
+
+      iter_funcs - Sorted list of stage_struct instances for the
+          build_iter stage.
 
     """
     def __init__(self):
@@ -394,7 +404,9 @@ class BuildWork(srp.SrpObject):
         #
         self.manifest = {}
 
-        self.stages = get_stage_map(self.notes.header.features)
+        stages = get_stage_map(self.notes.header.features)
+        self.funcs = stages["build"]
+        self.iter_funcs = stages["build_iter"]
 
         # add brp section to NOTES instance
         self.notes.brp = srp.notes.NotesBrp()
@@ -416,21 +428,45 @@ def verify_sha(tar):
 
 
 class InstallWork(srp.SrpObject):
-    """`notes' is a NotesFile insance loaded from the brp specified in params,
-    `prevs' is a list of previously installed InstalledPackage instances
-    of the same name, `manifest' is a dict loaded out of the brp, and
-    `stages' is a dictionary of sorted stage lists.
+    """Class holding data for srp.install(), which runs through the install and
+    install_iter stages.
+
+    Data:
+
+      notes - Instace of srp.notes.NotesFile loaded out of the package.
+
+      prevs - List of previously installed srp.db.InstalledPackage
+          instances of the same name.
+
+      blob - Instance of srp.blob.BlobFile loaded out of the package.
+
+      manifest - Dict loaded out of the package.
+
+      funcs - Sorted list of stage_struct instances for the install stage.
+
+      iter_funcs - Sorted list of stage_struct instances for the
+          install_iter stage.
 
     """
     def __init__(self):
-        # extract NOTES file
+        # extract required files
         with tarfile.open(srp.params.install.pkg) as p:
             # verify SHA
             from_sha = verify_sha(p)
-            # verify that requirements are met
+
+            # get NOTES
             n_fobj = p.extractfile("NOTES")
             n = pickle.load(n_fobj)
             self.notes = n
+
+            # get BLOB
+            #
+            # NOTE: We need to actually extract this file as apposed to
+            #       just using a file object here.  This is because our C
+            #       _blob.extract method needs access to the file on disk
+            #       somewhere.
+            #
+            p.extract("BLOB", srp.work.topdir + "/package")
 
         # check for previously installed version
         #
@@ -478,11 +514,16 @@ class InstallWork(srp.SrpObject):
         # FIXME: why isn't this stored away srp.work?  don't we need it
         #        later...?
         #
-        blob = srp.blob.blob(srp.work.topdir+"/package/BLOB")
+        self.blob = srp.blob.blob(srp.work.topdir + "/package/BLOB")
 
-        self.manifest = blob.manifest
+        # FIXME: if we are gonna stash blob for later, why pull out
+        #        manifest here?
+        #
+        self.manifest = self.blob.manifest
 
-        self.stages = get_stage_map(self.notes.header.features)
+        stages = get_stage_map(self.notes.header.features)
+        self.funcs = stages["install"]
+        self.iter_funcs = stages["install_iter"]
 
 
 

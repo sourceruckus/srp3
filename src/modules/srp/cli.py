@@ -15,7 +15,7 @@ import sys
 import tarfile # install, query
 import time # query
 import pickle # query, install
-import fnmatch # FIXME: not used yet but should be
+import fnmatch # FIXME: not used yet but should be?
 
 from pprint import pprint # FIXME: this was for debug...?
 
@@ -257,7 +257,16 @@ def main():
     srp.params.options = args.options
 
     # mutually-exclusive arguments/flags
-    if args.install:
+    if args.build:
+        # check for other required flags
+        if not args.src:
+            p.error("argument --build: requires --src")
+
+        srp.params.build = srp.BuildParameters(args.build, args.src, args.extra)
+        print(srp.params)
+        srp.build()
+
+    elif args.install:
         if not args.packages:
             p.error("argument --install: requires PACKAGE(s)")
 
@@ -274,15 +283,6 @@ def main():
             print("do_uninstall(package={}, options={})".format(x, args.options))
             if not args.dry_run:
                 do_uninstall(x, args.options)
-
-    elif args.build:
-        # check for other required flags
-        if not args.src:
-            p.error("argument --build: requires --src")
-
-        srp.params.build = srp.BuildParameters(args.build, args.src, args.extra)
-        print(srp.params)
-        srp.build()
 
     elif args.action:
         if not args.packages:

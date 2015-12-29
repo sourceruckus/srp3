@@ -3,9 +3,10 @@
 This module makes up the guts of the srp module (i.e., it contains all the
 functions that actually DO STUFF using the other components of srp).
 
-This module gets merged into the toplevel srp module
+This module gets merged into the toplevel srp module.
 """
 
+import glob
 import hashlib
 import os
 import pickle
@@ -24,6 +25,12 @@ class SrpObject:
 
     """
     def __str__(self):
+        """This __str__ method is special in that it scales its verbosity
+        according to srp.params.verbosity.  A value of 0 results in output
+        identical to __repr__(), 1 results in additionally including a
+        __str__() of each data member.
+
+        """
         ret = repr(self)
         if srp.params.verbosity <= 1:
             return ret
@@ -41,21 +48,19 @@ class SrpObject:
 
 class RunTimeParameters(SrpObject):
     """Class representing the work to be done for this invocation of srp.
-    
+
     Each high-level operational mode (e.g., build) of srp has its own
     class to handle it's parameters:
 
-      build - Parameters for building a package via srp.build()
+      build - instance of BuildParameters
 
-      install - Parameters for installing a package via srp.install()
+      install - instance of InstallParameters
 
-      uninstall - Parameters for uninstalling a package via
-          srp.uninstall()
+      uninstall - instance of UninstallParameters
 
-      query - Parameters for querying either the installed package
-          database or a package on disk via srp.query()
+      query - instance of QueryParameters
 
-      action - Parameters for srp.action()
+      action - instance of ActionParameters
 
     Global Parameters:
 
@@ -74,14 +79,15 @@ class RunTimeParameters(SrpObject):
           (e.g., install even though dependencies aren't met, upgrade to
           same version of a package).
 
-      options - Comma-delimeted list of Features to be enabled (or
-          disabled if prefiex with "no_").  This list is used to modify
-          the default list of enabled Features at run-time.
+      options - List of of Features to be enabled (or disabled if prefixed
+          with "no_").  This list is used to modify the default list of
+          enabled Features at run-time.
+
+
+    FIXME: should force be global? or specific to install, perhaps with a
+           more detailed name?
 
     """
-    # FIXME: should force be global? or specific to install, perhaps with
-    #        a more detailed name?
-    #
     def __init__(self):
         # global params
         self.verbosity = 0
@@ -96,47 +102,88 @@ class RunTimeParameters(SrpObject):
         self.query = None
         self.action = None
 
-
-class BuildParameters(SrpObject):
-    def __init__(self, notes, src, extradir=None, copysrc=False):
-        """`notes' is the path to a notes file.  `src' is either the path to a
-        source tarball or a directory full of source code.  Paths can use
-        fnmatch patterns (e.g., src/foo/foo*.tar.*) but MUST only result
-        in a single match.  `extradir', if provided, specifies a path to a
-        dir to be used to locate extra files (defaults to directory
-        containing the notes file).  If `copysrc' is specified as True,
-        the build will create a copy of the source tree (i.e., so we don't
-        modify an external source tree).
+    def __setattr__(self, name, value):
+        """This __setattr__ method is special only in that it automatically
+        re-invokes srp.db.load() if `root' is being set.
 
         """
-        # FIXME: we can probably get rid of extradir at this point... it
-        #        just doesn't seem to make any sense now that we've nixed
-        #        the idea of source packages.
-        #
-        #        actually, there is a use case still: notes file +
-        #        external source dir + dir of "extra files" (e.g., config
-        #        files, patches) where notes file isn't in same dir as
-        #        extra files.
-        #
-        #        also, files declared as extra_content in the notes file
-        #        are copied into the extra_content dir in the per-package
-        #        build tree.  w/out that, build_scripts won't be able to
-        #        find their extra config files in the case mentioned
-        #        above...
-        #
-        # FIXME: Is the description of copysrc really needed here?  Isn't
-        #        this almost verbatim from the usage message in cli.py?
-        #
+        # set it
+        object.__setattr__(self, name, value)
 
-        # NOTE: We store all paths as absolute here, so that they'll all
-        #       still be valid after changing directory.
-        #
-        self.notes = os.path.abspath(notes)
-        self.src = os.path.abspath(src)
+        # reload the database if we just modified 'root' and db module has
+        # already been loaded
+        if name == "root" and hasattr(srp, "db"):
+            srp.db.load()
+
+
+# FIXME: where should this go?
+def expand_path(path):
+    """Returns a single, expanded, absolute path.  `path' arg can be shell
+    glob, but must result in only a single match.  An exception is raised
+    on any globbing errors (e.g., not found, multiple matches) or if the
+    resulting path doesn't exist.
+
+    """
+    rv = glob.glob(path)
+    if not rv:
+        raise Exception("no such file - {}".format(path))
+
+    if len(rv) != 1:
+        raise Exception("glob had multiple matches - {}".format(path))
+
+    rv = os.path.abspath(rv[0])
+    return rv
+
+
+class BuildParameters(SrpObject):
+    """Class representing the parameters for srp.build().
+
+    Data:
+
+      notes - Absolute path to the notes file on disk.
+
+      src - Either the absolute path to a source tarball or a directory
+          full of source code.
+
+      extradir - Specifies an absolute path to a dir to be used to locate
+          extra files.  Defaults to directory containing the notes file.
+
+      copysrc - If True, the build will create a copy of the source tree
+          (i.e., so we don't modify an external source tree).  Defaults to
+          False.
+
+
+    FIXME: we can probably get rid of extradir at this point... it just
+           doesn't seem to make any sense now that we've nixed the idea of
+           source packages.
+    
+           actually, there is a use case still: notes file + external
+           source dir + dir of "extra files" (e.g., config files, patches)
+           where notes file isn't in same dir as extra files.
+    
+           also, files declared as extra_content in the notes file are
+           copied into the extra_content dir in the per-package build
+           tree.  w/out that, build_scripts won't be able to find their
+           extra config files in the case mentioned above...
+    
+    FIXME: Is the description of copysrc really needed here?  Isn't this
+           almost verbatim from the usage message in cli.py?
+    
+    """
+    def __init__(self, notes, src, extradir=None, copysrc=False):
+        """The paths `notes', `src', and `extradir' can be specified as relative
+        paths, but will get stored away as absolute paths.
+
+        Paths can use shell globbing (e.g., src/foo/foo*.tar.*) but MUST
+        only result in a single match.
+
+        """
+        self.notes = expand_path(notes)
+        self.src = expand_path(src)
 
         # if not set, default to directory containing notes file
         try:
-            self.extradir = os.path.abspath(extradir)
+            self.extradir = expand_path(extradir)
         except:
             self.extradir = os.path.dirname(self.notes)
 
@@ -144,29 +191,46 @@ class BuildParameters(SrpObject):
 
 
 class InstallParameters(SrpObject):
+    """Class representing the parameters for srp.install().
+
+    Data:
+
+      pkg - Absolute path to a brp to be installed.
+
+      allow_upgrade - Setting to False will disable upgrade logic and
+          raise an error if the specified package is already installed.
+          Defaults to True.
+
+    """
     def __init__(self, pkg, allow_upgrade=True):
-        """`pkg' is the path to a brp to be installed.  Setting `allow_upgrade' to
-        False will disable upgrade logic and raise an error if the
-        specified package is already installed.
+        """The path `pkg' can be specified as a relative path and can use shell
+        globbing.
 
         """
-        self.pkg = pkg
+        self.pkg = expand_path(pkg)
         self.allow_upgrade = allow_upgrade
 
 
 class QueryParameters(SrpObject):
-    def __init__(self, types, criteria):
-        """`types` is a comma-delimited list of results the user is asking for
-        (e.g., info, files).  `criteria' is a comma-delimited list of
-        search things that would make a package match (e.g., package name,
-        installed file).
+    """Class representing the parameters for srp.query().
 
-        NOTE: Once successfully instantiated, the `types' and `criteria'
-              member variables are both propper Python lists.
+    Data:
+
+      types - a list of results the user is asking for (e.g., [info,
+          files]).
+
+      criteria - a list of search things that would make a package match
+          (e.g., package name, installed file).
+
+    """
+    def __init__(self, types, criteria):
+        """Both `types` and `criteria' are comma-delimited lists, which get
+        split on ',' and stored away as lists.  Validity of both arguments is
+        handled by the srp.query() method.
 
         """
-        self.types = types
-        self.criteria = criteria
+        self.types = types.split(',')
+        self.criteria = criteria.split(',')
 
 
 def build():
@@ -181,8 +245,8 @@ def build():
 
     # get some local refs with shorter names
     n = srp.work.build.notes
-    funcs = srp.work.build.stages["build"]
-    iter_funcs = srp.work.build.stages["build_iter"]
+    funcs = srp.work.build.funcs
+    iter_funcs = srp.work.build.iter_funcs
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
@@ -339,8 +403,8 @@ def install():
     # get some local refs with shorter names
     n = srp.work.install.notes
     m = srp.work.install.manifest
-    funcs = srp.work.build.stages["install"]
-    iter_funcs = srp.work.build.stages["install_iter"]
+    funcs = srp.work.install.funcs
+    iter_funcs = srp.work.install.iter_funcs
 
     # run through install funcs
     print("features:", n.header.features)
