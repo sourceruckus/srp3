@@ -1,6 +1,7 @@
-"""The SRP BLOB file
+"""The SRP BLOB file.
 """
 
+import collections
 import grp
 import os
 import pickle
@@ -37,7 +38,7 @@ import srp._blob
 #       __str__, which we override.  This way, if we ever go back and add
 #       more methods or data to SrpObject, this class will get it.
 #
-class Manifest(srp.SrpObject, dict):
+class Manifest(srp.SrpObject, collections.UserDict):
     """Class representing the contents of a BlobFile.  It can be iterated in
     sorted order, and has a special classmethod for populating itself with
     TarInfo objects of an entire filesystem tree.
@@ -46,8 +47,14 @@ class Manifest(srp.SrpObject, dict):
     Manifest object will be a dict of filenames, each of which is
     associated with a dict describing some aspect of the file.
 
+    NOTE: This inherits from collections.UserDict instead of builtins.dict
+          because deriving from dict and then adding a __dict__ resulted
+          in an un-pickle-able mess.
+
     """
     def __init__(self):
+        collections.UserDict.__init__(self)
+        srp.SrpObject.__init__(self)
         self.sortedkeys = []
         self.payload_dir = None
 
@@ -61,23 +68,21 @@ class Manifest(srp.SrpObject, dict):
     #        alphabetically we'll be iterating in Python... i think...
     #
     def __setitem__(self, k, v):
-        dict.__setitem__(self, k, v)
-        self.sortedkeys.append(k)
-        self.sortedkeys.sort()
+        self.data[k] = v
+        if k not in self.sortedkeys:
+            self.sortedkeys.append(k)
+            self.sortedkeys.sort()
 
     def __delitem__(self, k):
-        dict.__delitem__(self, k)
+        del self.data[k]
         self.sortedkeys.remove(k)
 
-    # override dict's __repr__
     def __repr__(self):
         return "<{}.{} object>".format(self.__module__, self.__class__.__name__)
 
-    # override dict's keys
     def keys(self):
         return self.sortedkeys
 
-    # override SrpObject's __str__
     def __str__(self):
         """This __str__ method is special in that it scales its verbosity
         according to srp.params.verbosity.  A value of 0 or 1 results in
@@ -96,6 +101,7 @@ class Manifest(srp.SrpObject, dict):
 
         # slice off the trailing '>'
         ret = ret[:-1]
+        ret += ", payload_dir={}".format(self.payload_dir)
         ret += ", size={}".format(len(self.sortedkeys))
         ret += ", sortedkeys={}".format(self.sortedkeys)
         ret += '>'
@@ -104,7 +110,7 @@ class Manifest(srp.SrpObject, dict):
             return ret
 
         ret += "\nManifest Contents:\n"
-        ret += pprint.pformat(dict(self))
+        ret += pprint.pformat(self.data)
 
         return ret
 
@@ -175,7 +181,7 @@ class Manifest(srp.SrpObject, dict):
 #        have to make sure to know the path to the file on disk.
 #
 class BlobFile(srp.SrpObject):
-    """The BlobFile
+    """Class representing a BLOB file.
 
     Data:
 
@@ -183,7 +189,7 @@ class BlobFile(srp.SrpObject):
 
       fobj - opened file object
 
-      manifest - the manifest associated with the blob
+      manifest - the Manifest object associated with the blob
 
       hdr_offset - size in bytes of the file's header (i.e., the pickled
           manifest).
@@ -275,6 +281,12 @@ class BlobFile(srp.SrpObject):
     #        add the upgrade logic via an upgrade feature, but we need to
     #        at least make srpbak files here.
     def extract(self, fname, path=None, __c=True):
+        """Extracts `fname' from the BLOB file to the current working directory.
+        If `path' is specified, it is prepended to the resulting pathname.
+        The C implementation is used if availalbe unless `__c' is set to
+        False.
+
+        """
         # get the TarInfo object
         x = self.manifest[fname]['tinfo']
 
@@ -397,7 +409,9 @@ class BlobFile(srp.SrpObject):
 
 
     def extractall(self, path=None):
-        flist = list(self.manifest.keys())
-        flist.sort()
-        for f in flist:
+        """Extract the entire contents of the BLOB to the current working
+        directory, or to `path' if specified.
+
+        """
+        for f in self.manifest:
             self.extract(f, path)

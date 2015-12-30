@@ -49,15 +49,16 @@ static PyObject *blob_extract(PyObject *self, PyObject *args)
 
 static PyMethodDef BlobMethods[] = {
 	{"extract",  blob_extract, METH_VARARGS,
-	 "Extract a file."},
+	 "extract(blob_fname, fname, offset, size) - Extract `size' bytes\n"
+	 "starting from `offset' in `blob_fname' to file `fname'."},
 	{NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 
 static struct PyModuleDef blobmodule = {
 	PyModuleDef_HEAD_INIT,
-	"blob",   /* name of module */
-	"some blob docs", /* module documentation, may be NULL */
+	"_blob",   /* name of module */
+	"The C extension module for the srp.blob module",
 	-1,       /* size of per-interpreter state of the module,
 		     or -1 if the module keeps state in global variables. */
 	BlobMethods

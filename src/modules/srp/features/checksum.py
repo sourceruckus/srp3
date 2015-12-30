@@ -43,7 +43,11 @@ def gen_sum(fname):
     x["checksum"] = sha.hexdigest().encode()
 
     # put our updated manifest entry back into the global map
-    srp.work.install.manifest[fname] = x
+    #
+    # FIXME: i really shouldn't have to do this... was I unsure?  or have
+    #        i forgotten about some gotcha?  :-/
+    #
+    #srp.work.install.manifest[fname] = x
 
 
 def verify_sums():
