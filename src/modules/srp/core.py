@@ -152,7 +152,8 @@ class BuildParameters(SrpObject):
       notes - Absolute path to the notes file on disk.
 
       src - Either the absolute path to a source tarball or a directory
-          full of source code.
+          full of source code.  Defaults to the directory containing the
+          notes file.
 
       extradir - Specifies an absolute path to a dir to be used to locate
           extra files.  Defaults to directory containing the notes file.
@@ -177,9 +178,9 @@ class BuildParameters(SrpObject):
     
     FIXME: Is the description of copysrc really needed here?  Isn't this
            almost verbatim from the usage message in cli.py?
-    
+
     """
-    def __init__(self, notes, src, extradir=None, copysrc=False):
+    def __init__(self, notes, src=None, extradir=None, copysrc=False):
         """The paths `notes', `src', and `extradir' can be specified as relative
         paths, but will get stored away as absolute paths.
 
@@ -188,7 +189,12 @@ class BuildParameters(SrpObject):
 
         """
         self.notes = expand_path(notes)
-        self.src = expand_path(src)
+
+        # if not set, default to directory containing notes file
+        try:
+            self.src = expand_path(src)
+        except:
+            self.src = os.path.dirname(self.notes)
 
         # if not set, default to directory containing notes file
         try:
@@ -206,18 +212,18 @@ class InstallParameters(SrpObject):
 
       pkg - Absolute path to a brp to be installed.
 
-      allow_upgrade - Setting to False will disable upgrade logic and
-          raise an error if the specified package is already installed.
-          Defaults to True.
+      upgrade - Setting to False will disable upgrade logic and raise an
+          error if the specified package is already installed.  Defaults
+          to True.
 
     """
-    def __init__(self, pkg, allow_upgrade=True):
+    def __init__(self, pkg, upgrade=True):
         """The path `pkg' can be specified as a relative path and can use shell
         globbing.
 
         """
         self.pkg = expand_path(pkg)
-        self.allow_upgrade = allow_upgrade
+        self.upgrade = upgrade
 
 
 class QueryParameters(SrpObject):

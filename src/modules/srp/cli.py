@@ -15,13 +15,13 @@ desc = """\
 """.format(srp.config.prog, srp.config.version, srp.config.build_year)
 
 epi = """\
-example: srp -v --build=foo.notes --src=/path/to/src --copysrc
+example: srp -v --build foo.notes,src=/path/to/src,copysrc=True
 
-example: srp --build=foo.notes --src=foo.tar.xz --extra=/path/to/extra/files
+example: srp --build foo.notes,-src=foo.tar.xz,extradir=/path/to/extra/files
 
-example: srp -i --options=strip_debug,strip_docs,strip_man -p foo.i686.brp
+example: srp -i --options=strip_debug,strip_docs,strip_man foo.i686.brp
 
-example: srp --query=info,size -p foo
+example: srp --query=info,size,pkg=foo
 
 example: srp -i foo.brp bar.brp baz.brp
 
@@ -38,39 +38,51 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
 # one and only one of the following options is required
 g = p.add_mutually_exclusive_group(required=True)
 
-g.add_argument('-b', '--build', metavar="NOTES",
-               help="""Build package specified by the supplied NOTES file.
-                    Resulting binary package will be written to PWD.  Source
-                    dir (or source tarball) must also be specified via
-                    --src.""")
+# FIXME: add some way to list a description of BuildParameters
 
-g.add_argument('-i', '--install', action='store_true',
-               help="""Install the provided PACKAGE(s).  If a different
-                    version of PACKAGE is already installed, it will be
-                    upgraded unless --no-upgrade is set.  Note that upgrade
-                    and downgrade are not differentiated (i.e., you can
-                    upgrade from version 3 to version 2 of a package even
-                    though you'd probably think of that as a downgrade
-                    (unless version 3 is broken, of course)).""")
+g.add_argument('-b', '--build', metavar="NOTES[,key=val,...]",
+               action="append",
+               help="""Build package specified by the supplied NOTES file (and
+               optional keyword arguments).  Valid keyword args for build are in
+               srp.core.BuildParameters.  Resulting binary package will be
+               written to PWD.""")
 
-g.add_argument('-B', '--build-and-install', metavar="NOTES",
-               help="""Build specified package and then install it.  If built brp already
-                    exists and is newer than the NOTES file and the
-                    specified sources, the previously built package is
-                    installed w/out triggering a re-build.""")
+g.add_argument('-i', '--install', metavar="PKG[,key=val,...]",
+               action="append",
+               help="""Install package specified by the supplied PKG file (and
+               optional keyword arguments).  Valid keyword args for install are
+               in srp.core.InstallParameters.  If a different version of
+               PACKAGE is already installed, it will be upgraded unless
+               upgrade=False is set.  Note that upgrade and downgrade are
+               not differentiated (i.e., you can upgrade from version 3 to
+               version 2 of a package even though you'd probably think of
+               that as a downgrade (unless version 3 is broken, of
+               course)).""")
 
-g.add_argument('-u', '--uninstall', action='store_true',
+g.add_argument('-B', '--build-and-install', metavar="NOTES[,key=val,...]",
+               action="append",
+               help="""Build and install the package specified by the supplied
+               NOTES file (and
+               optional keyword arguments).  Valid keyword wargs are defined in
+               srp.core.BuildParameters and srp.core.InstallParameters.
+               If the package already exists in PWD and is newer than the
+               NOTES file, the previously built package is installed w/out
+               triggering a re-build.""")
+
+g.add_argument('-u', '--uninstall', metavar="PKG[,key=val,...]",
+               action="append",
                help="""Uninstall the provided PACKAGE(s).  If PACKAGE isn't
                     installed, this will quietly return successfully (well,
                     it DID get uninstalled at some point).""")
 
-g.add_argument('-q', '--query', metavar="FIELDS", nargs='?',
+# FIXME: some way to display all registered query types and criteria?
+#
+g.add_argument('-q', '--query', metavar="QUERY", nargs='?',
                const=[],
-               help="""Query PACKAGE(s).  Print all the information
-                    associated with the specified PACKAGE(S).  Can
-                    optionally be passed a comma-delimited list of FIELDS to
-                    request only specific information (e.g.,
-                    --query=size,date_installed).""")
+               help="""Perform a QUERY.  Format of QUERY is
+               type[,type,..],criteria[,criteria,...].  For example,
+               info,files,pkg=foo would display info and list of files for
+               all packages named "foo".""")
 
 g.add_argument('-a', '--action', metavar="ACTIONS",
                help="""Perform some sort of action on an installed PACKAGE.
@@ -114,13 +126,18 @@ g.add_argument('-l', '--list', metavar="PATTERN", nargs='?', const='*',
                     wildcard PATTERN (or all packages if PATTERN not
                     supplied).""")
 
-g.add_argument('-I', '--init', action='store_true',
-               help="Initialize metadata.")
+# FIXME: this isn't needed, is it?
+#
+#g.add_argument('-I', '--init', action='store_true',
+#               help="Initialize metadata.")
 
 g.add_argument('-V', '--version', action='version',
                version="{} version {}".format(
                    srp.config.prog, srp.config.version))
 
+# FIXME: rename this to --show-features if we change --options as
+#        mentioned...
+#
 g.add_argument('--features', action='store_true',
                help="""Display a summary of all registered features""")
 
@@ -133,51 +150,43 @@ p.add_argument('-v', '--verbose', action='count', default=0,
 
 # FIXME: this doesn't force no_deps yet...  only same-version-upgrade...
 #
-p.add_argument('-F', '--force', action='store_true',
-               help="""Do things anyway.  For example, this will allow you
-                    to 'upgrade' to the same version of what's installed.
-                    It can also be used to force installation even if
-                    dependencies are not met.""")
-
-# FIXME: how deep should the dry-run go?  cli parsing?  toplevel mode
-#        function?  each individual feature func for each file being acted
-#        upon?
+# FIXME: i think this is getting replaced w/ specifie kwargs for whatever
+#        we would be forcing... wouldn't want to accidentally force the
+#        wrong thing, now would we?
 #
+#p.add_argument('-F', '--force', action='store_true',
+#               help="""Do things anyway.  For example, this will allow you
+#                    to 'upgrade' to the same version of what's installed.
+#                    It can also be used to force installation even if
+#                    dependencies are not met.""")
+
 p.add_argument('-n', '--dry-run', action='store_true',
                help="""Don't actualy do anything, just print what would have
-                    been done.""")
+               been done.  Go
+               through the motions, but Feature stage funcs are not
+               executed.""")
 
 p.add_argument('--root', metavar='ROOTDIR',
-               help="""Specifies that we should operate on a filesystem rooted at ROOTDIR.
+               help="""Specifies that we should operate on a filesystem rooted
+               at ROOTDIR.
                This is similar to automake's DESTDIR variable, or srp2's
                SRP_ROOT_PREFIX variable""")
 
-p.add_argument('packages', metavar='PACKAGE', nargs='*',
-               help="""Specifies the PACKAGE(s) for --install, --uninstall,
-               --query, and --action.  Note that PACKAGE can be a Unix
-               shell-style wildcard for modes that act on previously
-               installed packages (e.g., --uninstall, --query, --action).
-               If a specified PACKAGE is '-', additional PACKAGEs are read
-               from stdin.""")
+# FIXME: this might be going away now, too...
+#
+#p.add_argument('packages', metavar='PACKAGE', nargs='*',
+#               help="""Specifies the PACKAGE(s) for --install, --uninstall,
+#               --query, and --action.  Note that PACKAGE can be a Unix
+#               shell-style wildcard for modes that act on previously
+#               installed packages (e.g., --uninstall, --query, --action).
+#               If a specified PACKAGE is '-', additional PACKAGEs are read
+#               from stdin.""")
 
-p.add_argument('--src', metavar='SRC',
-               help="""Specifies the source dir or source tarball to be
-               used for --build.""")
-
-p.add_argument('--extra', metavar='DIR',
-               help="""Specified an alternate basedir for paths referenced
-               in the NOTES file (e.g., extra_content).""")
-
-p.add_argument('--copysrc', action='store_true',
-               help="""Used in conjunction with --build and --src w/ an external
-               source tree.  By default, external source trees are used as-is
-               for out-of-tree building, unless the build_script makes a copy
-               explicitly.""")
-
-p.add_argument('--no-upgrade', action='store_true',
-               help="""Changes default logic of --install to NOT install if any
-               version of the package is already installed.""")
-
+# FIXME: i think this is going to end up as a list of features to
+#        enable/disable at run-time... and if so, it should get renamed to
+#        --features... and the old --features flag should end up as
+#        --show-features or something like that...
+#
 p.add_argument('--options', metavar='OPTIONS', default=[],
                help="""Comma delimited list of extra options to pass into
                --build, --install, or --uninstall.""")
@@ -186,29 +195,21 @@ p.add_argument('--options', metavar='OPTIONS', default=[],
 # once we parse our command line arguments, we'll store the results globally
 # here
 #
-# FIXME: might want to put this in some obvious globally available spot so
-#        that we car reference our run-time params from within other
-#        modules (e.g., deps feature mod for --force)
-#
-# FIXME: some of the cli flags are currently getting stored in the
-#        NotesFile instance, some are getting passed down into
-#        functions...  using the NotesFile makes sense, but does also
-#        cause the cli flags to get stored in the InstalledPackage
-#        instance in the db... which could be helpful I guess.
-#
 args = None
 
 
-
-def parse_package_list():
-    # nothing to do unless - was specified
-    if '-' not in args.packages:
-        return
-
-    # append stdin to supplied package list, after removing the '-'
-    args.packages.remove('-')
-    args.packages.extend(sys.stdin.read().split())
-
+# FIXME: this might be dead code... but we might want to be able to read
+#        ARGS from stdin?  maybe?
+#
+#def parse_package_list():
+#    # nothing to do unless - was specified
+#    if '-' not in args.packages:
+#        return
+#
+#    # append stdin to supplied package list, after removing the '-'
+#    args.packages.remove('-')
+#    args.packages.extend(sys.stdin.read().split())
+#
 
 def parse_options():
     # nothing to do unless we actually got options
@@ -228,11 +229,7 @@ def main():
 
     print(args)
 
-    # FIXME: actually do something with this verbosity level...
-    #
-    print("do_init_output(level={})".format(args.verbose))
-
-    parse_package_list()
+    #parse_package_list()
     parse_options()
 
     # set global params
@@ -244,31 +241,37 @@ def main():
 
     # mutually-exclusive arguments/flags
     if args.build:
-        # check for other required flags
-        if not args.src:
-            p.error("argument --build: requires --src")
-
-        srp.params.build = srp.BuildParameters(args.build, args.src, args.extra)
-        print(srp.params)
-        srp.build()
+        for arg in args.build:
+            arg = arg.split(',')
+            kwargs = {"notes": arg[0]}
+            for x in arg[1:]:
+                k,v = x.split('=')
+                kwargs[k] = v
+            srp.params.build = srp.BuildParameters(**kwargs)
+            print(srp.params)
+            srp.build()
 
     elif args.install:
-        if not args.packages:
-            p.error("argument --install: requires PACKAGE(s)")
-
-        for x in args.packages:
-            srp.params.install = srp.InstallParameters(x, not args.no_upgrade)
+        for arg in args.install:
+            arg = arg.split(',')
+            kwargs = {"pkg": arg[0]}
+            for x in arg[1:]:
+                k,v = x.split('=')
+                kwargs[k] = v
+            srp.params.install = srp.InstallParameters(**kwargs)
             print(srp.params)
             srp.install()
 
     elif args.uninstall:
-        if not args.packages:
-            p.error("argument --uninstall: requires PACKAGE(s)")
-
-        for x in args.packages:
-            print("do_uninstall(package={}, options={})".format(x, args.options))
-            if not args.dry_run:
-                do_uninstall(x, args.options)
+        for arg in args.uninstall:
+            arg = arg.split(',')
+            kwargs = {"pkg": arg[0]}
+            for x in arg[1:]:
+                k,v = x.split('=')
+                kwargs[k] = v
+            srp.params.uninstall = srp.UninstallParameters(**kwargs)
+            print(srp.params)
+            srp.uninstall()
 
     elif args.action:
         if not args.packages:
@@ -302,10 +305,10 @@ def main():
         print(srp.params)
         srp.query()
 
-    elif args.init:
-        print("do_init_metadata()")
-        if not args.dry_run:
-            pass
+    #elif args.init:
+    #    print("do_init_metadata()")
+    #    if not args.dry_run:
+    #        pass
 
     elif args.features:
         m = srp.features.get_stage_map(srp.features.registered_features)
