@@ -77,14 +77,6 @@ class OrderedMode(argparse.Action):
 # one and only one of the following options is required
 g = p.add_argument_group("MODE", "Operational Modes of Doom")
 
-# FIXME: add some way to list a description of BuildParameters
-
-# FIXME: --help-build, --help-install, --help-query, etc
-
-# FIXME: maybe derive my own argparse.Action to keep track of command line
-#        ordering (i.e., --build foo --install foo --build bar must BUILD,
-#        INSTALL, and then BUILD again).
-
 g.add_argument('-b', '--build', metavar="NOTES[,key=val,...]",
                action=OrderedMode,
                help="""Build package specified by the supplied NOTES file (and
@@ -172,6 +164,15 @@ g.add_argument('-a', '--action', metavar="ACTIONS",
 #
 #g.add_argument('-I', '--init', action='store_true',
 #               help="Initialize metadata.")
+
+p.add_argument("--help-build", action="store_true",
+               help="""Extra help for --build""")
+p.add_argument("--help-install", action="store_true",
+               help="""Extra help for --install""")
+p.add_argument("--help-uninstall", action="store_true",
+               help="""Extra help for --uninstall""")
+p.add_argument("--help-query", action="store_true",
+               help="""Extra help for --query""")
 
 p.add_argument('-V', '--version', action='version',
                version="{} version {}".format(
@@ -270,6 +271,21 @@ def parse_options():
     args.options = args.options.split(',')
 
 
+def extra_help(mode):
+    thingy = getattr(srp, mode.capitalize()+"Parameters")
+    out = []
+    out.append("--- {} Class Documentation ---")
+    out.append("{}")
+    out.append("")
+    out.append("--- Initialization Notes ---\n")
+    out.append("        {}")
+    print("\n".join(out).format(
+        thingy.__name__,
+        "\n".join(thingy.__doc__.strip().split('\n')[1:]),
+        thingy.__init__.__doc__))
+    return
+
+
 def main():
     global args
     args = p.parse_args()
@@ -287,6 +303,22 @@ def main():
     srp.params.options = args.options
 
     # check for any information-and-exit type flags
+    if args.help_build:
+        extra_help("build")
+        return
+
+    if args.help_install:
+        extra_help("install")
+        return
+
+    if args.help_uninstall:
+        extra_help("uninstall")
+        return
+
+    if args.help_query:
+        extra_help("query")
+        return
+
     if args.features:
         m = srp.features.get_stage_map(srp.features.registered_features)
         pprint(m)

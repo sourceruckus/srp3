@@ -144,40 +144,24 @@ def expand_path(path):
     return rv
 
 
+# NOTE: Keep docstrings high-level enough to make sense if extracted via
+#       cli for help messages.  Only concentrate on BEHAVIOR.
+#
 class BuildParameters(SrpObject):
-    """Class representing the parameters for srp.build().
+    """Data:
 
-    Data:
+    notes - Path to the notes file on disk.
 
-      notes - Absolute path to the notes file on disk.
+    src - Either the path to a source tarball or a directory full of
+        source code.  Defaults to the directory containing the notes file.
 
-      src - Either the absolute path to a source tarball or a directory
-          full of source code.  Defaults to the directory containing the
-          notes file.
+    extradir - Specifies the path to a dir to be used to locate extra
+        files needed by the build_script.  Defaults to the directory
+        containing the notes file.
 
-      extradir - Specifies an absolute path to a dir to be used to locate
-          extra files.  Defaults to directory containing the notes file.
-
-      copysrc - If True, the build will create a copy of the source tree
-          (i.e., so we don't modify an external source tree).  Defaults to
-          False.
-
-
-    FIXME: we can probably get rid of extradir at this point... it just
-           doesn't seem to make any sense now that we've nixed the idea of
-           source packages.
-    
-           actually, there is a use case still: notes file + external
-           source dir + dir of "extra files" (e.g., config files, patches)
-           where notes file isn't in same dir as extra files.
-    
-           also, files declared as extra_content in the notes file are
-           copied into the extra_content dir in the per-package build
-           tree.  w/out that, build_scripts won't be able to find their
-           extra config files in the case mentioned above...
-    
-    FIXME: Is the description of copysrc really needed here?  Isn't this
-           almost verbatim from the usage message in cli.py?
+    copysrc - If True, the build will create a copy of the source tree
+        (i.e., so we don't modify an external source tree).  Defaults to
+        False.
 
     """
     def __init__(self, notes, src=None, extradir=None, copysrc=False):
@@ -206,15 +190,13 @@ class BuildParameters(SrpObject):
 
 
 class InstallParameters(SrpObject):
-    """Class representing the parameters for srp.install().
+    """Data:
 
-    Data:
+    pkg - Absolute path to a brp to be installed.
 
-      pkg - Absolute path to a brp to be installed.
-
-      upgrade - Setting to False will disable upgrade logic and raise an
-          error if the specified package is already installed.  Defaults
-          to True.
+    upgrade - Setting to False will disable upgrade logic and raise an
+        error if the specified package is already installed.  Defaults to
+        True.
 
     """
     def __init__(self, pkg, upgrade=True):
@@ -226,16 +208,23 @@ class InstallParameters(SrpObject):
         self.upgrade = upgrade
 
 
+# NOTE: `types' is stored internally as a list and `criteria' is a dict.
+#       The docstring is kept high-level so it can be used by cli for
+#       helping users.
+#
+# FIXME: need to inject valid types and valid criteria in here somehow...
+#
+# FIXME: maybe we should put all the string tokenization in the Params
+#        constructors, that way our docstrings would be accurate and
+#        applicable to cli...
+#
 class QueryParameters(SrpObject):
-    """Class representing the parameters for srp.query().
+    """Data:
 
-    Data:
+    types - List of types of results the user is asking for.
 
-      types - List of types of results the user is asking for (e.g.,
-          [info, files]).
-
-      criteria - Dictionary of search criteria that would make a package
-          match (e.g., {"pkg": "*"}).
+    criteria - List of key=value pairs describing search criteria that
+        would make a package match.
 
     """
     def __init__(self, types, criteria):
