@@ -17,15 +17,28 @@ desc = """\
 epi = """\
 example: srp -v --build foo.notes,src=/path/to/src,copysrc=True
 
-example: srp --build foo.notes,-src=foo.tar.xz,extradir=/path/to/extra/files
+example: srp --build foo.notes,src=foo.tar.xz,extradir=/path/to/extra/files
 
-example: srp -i --options=strip_debug,strip_docs,strip_man foo.i686.brp
+example: srp -i foo.brp --options=strip_debug,strip_docs,strip_man
 
 example: srp --query=info,size,pkg=foo
 
-example: srp -i foo.brp bar.brp baz.brp
+example: srp -i foo.brp -i bar.brp -i baz.brp
 
-example: srp -l "perl*" | srp --action=strip_debug,strip_docs,commit
+example: srp --action=strip_debug,strip_docs,commit,pkg=perl*
+
+Note that more than one operational mode can be chained together to create
+super-huge-awesome invocations of srp.
+
+example of doom:
+    srp -vvv --root $PWD/FOO \\
+        -b examples/foo-3.0/srp-example-foo.notes,extradir=examples/foo-3.0 \\
+        -b examples/foo-3.0/srp-example-foo-functions.notes,copysrc=True \\
+        -b examples/foo-3.0/srp-example-foo-functions-multi.notes \\
+        -i srp-example-foo-*-3.*.brp \\
+        -B examples/bar-3.0/srp-example-bar.notes,src=examples/bar-3.0 \\
+        -q info,stats,pkg=srp-example*
+
 """
 
 
@@ -35,8 +48,34 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
                             epilog=epi.rstrip()
                             )
 
+class OrderedMode(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string):
+        # record order of the --flag
+        try:
+            order = getattr(namespace, "OrderedMode")
+        except:
+            order = []
+            setattr(namespace, "OrderedMode", order)
+        order.append((option_string, values))
+
+        # append values to the option's attribute
+        #
+        # NOTE: This is exactly what the "append" action would have done,
+        #       and may or may not be needed here.  I'm thinking it may be
+        #       handy for resoving deps later on if we have an ordered
+        #       list of packages to be installed already generated...
+        try:
+            val = getattr(namespace, self.dest)
+            if val == None:
+                raise Excption("boink")
+        except:
+            val = []
+            setattr(namespace, self.dest, val)
+        val.append(values)
+
+
 # one and only one of the following options is required
-g = p.add_argument_group("MODE", "Operational Mode of Doom")
+g = p.add_argument_group("MODE", "Operational Modes of Doom")
 
 # FIXME: add some way to list a description of BuildParameters
 
@@ -47,14 +86,14 @@ g = p.add_argument_group("MODE", "Operational Mode of Doom")
 #        INSTALL, and then BUILD again).
 
 g.add_argument('-b', '--build', metavar="NOTES[,key=val,...]",
-               action="append",
+               action=OrderedMode,
                help="""Build package specified by the supplied NOTES file (and
                optional keyword arguments).  Valid keyword args for build are in
                srp.core.BuildParameters.  Resulting binary package will be
                written to PWD.""")
 
 g.add_argument('-i', '--install', metavar="PKG[,key=val,...]",
-               action="append",
+               action=OrderedMode,
                help="""Install package specified by the supplied PKG file (and
                optional keyword arguments).  Valid keyword args for install are
                in srp.core.InstallParameters.  If a different version of
@@ -66,7 +105,7 @@ g.add_argument('-i', '--install', metavar="PKG[,key=val,...]",
                course)).""")
 
 g.add_argument('-B', '--build-and-install', metavar="NOTES[,key=val,...]",
-               action="append",
+               action=OrderedMode,
                help="""Build and install the package specified by the supplied
                NOTES file (and
                optional keyword arguments).  Valid keyword wargs are defined in
@@ -76,7 +115,7 @@ g.add_argument('-B', '--build-and-install', metavar="NOTES[,key=val,...]",
                triggering a re-build.""")
 
 g.add_argument('-u', '--uninstall', metavar="PKG[,key=val,...]",
-               action="append",
+               action=OrderedMode,
                help="""Uninstall the provided PACKAGE(s).  If PACKAGE isn't
                     installed, this will quietly return successfully (well,
                     it DID get uninstalled at some point).""")
@@ -84,16 +123,19 @@ g.add_argument('-u', '--uninstall', metavar="PKG[,key=val,...]",
 # FIXME: some way to display all registered query types and criteria?
 #
 g.add_argument('-q', '--query', metavar="QUERY",
+               action=OrderedMode,
                help="""Perform a QUERY.  Format of QUERY is
                type[,type,..],criteria[,criteria,...].  For example,
                info,files,pkg=foo would display info and list of files for
                all packages named "foo".""")
 
 g.add_argument('-a', '--action', metavar="ACTIONS",
+               action=OrderedMode,
                help="""Perform some sort of action on an installed PACKAGE.
                     ACTIONS is a comma-delimited list of actions to be
                     performed (e.g.,
                     --action=strip_debug,strip_docs,commit).""")
+
 
 # FIXME: need to document supported actions somewhere.  here's a list of the
 #        planned ones for now:
@@ -125,11 +167,6 @@ g.add_argument('-a', '--action', metavar="ACTIONS",
 #        (potentially updated) list of installed files.
 #
 #        commit - re-checksum and record package changes
-
-g.add_argument('-l', '--list', metavar="PATTERN", nargs='?', const='*',
-               help="""List installed packages matching Unix shell-style
-                    wildcard PATTERN (or all packages if PATTERN not
-                    supplied).""")
 
 # FIXME: this isn't needed, is it?
 #
@@ -186,6 +223,11 @@ p.add_argument('--root', metavar='ROOTDIR',
 p.add_argument('--features', action='store_true',
                help="""Display a summary of all registered features and exit""")
 
+p.add_argument('-l', '--list', metavar="PATTERN", nargs='?', const='*',
+               help="""List installed packages matching Unix shell-style
+               wildcard PATTERN (or
+               all packages if PATTERN not supplied).  This is really just
+               shorthand for --query name,pkg=PATTERN.""")
 
 # FIXME: i think this is going to end up as a list of features to
 #        enable/disable at run-time... and if so, it should get renamed to
@@ -244,9 +286,26 @@ def main():
         srp.params.root = args.root
     srp.params.options = args.options
 
-    # mutually-exclusive arguments/flags
-    if args.build:
-        for arg in args.build:
+    # check for any information-and-exit type flags
+    if args.features:
+        m = srp.features.get_stage_map(srp.features.registered_features)
+        pprint(m)
+        return
+
+    if args.list != None:
+        if not args.list:
+            args.list = "*"
+        srp.params.query = srp.QueryParameters(["name"],
+                                               {"pkg": args.list})
+        print(srp.params)
+        srp.query()
+        return
+
+    # now iterate over our generated list of operational modes
+    for mode in args.OrderedMode:
+        mode, arg = mode
+        
+        if mode == "--build":
             arg = arg.split(',')
             kwargs = {"notes": arg[0]}
             for x in arg[1:]:
@@ -255,9 +314,9 @@ def main():
             srp.params.build = srp.BuildParameters(**kwargs)
             print(srp.params)
             srp.build()
+            srp.params.build = None
 
-    elif args.install:
-        for arg in args.install:
+        elif mode == "--install":
             arg = arg.split(',')
             kwargs = {"pkg": arg[0]}
             for x in arg[1:]:
@@ -266,9 +325,13 @@ def main():
             srp.params.install = srp.InstallParameters(**kwargs)
             print(srp.params)
             srp.install()
+            srp.params.install = None
 
-    elif args.uninstall:
-        for arg in args.uninstall:
+        elif mode == "--build-and-install":
+            # FIXME: not implemented
+            pass
+
+        elif mode == "--uninstall":
             arg = arg.split(',')
             kwargs = {"pkg": arg[0]}
             for x in arg[1:]:
@@ -277,44 +340,28 @@ def main():
             srp.params.uninstall = srp.UninstallParameters(**kwargs)
             print(srp.params)
             srp.uninstall()
+            srp.params.uninstall = None
 
-    elif args.action:
-        if not args.packages:
-            p.error("argument --action: requires PACKAGE(s)")
+        elif mode == "--query":
+            q_t = []
+            q_c = {}
+            for x in arg.split(','):
+                if '=' in x:
+                    x = x.split('=')
+                    q_c[x[0]] = x[1]
+                else:
+                    q_t.append(x)
+            srp.params.query = srp.QueryParameters(q_t, q_c)
+            print(srp.params)
+            srp.query()
+            srp.params.query = None
 
-        for x in args.packages:
-            print("do_action(package={}, actions={})".format(x, args.action))
-            if not args.dry_run:
-                do_action(x, args.action)
+        elif mode == "--action":
+            # FIXME: not implemented
+            pass
 
-    elif args.query:
-        q_t = []
-        q_c = {}
-        for x in args.query.split(','):
-            if '=' in x:
-                x = x.split('=')
-                q_c[x[0]] = x[1]
-            else:
-                q_t.append(x)
-        srp.params.query = srp.QueryParameters(q_t, q_c)
-        print(srp.params)
-        srp.query()
+        else:
+            # shouldn't happen?
+            raise Exception("invalid usage")
 
-    # NOTE: --list=FOO is just shorthand for --query name,pkg=FOO
-    #
-    elif args.list != None:
-        if not args.list:
-            args.list = "*"
-        srp.params.query = srp.QueryParameters(["name"],
-                                               {"pkg": args.list})
-        print(srp.params)
-        srp.query()
-
-    #elif args.init:
-    #    print("do_init_metadata()")
-    #    if not args.dry_run:
-    #        pass
-
-    elif args.features:
-        m = srp.features.get_stage_map(srp.features.registered_features)
-        pprint(m)
+    return
