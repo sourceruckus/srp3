@@ -27,9 +27,13 @@ class SrpObject:
     """
     def __str__(self):
         """This __str__ method is special in that it scales its verbosity
-        according to srp.params.verbosity.  A value of 0 results in output
-        identical to __repr__(), 1 results in additionally including a
-        __str__() of each data member.
+        according to srp.params.verbosity.  A value of 0 or 1 results in
+        output identical to __repr__(), 2 results in additionally
+        including a __str__() of each data member.
+        
+        NOTE: The verbosity scaling is assuming that at 0, you're not
+              printing anything, and at 1 you want basic info.  2 and up
+              adds more and more until you drown in information.  ;-)
 
         """
         ret = repr(self)
@@ -285,9 +289,7 @@ def build():
     #
     # FIXME: multiprocessing
     print("build_iter funcs:", iter_funcs)
-    flist = list(srp.work.build.manifest.keys())
-    flist.sort()
-    for x in flist:
+    for x in srp.work.build.manifest:
         for f in iter_funcs:
             # check for notes section class and create if needed
             section = getattr(getattr(srp.features, f.name),
@@ -351,18 +353,19 @@ def build():
     #       that's fine because we will have already added it to the toplevel
     #       brp archive.
     n.brp.time_blob_creation = time.time()
-    blob_fobj = tempfile.TemporaryFile()
-    srp.blob.blob_create(srp.work.build.manifest,
-                         srp.work.topdir+'/payload', fobj=blob_fobj)
+    blob = srp.blob.BlobFile()
+    blob.manifest = srp.work.build.manifest
+    blob.fobj = tempfile.TemporaryFile()
+    blob.tofile()
     n.brp.time_blob_creation = time.time() - n.brp.time_blob_creation
     # add BLOB file to toplevel pkg archive
-    blob_fobj.seek(0)
-    brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob_fobj),
-                fileobj=blob_fobj)
+    blob.fobj.seek(0)
+    brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob.fobj),
+                fileobj=blob.fobj)
     # rewind and generate a SHA entry
-    blob_fobj.seek(0)
-    sha.update(blob_fobj.read())
-    blob_fobj.close()
+    blob.fobj.seek(0)
+    sha.update(blob.fobj.read())
+    blob.fobj.close()
 
     # add NOTES (pickled instance) to toplevel pkg archive (the brp)
     n_fobj = tempfile.TemporaryFile()
@@ -428,9 +431,7 @@ def install():
     #
     # FIXME: multiprocessing
     print("install_iter funcs:", iter_funcs)
-    flist = list(m.keys())
-    flist.sort()
-    for x in flist:
+    for x in m:
         for f in iter_funcs:
             # check for notes section class and create if needed
             section = getattr(getattr(srp.features, f.name),
@@ -582,7 +583,7 @@ def query_pkg(name):
             n_fobj = p.extractfile("NOTES")
             n = pickle.load(n_fobj)
             blob_fobj = p.extractfile("BLOB")
-            blob = srp.blob.blob(fobj=blob_fobj)
+            blob = srp.blob.BlobFile.fromfile(fobj=blob_fobj)
             m = blob.manifest
 
         return [srp.db.InstalledPackage(n, m)]
@@ -616,11 +617,8 @@ def format_results_info(p):
     return "\n".join(info)
 
 
-# FIXME: this seems inefficient
 def format_results_files(p):
-    m = list(p.manifest)
-    m.sort()
-    return "\n".join(m)
+    return "\n".join(p.manifest.sortedkeys)
 
 
 def format_tinfo(t):
@@ -644,12 +642,9 @@ def format_tinfo(t):
     return fmt.format(**locals())
 
 
-# FIXME: this seems really inefficient
 def format_results_stats(p):
-    m = list(p.manifest)
-    m.sort()
     retval = []
-    for f in m:
+    for f in p.manifest:
         tinfo = p.manifest[f]["tinfo"]
         retval.append(format_tinfo(tinfo))
     return "\n".join(retval)

@@ -16,6 +16,9 @@ from pprint import pprint
 #
 # each installed version is referenced by sha of its pickled db contents,
 # which is NOTES and MANIFEST (and perhaps other files as well).
+#
+# FIXME: should I use shelve here instead of pickling a dict?
+#
 
 
 class InstalledPackage(srp.SrpObject):

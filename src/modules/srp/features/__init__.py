@@ -384,7 +384,8 @@ class BuildWork(srp.SrpObject):
 
       notes - Instace of srp.notes.NotesFile.
 
-      manifest - Dict of files being installed and lots of metadata for
+      manifest - Instance of srp.blob.Manifest (basically a sorted dict)
+          used to track files being installed and lots of metadata for
           each one (this is left intentionally vague).
 
       funcs - Sorted list of stage_struct instances for the build stage.
@@ -402,7 +403,7 @@ class BuildWork(srp.SrpObject):
         #        i think it messes with shared memory in
         #        multiprocessing...
         #
-        self.manifest = {}
+        self.manifest = srp.blob.Manifest()
 
         stages = get_stage_map(self.notes.header.features)
         self.funcs = stages["build"]
@@ -440,7 +441,8 @@ class InstallWork(srp.SrpObject):
 
       blob - Instance of srp.blob.BlobFile loaded out of the package.
 
-      manifest - Dict loaded out of the package.
+      manifest - Instance of srp.blob.Manifest extracted from the BlobFile
+          object.
 
       funcs - Sorted list of stage_struct instances for the install stage.
 
@@ -511,14 +513,8 @@ class InstallWork(srp.SrpObject):
         # update notes fields with optional command line flags
         n.update_features(srp.params.options)
 
-        # FIXME: why isn't this stored away srp.work?  don't we need it
-        #        later...?
-        #
-        self.blob = srp.blob.blob(srp.work.topdir + "/package/BLOB")
+        self.blob = srp.blob.BlobFile.fromfile(srp.work.topdir+"/package/BLOB")
 
-        # FIXME: if we are gonna stash blob for later, why pull out
-        #        manifest here?
-        #
         self.manifest = self.blob.manifest
 
         stages = get_stage_map(self.notes.header.features)

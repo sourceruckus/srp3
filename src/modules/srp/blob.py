@@ -1,14 +1,15 @@
 """The SRP BLOB file
 """
 
+import grp
 import os
-import tarfile
-import tempfile
 import pickle
+import pprint
+import pwd
 import stat
 import subprocess
-import pwd
-import grp
+import tarfile
+import tempfile
 
 import srp
 import srp._blob
@@ -32,114 +33,185 @@ import srp._blob
 #         line...
 
 
-# FIXME: This should really be a class defined somewhere else...
+# NOTE: We derive from SrpObject here even though all we get from it is
+#       __str__, which we override.  This way, if we ever go back and add
+#       more methods or data to SrpObject, this class will get it.
 #
-def manifest_create(payload_dir):
-    retval = {}
-    # NOTE: This tar object is just so we can use the gettarinfo member
-    #       function
-    tar = tarfile.open("tar", fileobj=tempfile.TemporaryFile(), mode="w")
-    for root, dirs, files in os.walk(payload_dir):
-        tmp = dirs[:]
-        tmp.extend(files)
-        # NOTE: sorting here adds a little processing overhead, but if we're
-        #       going to keep these TarInfo objects around in a map and then
-        #       try to actually add them to the BLOB later, we have to make
-        #       sure that the order they get added matches the order in
-        #       which the TarInfo's were created, otherwise we might add a
-        #       hardlink before we add the file it's linked to, which will
-        #       cause the extraction to fail during install
-        tmp.sort()
-        for x in tmp:
-            realname = os.path.join(root, x)
-            arcname = os.path.join(root, x).split(payload_dir, 1)[-1]
+class Manifest(srp.SrpObject, dict):
+    """Class representing the contents of a BlobFile.  It can be iterated in
+    sorted order, and has a special classmethod for populating itself with
+    TarInfo objects of an entire filesystem tree.
 
-            # NOTE: Sockets don't go in tarballs.  GNU Tar issues a warning, so
-            #       we will too.  I don't know if there are other unsupported
-            #       file types, but it looks like gettarinfo returns None if
-            #       the file cannot be represented in a tarfile.
-            x = tar.gettarinfo(realname, arcname)
-            if not x:
-                print("WARNING: ignoring unsupported file type:", arcname)
-                continue
+    Although there's nothing to enforce it's contents, a propperly created
+    Manifest object will be a dict of filenames, each of which is
+    associated with a dict describing some aspect of the file.
 
-            # set ownership to root:root
-            x.uid = 0
-            x.gid = 0
+    """
+    def __init__(self):
+        self.sortedkeys = []
+        self.payload_dir = None
 
-            # remove problematic tarfile instance from TarInfo object
-            #
-            # NOTE: The tarfile instance inside the TarInfo instance
-            #       cannot be pickled, so we have to remove it.  It
-            #       doesn't seem to hurt anything.  TarInfo objects
-            #       returned from TarFile.getmember() don't have this, but
-            #       ones returned from TarFile.gettarinfo() do.
-            del(x.tarfile)
+    def __iter__(self):
+        return iter(self.sortedkeys)
 
-            retval[arcname] = {"tinfo": x}
-
-    return retval
-
-
-def blob_create(manifest, payload_dir, fname=None, fobj=None):
-    if not fname and not fobj:
-        raise Exception("requires either fname or fobj")
-
-    # create temporary file containing all the data from regular files
-    # concatenated, while adding offset values to the manifest.
-    tmp = tempfile.TemporaryFile()
-    offset=0
-    flist = list(manifest.keys())
-    flist.sort()
-    for x in flist:
-        tinfo = manifest[x]['tinfo']
-        if not tinfo.isreg():
-            continue
-        with open(payload_dir+"/"+tinfo.name, 'rb') as f:
-            tmp.write(f.read())
-        manifest[x]['offset'] = offset
-        offset += tinfo.size
-    tmp.seek(0)
-    tmp.flush()
-    
-    # now pickle the manifest
-    hdr = pickle.dumps(manifest)
-    
-    if fobj:
-        f = fobj
-    else:
-        f = open(fname, "wb")
-
-    f.write(hdr)
-    f.write(tmp.read())
-
-    # only close the file object if we opened it
-    if not fobj:
-        f.close()
-
-    # NOTE: i think that's enough.  looks like pickle doesn't read beyond
-    #       pickled data in a fobj.  in other words, it's safe to append
-    #       more data to a file after the pickled byte stream.
+    # FIXME: this could possibly be faster if we iterate over ourself
+    #        until the next item > the item to be inserted, then insert.
+    #        i'm unsure of the benefit, though, because if we use
+    #        list.sort() that's implemented in C, and if we try to insert
+    #        alphabetically we'll be iterating in Python... i think...
     #
-    #       f.tell() after reading for pickle.load() will tell us the hdr
-    #       offset! yay!
+    def __setitem__(self, k, v):
+        dict.__setitem__(self, k, v)
+        self.sortedkeys.append(k)
+        self.sortedkeys.sort()
+
+    def __delitem__(self, k):
+        dict.__delitem__(self, k)
+        self.sortedkeys.remove(k)
+
+    # override dict's __repr__
+    def __repr__(self):
+        return "<{}.{} object>".format(self.__module__, self.__class__.__name__)
+
+    # override dict's keys
+    def keys(self):
+        return self.sortedkeys
+
+    # override SrpObject's __str__
+    def __str__(self):
+        """This __str__ method is special in that it scales its verbosity
+        according to srp.params.verbosity.  A value of 0 or 1 results in
+        output identical to __repr__(), 2 results in additionally
+        including a few extra details, and 3 result in a dump of the
+        entire dictionary.
+        
+        NOTE: The verbosity scaling is assuming that at 0, you're not
+              printing anything, and at 1 you want basic info.  2 and up
+              adds more and more until you drown in information.  ;-)
+
+        """
+        ret = repr(self)
+        if srp.params.verbosity <= 1:
+            return ret
+
+        # slice off the trailing '>'
+        ret = ret[:-1]
+        ret += ", size={}".format(len(self.sortedkeys))
+        ret += ", sortedkeys={}".format(self.sortedkeys)
+        ret += '>'
+
+        if srp.params.verbosity <= 2:
+            return ret
+
+        ret += "\nManifest Contents:\n"
+        ret += pprint.pformat(dict(self))
+
+        return ret
+
+    @classmethod
+    def fromdir(cls, payload_dir):
+        """Returns a new Manifest object populated with entries for each file in
+        the specified `payload_dir'.
+
+        """
+        obj = cls()
+        obj.payload_dir = os.path.abspath(payload_dir)
+
+        # NOTE: This tar object is just so we can use the gettarinfo
+        #       member function
+        tar = tarfile.open("tar", fileobj=tempfile.TemporaryFile(), mode="w")
+        for root, dirs, files in os.walk(payload_dir):
+            tmp = dirs[:]
+            tmp.extend(files)
+            # NOTE: sorting here adds a little processing overhead, but if
+            #       we're going to keep these TarInfo objects around in a
+            #       map and then try to actually add them to the BLOB
+            #       later, we have to make sure that the order they get
+            #       added matches the order in which the TarInfo's were
+            #       created, otherwise we might add a hardlink before we
+            #       add the file it's linked to, which will cause the
+            #       extraction to fail during install
+            #
+            # FIXME: there's no point in sorting here... dict doesn't
+            #        retain order.  We could use collections.OrderedDict,
+            #        which retains insertion order, but that won't help if
+            #        we want to insert alphabetically...
+            #
+            tmp.sort()
+            for x in tmp:
+                realname = os.path.join(root, x)
+                arcname = os.path.join(root, x).split(payload_dir, 1)[-1]
+
+                # NOTE: Sockets don't go in tarballs.  GNU Tar issues a
+                #       warning, so we will too.  I don't know if there
+                #       are other unsupported file types, but it looks
+                #       like gettarinfo returns None if the file cannot be
+                #       represented in a tarfile.
+                x = tar.gettarinfo(realname, arcname)
+                if not x:
+                    print("WARNING: ignoring unsupported file type:", arcname)
+                    continue
+
+                # set ownership to root:root
+                x.uid = 0
+                x.gid = 0
+
+                # remove problematic tarfile instance from TarInfo object
+                #
+                # NOTE: The tarfile instance inside the TarInfo instance
+                #       cannot be pickled, so we have to remove it.  It
+                #       doesn't seem to hurt anything.  TarInfo objects
+                #       returned from TarFile.getmember() don't have this,
+                #       but ones returned from TarFile.gettarinfo() do.
+                del(x.tarfile)
+
+                obj[arcname] = {"tinfo": x}
+
+        return obj
 
 
 # FIXME: if created via fobj, extract will not be functional... unless we
 #        make it work later.  the c func takes a filename, so we would
 #        have to make sure to know the path to the file on disk.
 #
-class blob(srp.SrpObject):
-    def __init__(self, fname=None, fobj=None):
-        self.fname = fname
+class BlobFile(srp.SrpObject):
+    """The BlobFile
+
+    Data:
+
+      fname - file name of the blob file on disk
+
+      fobj - opened file object
+
+      manifest - the manifest associated with the blob
+
+      hdr_offset - size in bytes of the file's header (i.e., the pickled
+          manifest).
+
+    """
+    def __init__(self):
+        self.fname = None
+        self.fobj = None
+        self.manifest = None
+        self.hdr_offset = None
+
+    @classmethod
+    def fromfile(cls, fname=None, fobj=None):
+        """Creates a BlobFile object from either `fname' or `fobj'.
+        """
+        if not fname and not fobj:
+            raise Exception("requires either fname or fobj")
+
+        obj = BlobFile()
+        obj.fname = fname
 
         if not fobj:
-            self.fobj = open(fname, "rb")
+            obj.fobj = open(fname, "rb")
         else:
-            self.fobj = fobj
+            obj.fobj = fobj
 
-        self.manifest = pickle.load(self.fobj)
-        self.hdr_offset = self.fobj.tell()
+        obj.manifest = pickle.load(obj.fobj)
+        obj.hdr_offset = obj.fobj.tell()
 
         # FIXME: Should I update each manifest offset entry to reflect
         #        hdr_offset?  Assuming that manifest gets pickled and
@@ -147,6 +219,56 @@ class blob(srp.SrpObject):
         #        extraction a tad faster at the expense of a little extra
         #        work during build.  It would also allow us to pass a
         #        pre-created manifest into the constructor...
+
+        return obj
+
+
+    def tofile(self):
+        """Creates a BLOB file on disk.  Either a `self.fname' for the resulting
+        blob or a previously opened `self.fobj' must be supplied.
+
+        """
+        if not self.fname and not self.fobj:
+            raise Exception("requires either fname or fobj")
+
+        # create temporary file containing all the data from regular files
+        # concatenated, while adding offset values to the manifest.
+        tmp = tempfile.TemporaryFile()
+        offset=0
+        for x in self.manifest:
+            tinfo = self.manifest[x]['tinfo']
+            if not tinfo.isreg():
+                continue
+            with open(self.manifest.payload_dir+'/'+tinfo.name, 'rb') as f:
+                tmp.write(f.read())
+            self.manifest[x]['offset'] = offset
+            offset += tinfo.size
+        tmp.seek(0)
+        tmp.flush()
+
+        # now pickle the manifest
+        #
+        # FIXME: woah, i cannot pikcle.loads() the resulting string...
+        #        what's going on?  I get the following traceback:
+        #
+        #   File "./srp/blob.py", line 65, in __setitem__
+        #     self.sortedkeys.append(k)
+        # AttributeError: 'Manifest' object has no attribute 'sortedkeys'
+        #
+        hdr = pickle.dumps(self.manifest)
+
+        if self.fobj:
+            f = self.fobj
+        else:
+            f = open(self.fname, "wb")
+
+        f.write(hdr)
+        f.write(tmp.read())
+
+        # only close the file object if we opened it
+        if not self.fobj:
+            f.close()
+
 
 
     # FIXME: this needs to make backups of existing files.  i think we'll

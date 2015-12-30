@@ -149,16 +149,10 @@ class PermsList(list):
 #
 def build_func(fname):
     """update tarinfo via perms section of NOTES file"""
-    #print(work.keys())
-    #print(work['notes'].perms.buf)
     n = srp.work.build.notes
     p = PermsList(n.perms.buffer)
-    #print(p)
-    #print(p['/usr/local/bin/foo'])
-    #print(p['/usr/share/asdf'])
 
     x = srp.work.build.manifest[fname]["tinfo"]
-    #print(x)
 
     # skip links
     #
@@ -185,7 +179,6 @@ def build_func(fname):
     #       first when writing perms rules.
     if x.islnk():
         x = srp.work.build.manifest["/"+x.linkname]["tinfo"]
-        #print(x)
 
     # return if there's no perms matching this file
     #
@@ -195,7 +188,6 @@ def build_func(fname):
         return
 
     for rule in p[fname]:
-        #print("rule:", rule)
 
         if 'user' in rule['options']:
             try:

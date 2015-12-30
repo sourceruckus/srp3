@@ -211,11 +211,9 @@ def build_func():
     #
     # FIXME: straighten out these comments
     #
-    # FIXME: why is manifest_create inside blob.py?
-    #
     n.brp.time_build_script = time.time() - n.brp.time_build_script
     n.brp.time_manifest_creation = time.time()
-    srp.work.build.manifest = srp.blob.manifest_create(payloaddir)
+    srp.work.build.manifest = srp.blob.Manifest.fromdir(payloaddir)
     n.brp.time_manifest_creation = time.time() - n.brp.time_manifest_creation
 
 

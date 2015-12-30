@@ -19,9 +19,7 @@ doc_patterns = ["*/share/doc", "*/share/doc/*"]
 
 def install_func():
     """remove all documentation from manifest"""
-    flist = list(srp.work.install.manifest.keys())
-    flist.sort()
-    for x in flist:
+    for x in srp.work.install.manifest:
         for pat in doc_patterns:
             if fnmatch.fnmatch(x, pat):
                 # remove from manifest
