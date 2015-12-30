@@ -36,9 +36,15 @@ p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter
                             )
 
 # one and only one of the following options is required
-g = p.add_mutually_exclusive_group(required=True)
+g = p.add_argument_group("MODE", "Operational Mode of Doom")
 
 # FIXME: add some way to list a description of BuildParameters
+
+# FIXME: --help-build, --help-install, --help-query, etc
+
+# FIXME: maybe derive my own argparse.Action to keep track of command line
+#        ordering (i.e., --build foo --install foo --build bar must BUILD,
+#        INSTALL, and then BUILD again).
 
 g.add_argument('-b', '--build', metavar="NOTES[,key=val,...]",
                action="append",
@@ -77,8 +83,7 @@ g.add_argument('-u', '--uninstall', metavar="PKG[,key=val,...]",
 
 # FIXME: some way to display all registered query types and criteria?
 #
-g.add_argument('-q', '--query', metavar="QUERY", nargs='?',
-               const=[],
+g.add_argument('-q', '--query', metavar="QUERY",
                help="""Perform a QUERY.  Format of QUERY is
                type[,type,..],criteria[,criteria,...].  For example,
                info,files,pkg=foo would display info and list of files for
@@ -131,16 +136,9 @@ g.add_argument('-l', '--list', metavar="PATTERN", nargs='?', const='*',
 #g.add_argument('-I', '--init', action='store_true',
 #               help="Initialize metadata.")
 
-g.add_argument('-V', '--version', action='version',
+p.add_argument('-V', '--version', action='version',
                version="{} version {}".format(
                    srp.config.prog, srp.config.version))
-
-# FIXME: rename this to --show-features if we change --options as
-#        mentioned...
-#
-g.add_argument('--features', action='store_true',
-               help="""Display a summary of all registered features""")
-
 
 # the following options are independent of the exclusive group (at least as
 # far as the ArgumentParser is concerned).
@@ -181,6 +179,13 @@ p.add_argument('--root', metavar='ROOTDIR',
 #               installed packages (e.g., --uninstall, --query, --action).
 #               If a specified PACKAGE is '-', additional PACKAGEs are read
 #               from stdin.""")
+
+# FIXME: rename this to --show-features if we change --options as
+#        mentioned...
+#
+p.add_argument('--features', action='store_true',
+               help="""Display a summary of all registered features and exit""")
+
 
 # FIXME: i think this is going to end up as a list of features to
 #        enable/disable at run-time... and if so, it should get renamed to
