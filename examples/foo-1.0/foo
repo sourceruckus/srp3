@@ -1,2 +1,0 @@
-#!/bin/sh
-echo "foo __VERSIONSTRING__: hello, world"

@@ -10,6 +10,4 @@ dist_doc_DATA += AUTHORS
 dist_doc_DATA += ChangeLog
 
 EXTRA_DIST =
-EXTRA_DIST += srp-example-foo.notes
-EXTRA_DIST += srp-example-foo-functions.notes
-EXTRA_DIST += srp-example-foo-functions-multi.notes
+EXTRA_DIST += srp-example-bar.notes

@@ -1,0 +1,19 @@
+# -*- mode: conf -*-
+
+[header]
+
+name = srp-example-bar
+version = 3.0.0
+pkg_rev = 1
+description = The 2nd example package of doom.  It is pretty much just a copy
+              of srp-example-foo so we can test multiple packages.
+
+[script]
+%%BUFFER_BEGIN%%
+#!/bin/sh
+. $FUNCTIONS || exit 1
+
+pass2="--libdir=/usr/lib64"
+build_multi --prefix=/usr || exit 1
+
+%%BUFFER_END%%
