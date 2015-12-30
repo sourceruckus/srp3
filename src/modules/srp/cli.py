@@ -337,7 +337,7 @@ def main():
     for mode in args.OrderedMode:
         mode, arg = mode
         
-        if mode == "--build":
+        if mode == "--build" or mode == "-b":
             arg = arg.split(',')
             kwargs = {"notes": arg[0]}
             for x in arg[1:]:
@@ -348,7 +348,7 @@ def main():
             srp.build()
             srp.params.build = None
 
-        elif mode == "--install":
+        elif mode == "--install" or mode == "-i":
             arg = arg.split(',')
             kwargs = {"pkg": arg[0]}
             for x in arg[1:]:
@@ -359,11 +359,11 @@ def main():
             srp.install()
             srp.params.install = None
 
-        elif mode == "--build-and-install":
+        elif mode == "--build-and-install" or mode == "-B":
             # FIXME: not implemented
             pass
 
-        elif mode == "--uninstall":
+        elif mode == "--uninstall" or mode == "-u":
             arg = arg.split(',')
             kwargs = {"pkg": arg[0]}
             for x in arg[1:]:
@@ -374,7 +374,7 @@ def main():
             srp.uninstall()
             srp.params.uninstall = None
 
-        elif mode == "--query":
+        elif mode == "--query" or mode == "-q":
             q_t = []
             q_c = {}
             for x in arg.split(','):
@@ -388,7 +388,7 @@ def main():
             srp.query()
             srp.params.query = None
 
-        elif mode == "--action":
+        elif mode == "--action" or mode == "-a":
             # FIXME: not implemented
             pass
 
