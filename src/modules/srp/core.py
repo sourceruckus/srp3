@@ -140,11 +140,19 @@ class BuildParameters(SrpObject):
 
       copysrc - Same as param to __init__.
 
+      update - Internally, we still go through some of the motions even if
+          the package is not being built.  This allows for enough of the
+          BuildWork to get populated for subsequent InstallParams to be
+          created (e.g., we can look at srp.work.build.notes to figure out
+          package name).
+
     NOTE: This describes how the data members DIFFER from the args passed
           into the constructor.  See __init__ for the full story.
 
     """
-    def __init__(self, notes, src=None, extradir=None, copysrc=False):
+    __slots__ = ["notes", "src", "extradir", "copysrc", "update"]
+    def __init__(self, notes, src=None, extradir=None, copysrc=False,
+                 update=False):
         """Args:
         
           notes - Path to the NOTES file used for building the package.
@@ -160,6 +168,10 @@ class BuildParameters(SrpObject):
           copysrc - If set to True, the build will create a copy of the
               source tree (i.e., so we don't modify an external source
               tree).  Defaults to False.
+
+          update - If set to True, only build the package if the NOTES
+              file is newer than the built package (or the package hasn't
+              ever been built).  Defaults to False.
 
         NOTE: All paths can be specified as relative paths, but will get
               stored away as absolute paths after validation.
@@ -198,6 +210,7 @@ class InstallParameters(SrpObject):
           into the constructor.  See __init__ for the full story.
 
     """
+    __slots__ = ["pkg", "upgrade"]
     def __init__(self, pkg, upgrade=True):
         """Args:
         
@@ -231,6 +244,7 @@ class QueryParameters(SrpObject):
           into the constructor.  See __init__ for the full story.
 
     """
+    __slots__ = ["types", "criteria"]
     def __init__(self, types, criteria):
         """Args:
         
@@ -324,6 +338,7 @@ def build():
     if not mach:
         mach = "unknown"
     pname = "{}.{}.brp".format(n.header.fullname, mach)
+    n.brp.pname = pname
     print("finalizing", pname)
 
     if srp.params.dry_run:

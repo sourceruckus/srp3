@@ -381,8 +381,43 @@ def main():
             srp.params.install = None
 
         elif mode == "--build-and-install" or mode == "-B":
-            # FIXME: not implemented
-            pass
+            # we need to do a little extra work here weeding out kwargs
+            # for build vs install vs invalid.
+            arg = arg.split(',')
+            kwargs_b = {"notes": arg[0]}
+            kwargs_i = {}
+            for x in arg[1:]:
+                k,v = x.split('=')
+                if k in srp.BuildParameters.__slots__:
+                    kwargs_b[k] = v
+                elif k in srp.InstallParameters.__slots__:
+                    kwargs_i[k] = v
+                else:
+                    raise Exception("invalid keyword argument: {}".format(k))
+            # FIXME: we need to check to see if the package already exists
+            #        on disk and is newer then NOTES file... and skip the
+            #        actual build if so
+            #
+            #        if we want to use any of srp.work.build (e.g., to get
+            #        at notes to figure out pname below) for the install
+            #        part of this, we cannot just SKIP the build...
+            #
+            srp.params.build = srp.BuildParameters(**kwargs_b)
+            print(srp.params)
+            srp.build()
+            
+            # do the install
+            #
+            # FIXME: if build was --dry-run, the package file won't have
+            #        been built... and InstallParameters constructor will
+            #        go boom...
+            #
+            kwargs_i["pkg"] = srp.work.build.notes.brp.pname
+            srp.params.install = srp.InstallParameters(**kwargs_i)
+            print(srp.params)
+            srp.install()
+            srp.params.build = None
+            psr.params.install = None
 
         elif mode == "--uninstall" or mode == "-u":
             arg = arg.split(',')
