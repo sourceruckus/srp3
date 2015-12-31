@@ -6,10 +6,12 @@ functions that actually DO STUFF using the other components of srp).
 This module gets merged into the toplevel srp module.
 """
 
+import glob
 import hashlib
 import os
 import pickle
 import platform
+import shutil
 import stat
 import tarfile
 import tempfile
@@ -244,6 +246,8 @@ class QueryParameters(SrpObject):
         self.criteria = criteria
 
 
+# FIXME: decorator to purge topdir when we're done?
+
 def build():
     """Builds a package according to the RunTimeParameters instance
     `srp.params'.  All work is stored in the features.WorkBag instance
@@ -394,11 +398,20 @@ def build():
         brp.addfile(brp.gettarinfo(arcname="SHA", fileobj=f),
                     fileobj=f)
 
-    # FIXME: all the files are still left in /tmp/srp-asdf...
-
     # close the toplevel brp archive
     brp.close()
     __brp.close()
+
+    # clean out topdir
+    for g in glob.glob("{}/*".format(srp.work.topdir)):
+        if os.path.isdir(g):
+            shutil.rmtree(g)
+        else:
+            os.remove(g)
+
+    # FIXME: should i clear srp.work.build at this point?  it shouldn't
+    #        really hurt anything if i leave it... and maybe it will be
+    #        helpful during a --build-and-install?
 
 
 def install():
@@ -478,6 +491,13 @@ def install():
     # FIXME: is there a better place for this?
     if not srp.params.dry_run:
         srp.db.commit()
+
+    # clean out topdir
+    for g in glob.glob("{}/*".format(srp.work.topdir)):
+        if os.path.isdir(g):
+            shutil.rmtree(g)
+        else:
+            os.remove(g)
 
 
 # FIXME: Need to document these query type and criteria ramblings
@@ -574,6 +594,14 @@ def query():
                 print(format_results_raw(m))
             else:
                 raise Exception("Unsupported query type '{}'".format(t))
+
+    # clean out topdir
+    for g in glob.glob("{}/*".format(srp.work.topdir)):
+        if os.path.isdir(g):
+            shutil.rmtree(g)
+        else:
+            os.remove(g)
+
 
 # FIXME: we should put all the pre-defined query_type and format_results
 #        funcs somewhere else and dynamically extend them via the Features
