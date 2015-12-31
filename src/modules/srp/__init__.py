@@ -14,7 +14,7 @@ params = core.RunTimeParameters()
 #
 # FIXME: was setting __all__ and iterating over it... but not sure why now
 #
-for x in ["config", "features", "notes", "cli", "blob", "db"]:
+for x in ["utils", "config", "features", "notes", "cli", "blob", "db"]:
     __import__(".".join([__name__, x]))
 del x
 

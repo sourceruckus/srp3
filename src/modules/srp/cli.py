@@ -80,15 +80,13 @@ g = p.add_argument_group("MODE", "Operational Modes of Doom")
 g.add_argument('-b', '--build', metavar="NOTES[,key=val,...]",
                action=OrderedMode,
                help="""Build package specified by the supplied NOTES file (and
-               optional keyword arguments).  Valid keyword args for build are in
-               srp.core.BuildParameters.  Resulting binary package will be
+               optional keyword arguments).  Resulting binary package will be
                written to PWD.""")
 
 g.add_argument('-i', '--install', metavar="PKG[,key=val,...]",
                action=OrderedMode,
                help="""Install package specified by the supplied PKG file (and
-               optional keyword arguments).  Valid keyword args for install are
-               in srp.core.InstallParameters.  If a different version of
+               optional keyword arguments).  If a different version of
                PACKAGE is already installed, it will be upgraded unless
                upgrade=False is set.  Note that upgrade and downgrade are
                not differentiated (i.e., you can upgrade from version 3 to
@@ -99,9 +97,7 @@ g.add_argument('-i', '--install', metavar="PKG[,key=val,...]",
 g.add_argument('-B', '--build-and-install', metavar="NOTES[,key=val,...]",
                action=OrderedMode,
                help="""Build and install the package specified by the supplied
-               NOTES file (and
-               optional keyword arguments).  Valid keyword wargs are defined in
-               srp.core.BuildParameters and srp.core.InstallParameters.
+               NOTES file (and optional keyword arguments).
                If the package already exists in PWD and is newer than the
                NOTES file, the previously built package is installed w/out
                triggering a re-build.""")
@@ -271,19 +267,44 @@ def parse_options():
     args.options = args.options.split(',')
 
 
-def extra_help(mode):
-    thingy = getattr(srp, mode.capitalize()+"Parameters")
+def format_extra_help(mode):
+    """Generates extra help message for specified mode, returns it as a
+    string.
+
+    """
+    # fetch the registered Action for the specified mode from the global
+    # ArgumentParser instance
+    action = p._option_string_actions[mode]
+
+    # fetch the constructor's doctstring
+    thingy = getattr(srp, mode.lstrip('-').capitalize()+"Parameters")
+    lines = thingy.__init__.__doc__.split('\n')
+
+    # format it better for cli output
+    #
+    # NOTE: Find 1st line with leading whitespace (should be 2nd),
+    #       calculate the indent level (should be number of leading
+    #       spaces), remove that much leading whitespace from each line.
+    #
+    for line in lines:
+        if not line.startswith(' '):
+            continue
+    lvl = 0
+    for x in line:
+        if x == ' ':
+            lvl += 1
+        else:
+            break
     out = []
-    out.append("--- {} Class Documentation ---")
-    out.append("{}")
+    out.append("srp {} {}".format(mode, action.metavar))
     out.append("")
-    out.append("--- Initialization Notes ---\n")
-    out.append("        {}")
-    print("\n".join(out).format(
-        thingy.__name__,
-        "\n".join(thingy.__doc__.strip().split('\n')[1:]),
-        thingy.__init__.__doc__))
-    return
+    out.append(srp.utils.wrap_text(action.help))
+    out.append("")
+    out.append(lines[0])
+    for line in lines[1:]:
+        out.append(line[lvl:])
+
+    return "\n".join(out).strip()
 
 
 def main():
@@ -304,19 +325,19 @@ def main():
 
     # check for any information-and-exit type flags
     if args.help_build:
-        extra_help("build")
+        print(format_extra_help("--build"))
         return
 
     if args.help_install:
-        extra_help("install")
+        print(format_extra_help("--install"))
         return
 
     if args.help_uninstall:
-        extra_help("uninstall")
+        print(format_extra_help("--uninstall"))
         return
 
     if args.help_query:
-        extra_help("query")
+        print(format_extra_help("--query"))
         return
 
     if args.features:

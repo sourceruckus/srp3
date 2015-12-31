@@ -6,7 +6,6 @@ functions that actually DO STUFF using the other components of srp).
 This module gets merged into the toplevel srp module.
 """
 
-import glob
 import hashlib
 import os
 import pickle
@@ -125,64 +124,59 @@ class RunTimeParameters(SrpObject):
                 srp.db.load()
 
 
-# FIXME: where should this go?
-def expand_path(path):
-    """Returns a single, expanded, absolute path.  `path' arg can be shell
-    glob, but must result in only a single match.  An exception is raised
-    on any globbing errors (e.g., not found, multiple matches) or if the
-    resulting path doesn't exist.
-
-    """
-    rv = glob.glob(path)
-    if not rv:
-        raise Exception("no such file - {}".format(path))
-
-    if len(rv) != 1:
-        raise Exception("glob had multiple matches - {}".format(path))
-
-    rv = os.path.abspath(rv[0])
-    return rv
-
-
-# NOTE: Keep docstrings high-level enough to make sense if extracted via
-#       cli for help messages.  Only concentrate on BEHAVIOR.
-#
 class BuildParameters(SrpObject):
-    """Data:
+    """Class representing the parameters for srp.build().
 
-    notes - Path to the notes file on disk.
+    Data:
 
-    src - Either the path to a source tarball or a directory full of
-        source code.  Defaults to the directory containing the notes file.
+      notes - Absolute path that has already been validated (i.e., it
+          exists, glob only matched a single item).
 
-    extradir - Specifies the path to a dir to be used to locate extra
-        files needed by the build_script.  Defaults to the directory
-        containing the notes file.
+      src - Absolute path, already validated.
 
-    copysrc - If True, the build will create a copy of the source tree
-        (i.e., so we don't modify an external source tree).  Defaults to
-        False.
+      extradir - Absolute, validated path.
+
+      copysrc - Same as param to __init__.
+
+    NOTE: This describes how the data members DIFFER from the args passed
+          into the constructor.  See __init__ for the full story.
 
     """
     def __init__(self, notes, src=None, extradir=None, copysrc=False):
-        """The paths `notes', `src', and `extradir' can be specified as relative
-        paths, but will get stored away as absolute paths.
+        """Args:
+        
+          notes - Path to the NOTES file used for building the package.
 
-        Paths can use shell globbing (e.g., src/foo/foo*.tar.*) but MUST
-        only result in a single match.
+          src - Path to either a source tarball or a directory full of
+              source code.  Defaults to the directory containing the NOTES
+              file.
+
+          extradir - Path to a dir to be used to locate extra files
+              required by the build_script.  Defaults to directory
+              containing the NOTES file.
+
+          copysrc - If set to True, the build will create a copy of the
+              source tree (i.e., so we don't modify an external source
+              tree).  Defaults to False.
+
+        NOTE: All paths can be specified as relative paths, but will get
+              stored away as absolute paths after validation.
+
+        NOTE: All paths can use shell globbing (e.g., src/foo/foo*.tar.*)
+              but MUST only result in a single match.
 
         """
-        self.notes = expand_path(notes)
+        self.notes = srp.utils.expand_path(notes)
 
         # if not set, default to directory containing notes file
         try:
-            self.src = expand_path(src)
+            self.src = srp.utils.expand_path(src)
         except:
             self.src = os.path.dirname(self.notes)
 
         # if not set, default to directory containing notes file
         try:
-            self.extradir = expand_path(extradir)
+            self.extradir = srp.utils.expand_path(extradir)
         except:
             self.extradir = os.path.dirname(self.notes)
 
@@ -190,44 +184,62 @@ class BuildParameters(SrpObject):
 
 
 class InstallParameters(SrpObject):
-    """Data:
+    """Class representing the parameters for srp.install().
 
-    pkg - Absolute path to a brp to be installed.
+    Data:
 
-    upgrade - Setting to False will disable upgrade logic and raise an
-        error if the specified package is already installed.  Defaults to
-        True.
+      pkg - Absolute, validated path.
+
+      upgrade - Same as param to __init__.
+
+    NOTE: This describes how the data members DIFFER from the args passed
+          into the constructor.  See __init__ for the full story.
 
     """
     def __init__(self, pkg, upgrade=True):
-        """The path `pkg' can be specified as a relative path and can use shell
-        globbing.
+        """Args:
+        
+          pkg - Path to the package to be installed.
+
+          upgrade - Setting to False will disable upgrade logic and raise
+              an error if the specified package is already installed.
+              Defaults to True.
+
+        NOTE: All paths can be specified as relative paths, but will get
+              stored away as absolute paths after validation.
+
+        NOTE: All paths can use shell globbing (e.g., src/foo/foo*.tar.*)
+              but MUST only result in a single match.
 
         """
-        self.pkg = expand_path(pkg)
+        self.pkg = srp.utils.expand_path(pkg)
         self.upgrade = upgrade
 
 
-# NOTE: `types' is stored internally as a list and `criteria' is a dict.
-#       The docstring is kept high-level so it can be used by cli for
-#       helping users.
-#
-# FIXME: need to inject valid types and valid criteria in here somehow...
-#
-# FIXME: maybe we should put all the string tokenization in the Params
-#        constructors, that way our docstrings would be accurate and
-#        applicable to cli...
-#
 class QueryParameters(SrpObject):
-    """Data:
+    """Class representing the parameters for srp.query().
 
-    types - List of types of results the user is asking for.
+    Data:
 
-    criteria - List of key=value pairs describing search criteria that
-        would make a package match.
+      types - Stored as a list.
+
+      criteria - Stored as a dict.
+
+    NOTE: This describes how the data members DIFFER from the args passed
+          into the constructor.  See __init__ for the full story.
 
     """
     def __init__(self, types, criteria):
+        """Args:
+        
+          types - Comma-delimited list of types of results the user is
+              asking for (e.g., 'info,files')
+
+          criteria - Comma-delimited list of key=val pairs describing the
+              search criteria that would make a package match (e.g.,
+              'pkg=*').
+
+        """
         self.types = types
         self.criteria = criteria
 

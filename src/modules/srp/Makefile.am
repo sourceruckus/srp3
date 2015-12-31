@@ -5,6 +5,7 @@ pkgpyexec_PYTHON += cli.py
 pkgpyexec_PYTHON += core.py
 pkgpyexec_PYTHON += db.py
 pkgpyexec_PYTHON += notes.py
+pkgpyexec_PYTHON += utils.py
 
 nodist_pkgpyexec_PYTHON = config.py
 
