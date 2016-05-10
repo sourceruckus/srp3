@@ -532,6 +532,9 @@ class InstallWork(srp.SrpObject):
 #       import the API structure and functions (which happens to avoid the
 #       circular deps problem when a feature module tries to import * from
 #       srp.features)
+#
+# FIXME: is that still true?
+#
 from glob import glob
 import os
 for x in glob("{}/*.py".format(__path__[0])):
@@ -549,3 +552,5 @@ for x in glob("{}/*.py".format(__path__[0])):
 del glob
 del os
 del x
+
+# FIXME: move huge ammount of stuff to api.py

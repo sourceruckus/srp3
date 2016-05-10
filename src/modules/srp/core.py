@@ -195,6 +195,7 @@ class BuildParameters(SrpObject):
             self.extradir = os.path.dirname(self.notes)
 
         self.copysrc = copysrc
+        self.update = update
 
 
 class InstallParameters(SrpObject):
