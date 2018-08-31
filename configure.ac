@@ -16,7 +16,7 @@ AC_SUBST(SRP_MAJOR_VERSION, srp_major_version)
 AC_SUBST(SRP_MINOR_VERSION, srp_minor_version)
 AC_SUBST(SRP_MICRO_VERSION, srp_micro_version)
 AC_SUBST(SRP_DEVTAG, srp_devtag)
-AC_SUBST(SRP_BUILD_YEAR, 2016)
+AC_SUBST(SRP_BUILD_YEAR, 2018)
 
 AM_INIT_AUTOMAKE(dist-xz no-dist-gzip tar-pax foreign subdir-objects color-tests)
 
