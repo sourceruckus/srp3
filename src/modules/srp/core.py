@@ -302,9 +302,9 @@ def build():
     #        files... in which case we'll rip that out of the core
     #        feature's build_func and put it somewhere else.
 
-    print(srp.work)
-
     # run through all queued up stage funcs for build
+    if srp.params.verbosity:
+        print(srp.work)
     print("features:", n.header.features)
     print("build funcs:", funcs)
     for f in funcs:
@@ -312,10 +312,12 @@ def build():
         section = getattr(getattr(srp.features, f.name),
                           "Notes"+f.name.capitalize(), False)
         if section and not getattr(n, f.name, False):
-            print("creating notes section:", f.name)
+            if srp.params.verbosity:
+                print("creating notes section:", f.name)
             setattr(n, f.name, section())
 
-        print("executing:", f)
+        if srp.params.verbosity:
+            print("executing:", f)
         if not srp.params.dry_run:
             try:
                 f.func()
@@ -333,10 +335,12 @@ def build():
             section = getattr(getattr(srp.features, f.name),
                               "Notes"+f.name.capitalize(), False)
             if section and not getattr(n, f.name, False):
-                print("creating notes section:", f.name)
+                if srp.params.verbosity > 1:
+                    print("creating notes section:", f.name)
                 setattr(n, f.name, section())
 
-            print("executing:", f, x)
+            if srp.params.verbosity > 1:
+                print("executing:", f, x)
             if not srp.params.dry_run:
                 try:
                     f.func(x)
@@ -457,6 +461,8 @@ def install():
     iter_funcs = srp.work.install.iter_funcs
 
     # run through install funcs
+    if srp.params.verbosity:
+        print(srp.work)
     print("features:", n.header.features)
     print("install funcs:", funcs)
     for f in funcs:
@@ -464,10 +470,12 @@ def install():
         section = getattr(getattr(srp.features, f.name),
                           "Notes"+f.name.capitalize(), False)
         if section and not getattr(n, f.name, False):
-            print("creating notes section:", f.name)
+            if srp.params.verbosity:
+                print("creating notes section:", f.name)
             setattr(n, f.name, section())
 
-        print("executing:", f)
+        if srp.params.verbosity:
+            print("executing:", f)
         if not srp.params.dry_run:
             try:
                 f.func()
@@ -485,10 +493,12 @@ def install():
             section = getattr(getattr(srp.features, f.name),
                               "Notes"+f.name.capitalize(), False)
             if section and not getattr(n, f.name, False):
-                print("creating notes section:", f.name)
+                if srp.params.verbosity > 1:
+                    print("creating notes section:", f.name)
                 setattr(n, f.name, section())
 
-            print("executing:", f, x)
+            if srp.params.verbosity > 1:
+                print("executing:", f, x)
             if not srp.params.dry_run:
                 try:
                     f.func(x)

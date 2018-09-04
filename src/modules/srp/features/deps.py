@@ -41,7 +41,8 @@ def build_func(fname):
     deps = []
 
     realname = srp.work.topdir+"/payload"+fname
-    print("calculating deps for: ", realname)
+    if srp.params.verbosity > 1:
+        print("calculating deps for:", realname)
 
     # NOTE: We're using objdump here instead of ldd.  The difference is that
     #       objdump will only tell us what libraries this executable EXPLICITLY
@@ -81,13 +82,15 @@ def build_func(fname):
         if line[0] == "SONAME":
             soname = line[1]
     
-    print("needed:", deps)
+    if srp.params.verbosity > 1:
+        print("needed:", deps)
 
     # stash our libinfo tuple into this file's section of the manifest
     if file_format and soname:
         libinfo = (file_format, soname)
         srp.work.build.manifest[fname]["libinfo"] = libinfo
-        print("provides:", libinfo)
+        if srp.params.verbosity > 1:
+            print("provides:", libinfo)
         
         # also stash this info in the deps section of the notes file for
         # easy weeding out
@@ -141,13 +144,17 @@ def install_func():
     #        LD_PRELOAD=libncurses.so.5 on the command line.
     n = srp.work.install.notes
     deps = n.deps.libs_needed[:]
-    print(deps)
+    if srp.params.verbosity:
+        print(deps)
     for x in n.deps.libs_provided:
-        print(x)
+        if srp.params.verbosity:
+            print("this package provides", x)
         try:
             deps.remove(x)
         except:
             pass
+    if srp.params.verbosity:
+        print deps
 
     # NOTE: We iterate all the way through so that the user can see ALL the
     #       missing libs as apposed to just the first one
@@ -265,12 +272,14 @@ def lookup_lib(file_format, libname):
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          env = {"LD_PRELOAD": libname})
     out,err = p.communicate()
-    print(err)
-    print(out)
+    if srp.params.verbosity:
+        print(err)
+        print(out)
     
     for line in out.decode().split('\n'):
         line = line.strip().split()
-        print(line)
+        if srp.params.verbosity:
+            print(line)
         if not line:
             continue
         if line[0] == libname:

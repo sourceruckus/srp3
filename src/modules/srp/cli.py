@@ -311,7 +311,8 @@ def main():
     global args
     args = p.parse_args()
 
-    print(args)
+    if args.verbose:
+        print(args)
 
     #parse_package_list()
     parse_options()
@@ -350,7 +351,8 @@ def main():
             args.list = "*"
         srp.params.query = srp.QueryParameters(["name"],
                                                {"pkg": args.list})
-        print(srp.params)
+        if srp.params.verbosity:
+            print(srp.params)
         srp.query()
         return
 
@@ -365,7 +367,8 @@ def main():
                 k,v = x.split('=')
                 kwargs[k] = v
             srp.params.build = srp.BuildParameters(**kwargs)
-            print(srp.params)
+            if srp.params.verbosity:
+                print(srp.params)
             srp.build()
             srp.params.build = None
 
@@ -376,7 +379,8 @@ def main():
                 k,v = x.split('=')
                 kwargs[k] = v
             srp.params.install = srp.InstallParameters(**kwargs)
-            print(srp.params)
+            if srp.params.verbosity:
+                print(srp.params)
             srp.install()
             srp.params.install = None
 
@@ -403,7 +407,8 @@ def main():
             #        part of this, we cannot just SKIP the build...
             #
             srp.params.build = srp.BuildParameters(**kwargs_b)
-            print(srp.params)
+            if srp.params.verbosity:
+                print(srp.params)
             srp.build()
             
             # do the install
@@ -414,7 +419,8 @@ def main():
             #
             kwargs_i["pkg"] = srp.work.build.notes.brp.pname
             srp.params.install = srp.InstallParameters(**kwargs_i)
-            print(srp.params)
+            if srp.params.verbosity:
+                print(srp.params)
             srp.install()
             srp.params.build = None
             psr.params.install = None
@@ -426,7 +432,8 @@ def main():
                 k,v = x.split('=')
                 kwargs[k] = v
             srp.params.uninstall = srp.UninstallParameters(**kwargs)
-            print(srp.params)
+            if srp.params.verbosity:
+                print(srp.params)
             srp.uninstall()
             srp.params.uninstall = None
 
@@ -440,7 +447,8 @@ def main():
                 else:
                     q_t.append(x)
             srp.params.query = srp.QueryParameters(q_t, q_c)
-            print(srp.params)
+            if srp.params.verbosity:
+                print(srp.params)
             srp.query()
             srp.params.query = None
 

@@ -153,6 +153,8 @@ def build_func(fname):
     p = PermsList(n.perms.buffer)
 
     x = srp.work.build.manifest[fname]["tinfo"]
+    if srp.params.verbosity > 1:
+        print("checking perms for:", x)
 
     # skip links
     #
@@ -179,6 +181,8 @@ def build_func(fname):
     #       first when writing perms rules.
     if x.islnk():
         x = srp.work.build.manifest["/"+x.linkname]["tinfo"]
+        if srp.params.verbosity > 1:
+            print("was hardlink to:", x)
 
     # return if there's no perms matching this file
     #
@@ -188,6 +192,8 @@ def build_func(fname):
         return
 
     for rule in p[fname]:
+        if srp.params.verbosity > 1:
+            print("rule:", rule)
 
         if 'user' in rule['options']:
             try:
