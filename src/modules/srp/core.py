@@ -303,10 +303,11 @@ def build():
     #        feature's build_func and put it somewhere else.
 
     # run through all queued up stage funcs for build
+    print("features:", n.header.features)
+    print("--- build ---")
     if srp.params.verbosity:
         print(srp.work)
-    print("features:", n.header.features)
-    print("build funcs:", funcs)
+        print("build funcs:", funcs)
     for f in funcs:
         # check for notes section class and create if needed
         section = getattr(getattr(srp.features, f.name),
@@ -328,7 +329,9 @@ def build():
     # now run through all queued up stage funcs for build_iter
     #
     # FIXME: multiprocessing
-    print("build_iter funcs:", iter_funcs)
+    print("--- build_iter ---")
+    if srp.params.verbosity:
+        print("build_iter funcs:", iter_funcs)
     for x in srp.work.build.manifest:
         for f in iter_funcs:
             # check for notes section class and create if needed

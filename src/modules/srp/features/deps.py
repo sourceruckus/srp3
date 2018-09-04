@@ -154,7 +154,7 @@ def install_func():
         except:
             pass
     if srp.params.verbosity:
-        print deps
+        print(deps)
 
     # NOTE: We iterate all the way through so that the user can see ALL the
     #       missing libs as apposed to just the first one

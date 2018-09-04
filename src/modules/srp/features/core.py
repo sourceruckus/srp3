@@ -103,7 +103,12 @@ def build_func():
             if srp.params.build.gitsrc != "HEAD":
                 go += ["--branch", srp.params.build.gitsrc]
             go += [srp.params.build.src, sourcedir]
-            subprocess.check_call(go)
+            if not srp.params.verbosity:
+                # be silent
+                subprocess.check_call(go, stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+            else:
+                subprocess.check_call(go)
 
         else:
             sourcedir = srp.params.build.src
