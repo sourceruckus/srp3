@@ -97,6 +97,14 @@ def build_func():
             print("copying external sourcetree...")
             shutil.copytree(srp.params.build.src, sourcedir)
 
+        elif srp.params.build.gitsrc:
+            print("cloning external sourcetree...")
+            go = ["git", "clone", "--shared"]
+            if srp.params.build.gitsrc != "HEAD":
+                go += ["--branch", srp.params.build.gitsrc]
+            go += [srp.params.build.src, sourcedir]
+            subprocess.check_call(go)
+
         else:
             sourcedir = srp.params.build.src
 
