@@ -156,11 +156,6 @@ g.add_argument('-a', '--action', metavar="ACTIONS",
 #
 #        commit - re-checksum and record package changes
 
-# FIXME: this isn't needed, is it?
-#
-#g.add_argument('-I', '--init', action='store_true',
-#               help="Initialize metadata.")
-
 p.add_argument("--help-build", action="store_true",
                help="""Extra help for --build""")
 p.add_argument("--help-install", action="store_true",
