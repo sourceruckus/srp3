@@ -289,12 +289,16 @@ class BlobFile(srp.SrpObject):
         """
         # get the TarInfo object
         x = self.manifest[fname]['tinfo']
+        if srp.params.verbosity > 1:
+            print("extracing", fname, "(tinfo:", x, ")")
 
         # decide on a full target pathname
         if path:
             target = os.path.join(path, x.name)
         else:
             target = x.name
+        if srp.params.verbosity > 1:
+            print("target:", target)
 
         # create leading path segments if needed
         #
@@ -322,6 +326,8 @@ class BlobFile(srp.SrpObject):
         #       else is just file creation w/ metadata
         if x.isreg():
             offset = self.hdr_offset + self.manifest[fname]["offset"]
+            if srp.params.verbosity > 1:
+                print("regular file: offset:", offset, "size:", x.size)
             if __c:
                 srp._blob.extract(self.fname, target, offset, x.size)
             else:
@@ -330,6 +336,8 @@ class BlobFile(srp.SrpObject):
                     t_fobj.write(self.fobj.read(x.size))
 
         elif x.isdir():
+            if srp.params.verbosity > 1:
+                print("directory")
             try:
                 os.mkdir(target)
             except:
@@ -339,9 +347,13 @@ class BlobFile(srp.SrpObject):
                 pass
 
         elif x.issym():
+            if srp.params.verbosity > 1:
+                print("symlink")
             os.symlink(x.linkname, target)
 
         elif x.islnk():
+            if srp.params.verbosity > 1:
+                print("hard link")
             # NOTE: This will fail if the archived link is being extracted
             #       prior to the file it links to.  I guess if we're
             #       extracting a link to a nonexistent file, we'd better
@@ -358,14 +370,20 @@ class BlobFile(srp.SrpObject):
                 os.link(os.path.join(path, x.linkname), target)
 
         elif x.ischr():
+            if srp.params.verbosity > 1:
+                print("char device")
             os.mknod(target, x.mode | stat.S_IFCHR,
                      os.makedev(x.devmajor, x.devminor))
 
         elif x.isblk():
+            if srp.params.verbosity > 1:
+                print("block device")
             os.mknod(target, x.mode | stat.S_IFBLK,
                      os.makedev(x.devmajor, x.devminor))
 
         elif x.isfifo():
+            if srp.params.verbosity > 1:
+                print("fifo")
             os.makefifo(target)
 
         # set ownership
@@ -389,6 +407,8 @@ class BlobFile(srp.SrpObject):
                 g = grp.getgrnam(x.gname).gr_gid
             except:
                 pass
+        if srp.params.verbosity > 1:
+            print("chowing to user", u, ", group", g)
         try:
             os.lchown(target, u, g)
         except:
@@ -400,11 +420,15 @@ class BlobFile(srp.SrpObject):
             return
 
         # set mode
+        if srp.params.verbosity > 1:
+            print("chmoding to", x.mode)
         os.chmod(target, x.mode)
 
         # set time(s)
         #
         # FIXME: does tar really only track mtime?
+        if srp.params.verbosity > 1:
+            print("setting mtime", x.mtime)
         os.utime(target, (x.mtime, x.mtime))
 
 
