@@ -382,7 +382,7 @@ class BuildWork(srp.SrpObject):
 
     Data:
 
-      notes - Instace of srp.notes.NotesFile.
+      notes - Instance of srp.notes.NotesFile.
 
       manifest - Instance of srp.blob.Manifest (basically a sorted dict)
           used to track files being installed and lots of metadata for
@@ -402,6 +402,8 @@ class BuildWork(srp.SrpObject):
         #        i didn't do this originally because 1) i was lazy, and 2)
         #        i think it messes with shared memory in
         #        multiprocessing...
+        #
+        #        was that ever really true?
         #
         self.manifest = srp.blob.Manifest()
 
@@ -434,7 +436,7 @@ class InstallWork(srp.SrpObject):
 
     Data:
 
-      notes - Instace of srp.notes.NotesFile loaded out of the package.
+      notes - Instance of srp.notes.NotesFile loaded out of the package.
 
       prevs - List of previously installed srp.db.InstalledPackage
           instances of the same name.

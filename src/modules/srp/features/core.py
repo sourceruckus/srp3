@@ -53,11 +53,10 @@ def build_func():
 
     # define paths once
     sourcedir = srp.work.topdir + '/source'
-    extradir = srp.work.topdir + '/extra_contenct'
+    extradir = srp.work.topdir + '/extra_content'
     buildscript = srp.work.topdir + '/srp_go'
     builddir = srp.work.topdir + '/build'
     payloaddir = srp.work.topdir + '/payload'
-    sourcedir = srp.work.topdir + '/source'
 
     # setup source dir(s)
     #
@@ -75,6 +74,9 @@ def build_func():
         #
         # FIXME: This means if the source tarball is some odd tar that isn't
         #        all contained in a toplevel dir, we have problems...
+        #
+        #        maybe use TarFile object to check for messy source
+        #        tarball and skip this code if detected?
         d = os.listdir(sourcedir)
         if len(d) == 1:
             d = d[0]
