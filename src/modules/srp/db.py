@@ -171,6 +171,10 @@ def load():
 
 def lookup_by_name(name):
     retval = []
+    if srp.params.verbosity:
+        # FIXME: printing __db at verbosity==1 might be too much...
+        print(__db)
+        print("name:", name)
     for x in __db:
         if fnmatch.fnmatch(x, name):
             retval.extend(__db[x])

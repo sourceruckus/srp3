@@ -145,7 +145,7 @@ def install_func():
     n = srp.work.install.notes
     deps = n.deps.libs_needed[:]
     if srp.params.verbosity:
-        print(deps)
+        print("deps before weeding out libs we provide:", deps)
     for x in n.deps.libs_provided:
         if srp.params.verbosity:
             print("this package provides", x)
@@ -154,7 +154,7 @@ def install_func():
         except:
             pass
     if srp.params.verbosity:
-        print(deps)
+        print("deps:", deps)
 
     # NOTE: We iterate all the way through so that the user can see ALL the
     #       missing libs as apposed to just the first one

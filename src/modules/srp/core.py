@@ -467,7 +467,9 @@ def install():
     if srp.params.verbosity:
         print(srp.work)
     print("features:", n.header.features)
-    print("install funcs:", funcs)
+    print("--- install ---")
+    if srp.params.verbosity:
+        print("install funcs:", funcs)
     for f in funcs:
         # check for notes section class and create if needed
         section = getattr(getattr(srp.features, f.name),
@@ -489,7 +491,9 @@ def install():
     # now run through all queued up stage funcs for install_iter
     #
     # FIXME: multiprocessing
-    print("install_iter funcs:", iter_funcs)
+    print("--- install_iter ---")
+    if srp.params.verbosity:
+        print("install_iter funcs:", iter_funcs)
     for x in m:
         for f in iter_funcs:
             # check for notes section class and create if needed
@@ -620,7 +624,7 @@ def query():
         else:
             raise Exception("Unsupported criteria '{}'".format(k))
 
-    print("fetching for all matches: {}".format(srp.params.query.types))
+    print("matches:", matches)
     for m in matches:
         for t in srp.params.query.types:
             if t == "name":
@@ -655,6 +659,8 @@ def query_pkg(name):
         # FIXME: shouldn't there be a helper func for basic brp-on-disk
         #        access?
         #
+        if srp.params.verbosity:
+            print("querying via package file on disk")
         with tarfile.open(name) as p:
             n_fobj = p.extractfile("NOTES")
             n = pickle.load(n_fobj)
@@ -666,6 +672,8 @@ def query_pkg(name):
 
     else:
         # query installed package via db
+        if srp.params.verbosity:
+            print("querying via installed package db")
         return srp.db.lookup_by_name(name)
 
 
