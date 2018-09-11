@@ -288,6 +288,7 @@ def build():
     n = srp.work.build.notes
     funcs = srp.work.build.funcs
     iter_funcs = srp.work.build.iter_funcs
+    final_funcs = srp.work.build.final_funcs
 
     # FIXME: should the core feature func untar the srp in a tmp dir? or
     #        should we do that here and pass tmpdir in via our work
@@ -350,6 +351,27 @@ def build():
                 except:
                     print("ERROR: failed feature stage function:", f)
                     raise
+
+    # and now run all the stage funcs for build_final
+    print("--- build_final ---")
+    if srp.params.verbosity:
+        print("build_final funcs:", final_funcs)
+    for f in final_funcs:
+        # FIXME: build has magic NotesThingy creation code... is that
+        #        needed here?  or even there?  i thought that just
+        #        happened during NotesFile()...
+        if srp.params.verbosity:
+            print("executing:", f)
+        if not srp.params.dry_run:
+            try:
+                f.func()
+            except:
+                print("ERROR: failed feature stage function:", f)
+                raise
+
+    # FIXME: move the rest of this into a features/core install_final
+    #        func...
+
 
     # create the toplevel brp archive
     #
@@ -462,6 +484,7 @@ def install():
     m = srp.work.install.manifest
     funcs = srp.work.install.funcs
     iter_funcs = srp.work.install.iter_funcs
+    final_funcs = srp.work.install.final_funcs
 
     # run through install funcs
     if srp.params.verbosity:
@@ -512,6 +535,27 @@ def install():
                 except:
                     print("ERROR: failed feature stage function:", f)
                     raise
+
+    # and now run all the stage funcs for install_final
+    print("--- install_final ---")
+    if srp.params.verbosity:
+        print("install_final funcs:", final_funcs)
+    for f in final_funcs:
+        # FIXME: build has magic NotesThingy creation code... is that
+        #        needed here?  or even there?  i thought that just
+        #        happened during NotesFile()...
+        if srp.params.verbosity:
+            print("executing:", f)
+        if not srp.params.dry_run:
+            try:
+                f.func()
+            except:
+                print("ERROR: failed feature stage function:", f)
+                raise
+
+    # FIXME: move the rest of this into a features/core install_final
+    #        func...
+
 
     # commit NOTES to disk in srp db
     #

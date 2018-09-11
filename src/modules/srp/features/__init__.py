@@ -22,15 +22,24 @@ The pre-defined stages are:
   build_iter(fname) -- If you want to tweak each file before it gets added
   to the archive, this is the stage you want.
 
+  build_final() -- Any package-level finalization that needs to happen
+  after build_iter.
+
   install() -- Install the package on a system.
 
   install_iter(fname) -- If you have something special to do that involves
   iterating over all the installed files, this is the stage to use.
 
+  install_final() -- Any extra package-level installation work that needs
+  to be done after install_iter.
+
   uninstall() -- Uninstall the package from a system.
 
   uninstall_iter(fname) -- If you have something to do per file during
   uninstall, this is the stage to do it in.
+
+  uninstall_final() -- Any package-level uninstallation work that needs to
+  be done after uninstall_iter.
 
   action -- This stage is special.  It's really a meta-stage of sorts,
   allowing Features to create their own special pseudo-stages.  These
@@ -57,9 +66,9 @@ registered_features = {}
 action_map = {}
 
 # The standard list of stages
-stage_list = ['build', 'build_iter',
-              'install', 'install_iter',
-              'uninstall', 'uninstall_iter']
+stage_list = ['build', 'build_iter', 'build_final',
+              'install', 'install_iter', 'install_final',
+              'uninstall', 'uninstall_iter', 'uninstall_final']
 
 
 # FIXME: could use collections.namedtuple, derive from tuple myself, or
@@ -78,19 +87,22 @@ class feature_struct:
 
     """
     def __init__(self, name=None, doc=None, default=False,
-                 build=None, build_iter=None,
-                 install=None, install_iter=None,
-                 uninstall=None, uninstall_iter=None,
+                 build=None, build_iter=None, build_final=None,
+                 install=None, install_iter=None, install_final=None,
+                 uninstall=None, uninstall_iter=None, uninstall_final=None,
                  action=[], info=None):
         self.name=name
         self.doc=doc
         self.default=default
         self.build=build
         self.build_iter=build_iter
+        self.build_final=build_final
         self.install=install
         self.install_iter=install_iter
+        self.install_final=install_final
         self.uninstall=uninstall
         self.uninstall_iter=uninstall_iter
+        self.uninstall_final=uninstall_final
         self.action=action
         self.info=info
 
@@ -115,8 +127,9 @@ class feature_struct:
         """Method used to do validity checking on instances"""
         if not (self.name and self.doc):
             return False
-        if not (self.build or self.build_iter or self.install
-                or self.install_iter or self.uninstall or self.uninstall_iter
+        if not (self.build or self.build_iter or self.build_final
+                or self.install or self.install_iter or self.install_final
+                or self.uninstall or self.uninstall_iter or self.uninstall_final
                 or self.action):
             return False
         return True
@@ -393,6 +406,9 @@ class BuildWork(srp.SrpObject):
       iter_funcs - Sorted list of stage_struct instances for the
           build_iter stage.
 
+      final_funcs - Sorted list of stage_struct instances for the
+          build_final stage.
+
     """
     def __init__(self):
         with open(srp.params.build.notes, 'rb') as fobj:
@@ -410,6 +426,7 @@ class BuildWork(srp.SrpObject):
         stages = get_stage_map(self.notes.header.features)
         self.funcs = stages["build"]
         self.iter_funcs = stages["build_iter"]
+        self.final_funcs = stages["build_final"]
 
         # add brp section to NOTES instance
         self.notes.brp = srp.notes.NotesBrp()
@@ -450,6 +467,9 @@ class InstallWork(srp.SrpObject):
 
       iter_funcs - Sorted list of stage_struct instances for the
           install_iter stage.
+
+      final_funcs - Sorted list of stage_struct instances for the
+          install_final stage.
 
     """
     def __init__(self):
@@ -522,6 +542,7 @@ class InstallWork(srp.SrpObject):
         stages = get_stage_map(self.notes.header.features)
         self.funcs = stages["install"]
         self.iter_funcs = stages["install_iter"]
+        self.final_funcs = stages["install_final"]
 
 
 
