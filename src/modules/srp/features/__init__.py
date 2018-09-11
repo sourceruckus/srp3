@@ -558,9 +558,9 @@ class InstallWork(srp.SrpObject):
 #
 # FIXME: is that still true?
 #
-from glob import glob
+import glob
 import os
-for x in glob("{}/*.py".format(__path__[0])):
+for x in glob.glob("{}/*.py".format(__path__[0])):
     if x == __file__:
         # skip __init__.py
         continue

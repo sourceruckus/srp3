@@ -7,14 +7,11 @@ This module gets merged into the toplevel srp module.
 """
 
 import glob
-import hashlib
 import os
 import pickle
-import platform
 import shutil
 import stat
 import tarfile
-import tempfile
 import time
 import types
 

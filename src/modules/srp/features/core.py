@@ -4,16 +4,19 @@ This feature module implements the core functionality of the package manager
 (i.e., creating, building, installing packages).
 """
 
+import glob
 import hashlib
 import io
 import os
 import pickle
+import platform
 import pwd
 import shutil
 import socket
 import stat
 import subprocess
 import tarfile
+import tempfile
 import time
 
 import srp
@@ -234,6 +237,10 @@ def build_func():
 
 def build_final():
     """package finalization"""
+
+    # get some local refs with shorter names
+    n = srp.work.build.notes
+
     # create the toplevel brp archive
     #
     # FIXME: we should remove this file if we fail...
@@ -340,17 +347,9 @@ def install_iter(fname):
 def install_final():
     """db registration and cleanup"""
     # commit NOTES to disk in srp db
-    #
-    # NOTE: We need to refresh our copy of n because feature funcs may have
-    #       modified the copy in work[].
-    #
     n = srp.work.install.notes
 
     # commit MANIFEST to disk in srp db
-    #
-    # NOTE: We need to refresh our copy because feature funcs may have
-    #       modified it
-    #
     m = srp.work.install.manifest
 
     # register w/ srp db
