@@ -17,3 +17,16 @@ pass2="--libdir=/usr/lib64"
 build_multi --prefix=/usr || exit 1
 
 %%BUFFER_END%%
+
+[postinstall]
+failure_policy = error
+%%BUFFER_BEGIN%%
+#!/bin/shnot
+echo "!!!!!!!!!!!!!!!! postinstall: blargedy update routine !!!!!!!!!!!!!!!!!!"
+%%BUFFER_END%%
+
+#[preuninstall]
+#%%BUFFER_BEGIN%%
+##!/bin/sh
+#echo "!!!!!!!!!!!!!!!! preuninstall: blargedy update routine !!!!!!!!!!!!!!!!!"
+#%%BUFFER_END%%
