@@ -124,7 +124,8 @@ def load():
     #       os.path.join will really add in our root path.
     #
     path = os.path.join(srp.params.root, dbpath[1:])
-    print("loading db from {}".format(path))
+    if srp.params.verbosity or srp.params.root != "/":
+        print("loading db from {}".format(path))
 
     try:
         with open(path, "rb") as f:

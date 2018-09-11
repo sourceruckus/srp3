@@ -408,7 +408,7 @@ class BlobFile(srp.SrpObject):
             except:
                 pass
         if srp.params.verbosity > 1:
-            print("chowing to user", u, ", group", g)
+            print("chowning to user", u, ", group", g)
         try:
             os.lchown(target, u, g)
         except:

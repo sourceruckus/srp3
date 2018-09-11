@@ -243,9 +243,11 @@ def lookup_elf_interpreters():
 def lookup_matching_lib(elf, file_format):
     # start in dirname(elf)
     for x in glob.glob("{}/lib*.so*".format(os.path.dirname(elf))):
-        print("checking for {}: {}".format(file_format, x))
+        if srp.params.verbosity > 1:
+            print("checking for {}: {}".format(file_format, x))
         fmt = lookup_file_format(x)
-        print("file_format:", fmt)
+        if srp.params.verbosity > 1:
+            print("file_format:", fmt)
         if file_format == fmt:
             return x
     
