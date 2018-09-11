@@ -206,7 +206,7 @@ def build_func():
     os.mkdir(builddir)
     os.mkdir(payloaddir)
     n.brp.time_build_script = time.time()
-    subprocess.check_call(["../srp_go"], cwd=builddir, env=new_env)
+    subprocess.check_call([buildscript], cwd=builddir, env=new_env)
 
     # create manifest
     #
@@ -232,9 +232,143 @@ def build_func():
     n.brp.time_manifest_creation = time.time() - n.brp.time_manifest_creation
 
 
+def build_final():
+    """package finalization"""
+    # create the toplevel brp archive
+    #
+    # FIXME: we should remove this file if we fail...
+    mach = platform.machine()
+    if not mach:
+        mach = "unknown"
+    pname = "{}.{}.brp".format(n.header.fullname, mach)
+    n.brp.pname = pname
+    print("finalizing", pname)
+
+    if srp.params.dry_run:
+        # nothing more to do, since we didn't actually build anything to
+        # finalize into a brp...
+        return
+
+    # FIXME: compression should be configurable globally and also via
+    #        the command line when building.
+    #
+    if srp.config.default_compressor == "lzma":
+        import lzma
+        __brp = lzma.LZMAFile(pname, mode="w",
+                              preset=srp.config.compressors["lzma"])
+    elif srp.config.default_compressor == "bzip2":
+        import bz2
+        __brp = bz2.BZ2File(pname, mode="w",
+                            compresslevel=srp.config.compressors["bz2"])
+    elif srp.config.default_compressor == "gzip":
+        import gzip
+        __brp = gzip.GzipFile(pname, mode="w",
+                              compresslevel=srp.config.compressors["gzip"])
+    else:
+        # shouldn't really ever happen
+        raise Exception("invalid default compressor: {}".format(
+            srp.config.default_compressor))
+
+    brp = tarfile.open(fileobj=__brp, mode="w|")
+    sha = hashlib.new("sha1")
+
+    # populate the BLOB archive
+    #
+    # NOTE: This is where we actually add TarInfo objs and their associated
+    #       fobjs to the BLOB, then add the BLOB to the brp archive.
+    #
+    # NOTE: This is implemented using a temporary file as the fileobj for a
+    #       tarfile.  When the fobj is closed it's contents are lost, but
+    #       that's fine because we will have already added it to the toplevel
+    #       brp archive.
+    n.brp.time_blob_creation = time.time()
+    blob = srp.blob.BlobFile()
+    blob.manifest = srp.work.build.manifest
+    blob.fobj = tempfile.TemporaryFile()
+    blob.tofile()
+    n.brp.time_blob_creation = time.time() - n.brp.time_blob_creation
+    # add BLOB file to toplevel pkg archive
+    blob.fobj.seek(0)
+    brp.addfile(brp.gettarinfo(arcname="BLOB", fileobj=blob.fobj),
+                fileobj=blob.fobj)
+    # rewind and generate a SHA entry
+    blob.fobj.seek(0)
+    sha.update(blob.fobj.read())
+    blob.fobj.close()
+
+    # add NOTES (pickled instance) to toplevel pkg archive (the brp)
+    n_fobj = tempfile.TemporaryFile()
+    # last chance toupdate time_total
+    n.brp.time_total = time.time() - n.brp.time_total
+    pickle.dump(n, n_fobj)
+    n_fobj.seek(0)
+    brp.addfile(brp.gettarinfo(arcname="NOTES", fileobj=n_fobj),
+                fileobj=n_fobj)
+    # rewind and generate a SHA entry
+    n_fobj.seek(0)
+    sha.update(n_fobj.read())
+    n_fobj.close()
+
+    # create the SHA file and add it to the pkg
+    with tempfile.TemporaryFile() as f:
+        f.write(sha.hexdigest().encode())
+        f.seek(0)
+        brp.addfile(brp.gettarinfo(arcname="SHA", fileobj=f),
+                    fileobj=f)
+
+    # close the toplevel brp archive
+    brp.close()
+    __brp.close()
+
+    # clean out topdir
+    for g in glob.glob("{}/*".format(srp.work.topdir)):
+        if os.path.isdir(g):
+            shutil.rmtree(g)
+        else:
+            os.remove(g)
+
+    # FIXME: should i clear srp.work.build at this point?  it shouldn't
+    #        really hurt anything if i leave it... and maybe it will be
+    #        helpful during a --build-and-install?
+
+
 def install_iter(fname):
     """install a file"""
     srp.work.install.blob.extract(fname, srp.params.root)
+
+
+def install_final():
+    """db registration and cleanup"""
+    # commit NOTES to disk in srp db
+    #
+    # NOTE: We need to refresh our copy of n because feature funcs may have
+    #       modified the copy in work[].
+    #
+    n = srp.work.install.notes
+
+    # commit MANIFEST to disk in srp db
+    #
+    # NOTE: We need to refresh our copy because feature funcs may have
+    #       modified it
+    #
+    m = srp.work.install.manifest
+
+    # register w/ srp db
+    inst = srp.db.InstalledPackage(n, m)
+    srp.db.register(inst)
+
+    # commit db to disk
+    #
+    # FIXME: is there a better place for this?
+    if not srp.params.dry_run:
+        srp.db.commit()
+
+    # clean out topdir
+    for g in glob.glob("{}/*".format(srp.work.topdir)):
+        if os.path.isdir(g):
+            shutil.rmtree(g)
+        else:
+            os.remove(g)
 
 
 def uninstall_func():
@@ -258,12 +392,20 @@ def commit_func():
     pass
 
 
+# FIXME: add something to either register_feature or feature_struct to
+#        enforce the following:
+#
+#        - all build/install/uninstall toplevel funcs happen AFTER core
+#        - all final funcs happen BEFORE core
+#
 register_feature(
     feature_struct("core",
                    __doc__,
                    True,
                    build = stage_struct("core", build_func, [], []),
+                   build_final = stage_struct("core", build_final, [], []),
                    install_iter = stage_struct("core", install_iter, [], []),
+                   install_final = stage_struct("core", install_final, [], []),
                    uninstall = stage_struct("core", uninstall_func, [], []),
                    uninstall_iter = stage_struct("core", uninstall_iter,
                                                  [], []),
