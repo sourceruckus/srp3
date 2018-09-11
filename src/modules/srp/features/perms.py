@@ -156,6 +156,8 @@ def build_func(fname):
     if srp.params.verbosity > 1:
         print("checking perms for:", x)
 
+    srp.work.build.manifest[fname]["chowned"] = False
+
     # skip links
     #
     # NOTE: I was going to also skip hard links here, but the behavior of GNU
@@ -200,12 +202,14 @@ def build_func(fname):
                 x.uid = int(rule['options']['user'])
             except:
                 x.uname = rule['options']['user']
+            srp.work.build.manifest[fname]["chowned"] = True
 
         if 'group' in rule['options']:
             try:
                 x.gid = int(rule['options']['group'])
             except:
                 x.gname = rule['options']['group']
+            srp.work.build.manifest[fname]["chowned"] = True
 
         if 'mode' in rule['options']:
             x.mode = int(rule['options']['mode'], 8)
@@ -229,6 +233,18 @@ def build_func(fname):
     srp.work.build.manifest["/"+x.name]["tinfo"] = x
 
 
+def update_user(fname):
+    """change tinfo ownership to match install user unless it was explicitly
+    chowned durning build
+    """
+    x = srp.work.install.manifest[fname]["tinfo"]
+    if not srp.work.install.manifest[fname]["chowned"]:
+        x.uid = os.getuid()
+        x.uname = ""
+        x.gid = os.getgid()
+        x.gname = ""
+    srp.work.install.manifest[fname]["tinfo"] = x
+
 
 def verify_func():
     """check perms, issue warning"""
@@ -240,5 +256,6 @@ register_feature(
     feature_struct("perms",
                    __doc__,
                    build_iter = stage_struct("perms", build_func, [], []),
+                   install_iter = stage_struct("perms", update_user, [], ["core"]),
                    action = [("verify",
                               stage_struct("perms", verify_func, [], []))]))
