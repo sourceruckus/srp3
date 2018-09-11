@@ -9,6 +9,7 @@ external database).
 import srp.notes
 from srp.features import *
 
+import stat
 import subprocess
 
 
@@ -33,13 +34,14 @@ import subprocess
 #
 class NotesPostinstall(srp.notes.NotesBuffer):
     def __init__(self, config):
-        srp.notes.NotesBuffer.__init__(self)
+        srp.notes.NotesBuffer.__init__(self, config)
 
         try:
             self.failure_policy = config["failure_policy"].lower()
             if self.failure_policy not in ["error", "warning"]:
                 print("invalid postinstall failure_policy:",
                       config["failure_policy"])
+                raise Exception("invalid")
         except:
             self.failure_policy = "warning"
             if srp.params.verbosity:
@@ -76,8 +78,8 @@ def postinstall():
     except Exception as ex:
         if n.postinstall.failure_policy == "warning":
             print("WARNING: postinstall failed:", ex)
-        else if n.postinstall.failure_polcy == "error"):
-            raise Exception("postinstall failed: {}".format(ex))
+        elif n.postinstall.failure_policy == "error":
+            raise
 
 
 register_feature(

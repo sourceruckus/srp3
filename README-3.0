@@ -103,6 +103,16 @@ and not get into implementation details.
   We may need to have some very simple post func capability... but let's
   keep it as light-weight and simple as possible, if we need it at all.
 
+  UPDATE: yeah, we're gonna want something very basic... just provide a
+  scriptlet to execute...  maybe embed it in the notes file like the build
+  script
+
+  probably want to add an install_final stage after install_iter to implement
+  "postinstall_script".  i don't see a need for any other *_final
+  stages... build_final maybe for any type of on-disk finalization after iter
+  stages...  "preuninstall_script" would be the expected undo/cleanup for
+  postinstall and can be implemented as an early install stage func.
+
 ** extensible Features API
 
   This is what we'll use instead of prepostlibs.  For example, the gtk
@@ -215,14 +225,16 @@ and not get into implementation details.
     create: create tar of NOTES, source, SHA
     build: run build script, create initial tar of payload
     build_iter: add files to blob (maaaybe... not really async-able)
+    build_final: package finalization (maaaaybe...)
     install_iter: install each file
-    install: install tarinfo in /var/lib/srp/pkgname/sha
+    install_final: install tarinfo in /var/lib/srp/pkgname/sha
     uninstall_iter: uninstall each file
-    uninstall: remove pkg manifest
+    uninstall_final: remove pkg manifest
     action.commit: update pkg manifest
 
   perms:
     build_iter: update tarinfo via perms section of NOTES file
+    install_iter [before core]: update tarinfo for intall_user vs build_user
     action.verify: check perms, issue warning
 
   deps:

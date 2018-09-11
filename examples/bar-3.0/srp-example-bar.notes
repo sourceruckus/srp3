@@ -19,9 +19,8 @@ build_multi --prefix=/usr || exit 1
 %%BUFFER_END%%
 
 [postinstall]
-failure_policy = error
 %%BUFFER_BEGIN%%
-#!/bin/shnot
+#!/bin/sh
 echo "!!!!!!!!!!!!!!!! postinstall: blargedy update routine !!!!!!!!!!!!!!!!!!"
 %%BUFFER_END%%
 
