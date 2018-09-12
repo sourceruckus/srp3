@@ -144,7 +144,7 @@ build_multi()
 # environment:
 #
 #   =sourcedir= - The directory the sources live in.  By default, same as
-#     =SOURCE_DIR=, but may be different if =checkout=, =copy=, or =patches=
+#     =SOURCE_DIR=, but may be different if =copy=, =gitclone=, or =patches=
 #     variables are set.  See Options.
 #
 #   =builddir= - The working directory of the build.  By default, this is a
@@ -155,25 +155,25 @@ build_multi()
 #
 # Options:
 #
-#   =checkout= - Specifying checkout=tagname will cause a new source dir to be
-#     checked out using the specified tagname.  =SOURCE_DIR= must be a git
-#     repo.  The =source= variable will get set to the freshly cloned tree.
-#     The package's build_script is responsible for bootstrapping the cloned
-#     source tree, if needed.
-#
 #   =copy= - The =SOURCE_DIR= will get copied into a new directory.  The
 #     =source= variable will get set to the new directory.
+#
+#   =gitclone= - Like =copy=, but using a git clone.  The =SOURCE_DIR= will get
+#     cloned (via git clone --shared) into a new directory.  =SOURCE_DIR= must
+#     be a git repo.  The =source= variable will get set to the freshly cloned
+#     tree.  The package's build_script is responsible for bootstrapping the
+#     cloned source tree, if needed.
 #
 #   =build_in_tree= - The build will happen directly in the source tree.  Some
 #     packages do not support out-of-tree building (or have buggy automake
 #     files) and must be built in-tree.  If specified w/ an external sourcetree
-#     but w/out either =copy= or =checkout=, =copy= mode will be implicitly
+#     but w/out either =copy= or =gitclone=, =copy= mode will be implicitly
 #     enabled.
 #
 #   =patches= - The =SOURCE_DIR= will get copied and the supplied list of
 #     patches will be applied.  The patches must be specified with absolute
 #     paths, but shell globs can be used.  If specified w/ an external
-#     sourcetree but w/out either =copy= or =checkout=, =copy= mode will be
+#     sourcetree but w/out either =copy= or =gitclone=, =copy= mode will be
 #     implicitly enabled.
 #
 #   =use_configure= - The specified script will be used instead of the default
@@ -212,8 +212,8 @@ setup_generic()
     #       tarball was extracted by srp)
     #
     internal_sourcetree=$(echo $SOURCE_DIR | grep "^$(dirname $PAYLOAD_DIR)")
-    if [ -z "$copy" ] && [ -z "$checkout" ]; then
-        # don't bother the user with these messages if =copy= or =checkout=
+    if [ -z "$copy" ] && [ -z "$gitclone" ]; then
+        # don't bother the user with these messages if =copy= or =gitclone=
         # were explictly specified
         if [ -z "$internal_sourcetree" ]; then
             if [ -n "$patches" ]; then
@@ -237,11 +237,22 @@ setup_generic()
         find $sourcedir -name .git -exec \
             sed -i "s|^gitdir: [./]*|gitdir: $SOURCE_DIR/.|" {} \;
 
-    elif [ -n "$checkout" ]; then
-        sourcedir=$SOURCE_DIR-$build_id
-        echo -n "creating local checkout of $checkout from $SOURCE_DIR in" \
-            "$sourcedir..."
-        git clone --shared --branch $checkout $SOURCE_DIR $sourcedir || exit 1
+    elif [ -n "$gitclone" ]; then
+        sourcedir=$BUILD_DIR/../source-$build_id
+        echo -n "creating git clone from $SOURCE_DIR to $sourcedir..."
+        # FIXME: i'm not really sure there's really a use-case for this inside
+        #        of an srp build script...  this concept came from the source
+        #        ruckus bootstrap builder scripts, where it made sense.  while
+        #        building a package, inside the srp build environment, you
+        #        might want to copy the source tree to do 2 seperate builds
+        #        from a single source tree with a build sys that doesn't
+        #        support out-of-tree building...  but a git clone?  that seems
+        #        awkwardly overcomplicated...  plus you're going to have to
+        #        worry about the clone's files being different (i.e., because
+        #        $SOURCE_DIR has been bootstrapped or otherwise modified...).
+        #
+        #        i'll leave this here for now, but it's probably a bad idea...
+        git clone --shared $SOURCE_DIR $sourcedir || exit 1
 
     fi
 
@@ -265,9 +276,9 @@ setup_generic()
     # NOTE: The Source Ruckus bootsrap builder would auto-bootstrap cloned
     #       source trees here via autoreconf_generic.  I chose not to include
     #       that method here, because it's handled in core.py and I didn't want
-    #       confusing duplicate code... but that means if you use =checkout=,
+    #       confusing duplicate code... but that means if you use =gitclone=,
     #       you need to bootstrap within the build_script after calling
-    #       setup_generic (i.e., you cannot use build_generic w/ =checkout=).
+    #       setup_generic (i.e., you cannot use build_generic w/ =gitclone=).
 
     mkdir -p $builddir
 
