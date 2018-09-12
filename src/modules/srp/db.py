@@ -20,6 +20,14 @@ from pprint import pprint
 # FIXME: should I use shelve here instead of pickling a dict?
 #
 
+# After installing a few packages, the db is easily experimented w/ in an
+# interpreter like this:
+#
+# import srp
+# srp.params.root="./FOO"
+# srp.params.verbosity=3
+# srp.db.__db
+
 
 class InstalledPackage(srp.SrpObject):
     def __init__(self, notes, manifest):

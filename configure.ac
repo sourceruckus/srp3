@@ -3,7 +3,7 @@ AC_PREREQ([2.65])
 m4_define(srp_major_version, 3)
 m4_define(srp_minor_version, 0)
 m4_define(srp_micro_version, 0)
-m4_define(srp_devtag, [alpha2])
+m4_define(srp_devtag, [alpha3])
 m4_ifnblank(srp_devtag,
 	[m4_define(srp_version, srp_major_version.srp_minor_version.srp_micro_version-srp_devtag)],
 	[m4_define(srp_version, srp_major_version.srp_minor_version.srp_micro_version)])
